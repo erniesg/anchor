@@ -118,12 +118,36 @@ function DashboardComponent() {
                     <h2 className="text-2xl font-bold text-gray-900">{careRecipient.name}</h2>
                     <p className="text-sm text-gray-600">{careRecipient.condition || 'No condition specified'}</p>
                   </div>
-                  <div className="text-right text-sm text-gray-600">
-                    <p>Last updated: {todayLog ? new Date(todayLog.updatedAt).toLocaleTimeString() : 'No data'}</p>
+                  <div className="flex items-center gap-4">
+                    <Button
+                      onClick={() => (window.location.href = '/family/trends')}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      📊 View 7-Day Trends
+                    </Button>
+                    <div className="text-right text-sm text-gray-600">
+                      <p>Last updated: {todayLog ? new Date(todayLog.updatedAt).toLocaleTimeString() : 'No data'}</p>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Alerts */}
+            {todayLog?.emergencyFlag && (
+              <Card className="border-2 border-error bg-error/5">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🚨</span>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{todayLog.emergencyNote || 'Emergency flag raised'}</p>
+                      <p className="text-sm text-gray-600">Emergency alert</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Today's Summary */}
             {isLoading ? (
