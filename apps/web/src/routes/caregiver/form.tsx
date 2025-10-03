@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { useAutoSave } from '@/hooks/use-auto-save';
+import { Save, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 
 export const Route = createFileRoute('/caregiver/form')({
   component: CareLogFormComponent,
@@ -12,6 +14,8 @@ export const Route = createFileRoute('/caregiver/form')({
 function CareLogFormComponent() {
   const navigate = useNavigate();
   const [currentSection, setCurrentSection] = useState(1);
+  const [careLogId, setCareLogId] = useState<string | null>(null);
+  const [logStatus, setLogStatus] = useState<'draft' | 'submitted' | 'invalidated'>('draft');
 
   // Morning Routine
   const [wakeTime, setWakeTime] = useState('');
@@ -50,41 +54,19 @@ function CareLogFormComponent() {
 
   // Get care recipient ID (mock for now - should come from caregiver session)
   const careRecipientId = localStorage.getItem('careRecipientId') || '';
+  const caregiverToken = localStorage.getItem('caregiverToken') || '';
 
-  const submitMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await fetch('/api/care-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to submit care log');
-      return response.json();
-    },
-    onSuccess: () => {
-      alert('Care log submitted successfully! ✅');
-      // Reset form or navigate
-      setCurrentSection(1);
-    },
-  });
-
-  const handleSubmit = () => {
+  // Prepare form data
+  const formData = useMemo(() => {
     const careRecipient = JSON.parse(localStorage.getItem('careRecipient') || '{}');
-
-    submitMutation.mutate({
+    return {
       careRecipientId: careRecipient.id,
       logDate: new Date().toISOString().split('T')[0],
-
-      // Morning
       wakeTime,
       mood,
       showerTime,
       hairWash,
-
-      // Medications
       medications,
-
-      // Meals
       meals: {
         breakfast: breakfastTime ? {
           time: breakfastTime,
@@ -92,27 +74,95 @@ function CareLogFormComponent() {
           amountEaten: breakfastAmount,
         } : undefined,
       },
-
-      // Vitals
       bloodPressure,
       pulseRate: pulseRate ? parseInt(pulseRate) : undefined,
       oxygenLevel: oxygenLevel ? parseInt(oxygenLevel) : undefined,
       bloodSugar: bloodSugar ? parseFloat(bloodSugar) : undefined,
       vitalsTime,
-
-      // Toileting
       toileting: {
         bowelFrequency: bowelFreq,
         urineFrequency: urineFreq,
         diaperChanges,
       },
-
-      // Safety
       emergencyFlag,
       emergencyNote,
       notes,
-    });
+    };
+  }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite,
+      breakfastAmount, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime,
+      bowelFreq, urineFreq, diaperChanges, emergencyFlag, emergencyNote, notes]);
+
+  // Create/Update mutation (for auto-save)
+  const saveDraftMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const url = careLogId ? `/api/care-logs/${careLogId}` : '/api/care-logs';
+      const method = careLogId ? 'PATCH' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify({ ...data, status: 'draft' }),
+      });
+      if (!response.ok) throw new Error('Failed to save draft');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (!careLogId && data.id) {
+        setCareLogId(data.id);
+      }
+    },
+  });
+
+  // Submit mutation (final submission)
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      if (!careLogId) throw new Error('No draft to submit');
+
+      const response = await fetch(`/api/care-logs/${careLogId}/submit`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${caregiverToken}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to submit care log');
+      return response.json();
+    },
+    onSuccess: () => {
+      setLogStatus('submitted');
+      alert('Care log submitted successfully! ✅');
+    },
+  });
+
+  // Auto-save hook
+  const { lastSaved, isSaving, saveError } = useAutoSave({
+    data: formData,
+    onSave: async (data) => {
+      await saveDraftMutation.mutateAsync(data);
+    },
+    interval: 30000, // 30 seconds
+    enabled: true,
+    isDraft: logStatus === 'draft',
+  });
+
+  const handleSubmit = async () => {
+    try {
+      // Save current draft first if needed
+      if (!careLogId) {
+        await saveDraftMutation.mutateAsync(formData);
+      }
+      // Then submit
+      await submitMutation.mutateAsync();
+    } catch (error) {
+      console.error('Submit error:', error);
+      alert('Failed to submit. Please try again.');
+    }
   };
+
+  // Check if form is locked (submitted or invalidated)
+  const isLocked = logStatus === 'submitted' || logStatus === 'invalidated';
 
   const sections = [
     { id: 1, title: 'Morning Routine', emoji: '🌅' },
@@ -126,10 +176,52 @@ function CareLogFormComponent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-accent-50 pb-8">
       {/* Header */}
-      <div className="bg-white shadow-sm sticky top-0 z-10">
+      <div className="bg-white shadow-sm sticky top-0 z-10 border-b">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-primary-700">Daily Care Report</h1>
-          <p className="text-sm text-gray-600">Today: {new Date().toLocaleDateString()}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-primary-700">Daily Care Report</h1>
+              <p className="text-sm text-gray-600">Today: {new Date().toLocaleDateString()}</p>
+            </div>
+
+            {/* Auto-save status */}
+            <div className="flex items-center gap-3">
+              {logStatus === 'draft' && (
+                <div className="flex items-center gap-2 text-sm">
+                  {isSaving ? (
+                    <>
+                      <Save className="h-4 w-4 animate-pulse text-blue-600" />
+                      <span className="text-gray-600">Saving...</span>
+                    </>
+                  ) : lastSaved ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-gray-600">
+                        Saved {new Date(lastSaved).toLocaleTimeString()}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="h-4 w-4 text-gray-400" />
+                      <span className="text-gray-400">Not saved yet</span>
+                    </>
+                  )}
+                </div>
+              )}
+              {logStatus === 'submitted' && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                  <CheckCircle className="h-4 w-4" />
+                  Submitted
+                </div>
+              )}
+              {logStatus === 'invalidated' && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                  <AlertCircle className="h-4 w-4" />
+                  Needs Correction
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -162,12 +254,22 @@ function CareLogFormComponent() {
               <h2 className="text-xl font-semibold">🌅 Morning Routine</h2>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isLocked && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-gray-600 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    This form is locked and cannot be edited.
+                  </p>
+                </div>
+              )}
+
               <Input
                 label="Wake Up Time"
                 type="time"
                 value={wakeTime}
                 onChange={(e) => setWakeTime(e.target.value)}
                 helperText="When did they wake up today?"
+                disabled={isLocked}
               />
 
               <div>
@@ -177,12 +279,13 @@ function CareLogFormComponent() {
                     <button
                       key={m}
                       type="button"
-                      onClick={() => setMood(m)}
+                      onClick={() => !isLocked && setMood(m)}
+                      disabled={isLocked}
                       className={`p-3 rounded-lg border-2 transition-colors ${
                         mood === m
                           ? 'border-primary-500 bg-primary-50 text-primary-700'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {m.charAt(0).toUpperCase() + m.slice(1)}
                     </button>
@@ -195,6 +298,7 @@ function CareLogFormComponent() {
                 type="time"
                 value={showerTime}
                 onChange={(e) => setShowerTime(e.target.value)}
+                disabled={isLocked}
               />
 
               <div className="flex items-center gap-3">
@@ -485,20 +589,66 @@ function CareLogFormComponent() {
                 />
               </div>
 
-              <div className="flex gap-3">
-                <Button onClick={() => setCurrentSection(5)} variant="outline" className="flex-1">
-                  ← Back
-                </Button>
-                <Button
-                  onClick={handleSubmit}
-                  variant="primary"
-                  size="lg"
-                  className="flex-1"
-                  isLoading={submitMutation.isPending}
-                >
-                  Submit Report ✅
-                </Button>
-              </div>
+              {/* Submit Section */}
+              {isLocked ? (
+                <div className="mt-6">
+                  {logStatus === 'submitted' && (
+                    <div className="bg-green-50 border-2 border-green-200 rounded-lg p-6 text-center">
+                      <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-3" />
+                      <h3 className="text-lg font-semibold text-green-900 mb-2">
+                        Report Submitted Successfully!
+                      </h3>
+                      <p className="text-sm text-green-800">
+                        Your care report has been submitted and is now locked. The family will be able to view it.
+                      </p>
+                      <Button
+                        onClick={() => navigate({ to: '/caregiver/form' })}
+                        variant="primary"
+                        className="mt-4"
+                      >
+                        Create New Report for Tomorrow
+                      </Button>
+                    </div>
+                  )}
+                  {logStatus === 'invalidated' && (
+                    <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
+                      <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-3" />
+                      <h3 className="text-lg font-semibold text-red-900 mb-2">
+                        Report Flagged for Correction
+                      </h3>
+                      <p className="text-sm text-red-800 mb-4">
+                        The family has flagged this report. Please review and create a new corrected report.
+                      </p>
+                      <Button
+                        onClick={() => {
+                          setLogStatus('draft');
+                          setCareLogId(null);
+                          setCurrentSection(1);
+                        }}
+                        variant="primary"
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Create Corrected Report
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <Button onClick={() => setCurrentSection(5)} variant="outline" className="flex-1">
+                    ← Back
+                  </Button>
+                  <Button
+                    onClick={handleSubmit}
+                    variant="primary"
+                    size="lg"
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    disabled={submitMutation.isPending || isSaving}
+                  >
+                    {submitMutation.isPending ? 'Submitting...' : 'Submit Report ✅'}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
