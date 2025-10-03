@@ -174,4 +174,44 @@ careLogsRoute.get('/recipient/:recipientId/today', async (c) => {
   }
 });
 
+// Get care log for a specific date
+careLogsRoute.get('/recipient/:recipientId/date/:date', async (c) => {
+  try {
+    const recipientId = c.req.param('recipientId');
+    const date = c.req.param('date'); // Expected format: YYYY-MM-DD
+    const db = c.get('db');
+
+    const logs = await db
+      .select()
+      .from(careLogs)
+      .where(eq(careLogs.careRecipientId, recipientId))
+      .orderBy(desc(careLogs.logDate))
+      .all();
+
+    // Filter by date (compare YYYY-MM-DD portion)
+    const targetDate = new Date(date).toISOString().split('T')[0];
+    const matchingLog = logs.find(log => {
+      const logDate = new Date(log.logDate).toISOString().split('T')[0];
+      return logDate === targetDate;
+    });
+
+    if (!matchingLog) {
+      return c.json(null);
+    }
+
+    // Parse JSON fields
+    const parsedLog = {
+      ...matchingLog,
+      medications: matchingLog.medications ? JSON.parse(matchingLog.medications as string) : null,
+      meals: matchingLog.meals ? JSON.parse(matchingLog.meals as string) : null,
+      toileting: matchingLog.toileting ? JSON.parse(matchingLog.toileting as string) : null,
+    };
+
+    return c.json(parsedLog);
+  } catch (error) {
+    console.error('Get date log error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
 export default careLogsRoute;
