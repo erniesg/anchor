@@ -16,14 +16,19 @@ export interface Env {
 }
 
 /**
- * Hono Context with Database Client
+ * Hono Context with Database Client and Auth Variables
  */
 export type AppContext = {
   Bindings: Env;
   Variables: {
     db: ReturnType<typeof createDbClient>;
+    // User auth (family_admin or family_member)
     userId?: string;
-    role?: string;
+    userRole?: 'family_admin' | 'family_member';
+    // Caregiver auth
+    caregiverId?: string;
+    // Resource IDs (set by permission middleware)
+    careRecipientId?: string;
   };
 };
 
