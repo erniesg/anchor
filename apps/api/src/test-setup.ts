@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import { beforeAll, vi } from 'vitest';
 
 /**
  * Test Setup
@@ -24,7 +24,7 @@ const mockEnv = {
     delete: vi.fn(),
     list: vi.fn(),
   },
-  ENVIRONMENT: 'test',
+  ENVIRONMENT: 'dev',
   JWT_SECRET: 'test-secret-key',
   LOGTO_APP_SECRET: 'test-logto-secret',
 };
@@ -40,10 +40,9 @@ beforeAll(() => {
 global.fetch = vi.fn() as any;
 
 // Mock crypto.randomUUID
-global.crypto = {
-  ...global.crypto,
+(global as any).crypto = {
   randomUUID: vi.fn(() => `mock-uuid-${Math.random().toString(36).substring(7)}`),
-} as any;
+};
 
 // Export mock environment for tests
 export { mockEnv };

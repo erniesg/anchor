@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppContext } from '../index';
 import { caregivers } from '@anchor/database/schema';
-import { eq, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { familyAdminOnly, familyMemberAccess } from '../middleware/rbac';
 import { requireCaregiverManagement } from '../middleware/permissions';
 

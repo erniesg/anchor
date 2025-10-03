@@ -31,7 +31,7 @@ export function createMockEnv(): Env {
   return {
     DB: mockDB as any,
     STORAGE: mockStorage as any,
-    ENVIRONMENT: 'test',
+    ENVIRONMENT: 'dev',
     JWT_SECRET: 'test-jwt-secret-key-for-testing',
     LOGTO_APP_SECRET: 'test-logto-secret',
   };

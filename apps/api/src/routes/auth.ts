@@ -42,13 +42,10 @@ auth.post('/signup', async (c) => {
     const newUser = await db
       .insert(users)
       .values({
-        id: crypto.randomUUID(),
         email: data.email,
         name: data.name,
         phone: data.phone,
-        role: 'family',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        role: 'family_admin',
       })
       .returning()
       .get();
@@ -120,8 +117,6 @@ auth.post('/caregiver/login', async (c) => {
   try {
     const body = await c.req.json();
     const data = caregiverPinSchema.parse(body);
-
-    const db = c.get('db');
 
     // TODO: Implement caregiver PIN verification
     // For now, return mock response

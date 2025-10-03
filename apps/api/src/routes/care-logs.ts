@@ -80,29 +80,27 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
 
     const newLog = await db
       .insert(careLogs)
+      // @ts-ignore - Drizzle ORM type inference issue with JSON fields. Runtime works correctly.
       .values({
-        id: crypto.randomUUID(),
         careRecipientId: data.careRecipientId,
-        caregiverId: data.caregiverId || caregiverId, // Use from body or auth context
+        caregiverId: data.caregiverId || caregiverId,
         logDate: new Date(data.logDate),
-        status: 'draft', // Always create as draft
+        status: 'draft' as const,
         wakeTime: data.wakeTime,
         mood: data.mood,
         showerTime: data.showerTime,
         hairWash: data.hairWash,
-        medications: data.medications ? JSON.stringify(data.medications) : null,
-        meals: data.meals ? JSON.stringify(data.meals) : null,
+        medications: data.medications,
+        meals: data.meals,
         bloodPressure: data.bloodPressure,
         pulseRate: data.pulseRate,
         oxygenLevel: data.oxygenLevel,
         bloodSugar: data.bloodSugar,
         vitalsTime: data.vitalsTime,
-        toileting: data.toileting ? JSON.stringify(data.toileting) : null,
+        toileting: data.toileting,
         emergencyFlag: data.emergencyFlag,
         emergencyNote: data.emergencyNote,
         notes: data.notes,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       })
       .returning()
       .get();
@@ -135,15 +133,7 @@ careLogsRoute.get('/recipient/:recipientId', ...familyMemberAccess, requireCareR
       .orderBy(desc(careLogs.logDate))
       .all();
 
-    // Parse JSON fields
-    const parsedLogs = logs.map(log => ({
-      ...log,
-      medications: log.medications ? JSON.parse(log.medications as string) : null,
-      meals: log.meals ? JSON.parse(log.meals as string) : null,
-      toileting: log.toileting ? JSON.parse(log.toileting as string) : null,
-    }));
-
-    return c.json(parsedLogs);
+    return c.json(logs);
   } catch (error) {
     console.error('Get care logs error:', error);
     return c.json({ error: 'Internal server error' }, 500);
@@ -155,8 +145,6 @@ careLogsRoute.get('/recipient/:recipientId/today', ...familyMemberAccess, requir
   try {
     const recipientId = c.req.param('recipientId');
     const db = c.get('db');
-
-    const today = new Date().toISOString().split('T')[0];
 
     const log = await db
       .select()
@@ -175,15 +163,7 @@ careLogsRoute.get('/recipient/:recipientId/today', ...familyMemberAccess, requir
       return c.json(null);
     }
 
-    // Parse JSON fields
-    const parsedLog = {
-      ...log,
-      medications: log.medications ? JSON.parse(log.medications as string) : null,
-      meals: log.meals ? JSON.parse(log.meals as string) : null,
-      toileting: log.toileting ? JSON.parse(log.toileting as string) : null,
-    };
-
-    return c.json(parsedLog);
+    return c.json(log);
   } catch (error) {
     console.error('Get today log error:', error);
     return c.json({ error: 'Internal server error' }, 500);
@@ -220,15 +200,7 @@ careLogsRoute.get('/recipient/:recipientId/date/:date', ...familyMemberAccess, r
       return c.json(null);
     }
 
-    // Parse JSON fields
-    const parsedLog = {
-      ...matchingLog,
-      medications: matchingLog.medications ? JSON.parse(matchingLog.medications as string) : null,
-      meals: matchingLog.meals ? JSON.parse(matchingLog.meals as string) : null,
-      toileting: matchingLog.toileting ? JSON.parse(matchingLog.toileting as string) : null,
-    };
-
-    return c.json(parsedLog);
+    return c.json(matchingLog);
   } catch (error) {
     console.error('Get date log error:', error);
     return c.json({ error: 'Internal server error' }, 500);

@@ -122,7 +122,7 @@ export const authCaregiverToken = createMiddleware<AppContext>(async (c, next) =
     return c.json({ error: 'Unauthorized', message: 'Invalid caregiver token format' }, 401);
   }
 
-  const caregiverId = parts[1];
+  const caregiverId = parts[1]!; // Safe: checked length above
 
   // Verify caregiver exists and is active
   const db = c.get('db');
@@ -161,7 +161,7 @@ export const optionalAuth = createMiddleware<AppContext>(async (c, next) => {
       const parts = token.split('_');
 
       if (parts.length >= 2 && parts[0] === 'caregiver') {
-        const caregiverId = parts[1];
+        const caregiverId = parts[1]!; // Safe: checked length above
         const db = c.get('db');
         const active = await isActiveCaregiver(db, caregiverId);
 

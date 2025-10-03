@@ -31,15 +31,12 @@ careRecipientsRoute.post('/', async (c) => {
     const newRecipient = await db
       .insert(careRecipients)
       .values({
-        id: crypto.randomUUID(),
-        familyId: userId,
+        familyAdminId: userId,
         name: data.name,
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
         condition: data.condition,
         location: data.location,
         emergencyContact: data.emergencyContact,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       })
       .returning()
       .get();
@@ -66,7 +63,7 @@ careRecipientsRoute.get('/', async (c) => {
     const recipients = await db
       .select()
       .from(careRecipients)
-      .where(eq(careRecipients.familyId, userId))
+      .where(eq(careRecipients.familyAdminId, userId))
       .all();
 
     return c.json(recipients);
