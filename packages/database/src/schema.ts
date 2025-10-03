@@ -3,14 +3,30 @@ import { sql } from 'drizzle-orm';
 
 /**
  * Users Table (Family Members)
- * Primary caregivers who manage the care of their loved ones
+ * All users who have access to view/manage care recipient data
+ *
+ * Role Hierarchy:
+ * - family_admin: Account owner, full permissions
+ * - family_member: Co-viewer, read-only access
  */
 export const users = sqliteTable('users', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
   phone: text('phone'),
-  role: text('role', { enum: ['family', 'admin'] }).default('family').notNull(),
+  role: text('role', { enum: ['family_admin', 'family_member'] }).default('family_admin').notNull(),
+
+  // Account status
+  active: integer('active', { mode: 'boolean' }).default(true).notNull(),
+  deletedAt: integer('deleted_at', { mode: 'timestamp' }), // Soft delete
+
+  // Notification preferences
+  emailNotifications: integer('email_notifications', { mode: 'boolean' }).default(true).notNull(),
+  smsNotifications: integer('sms_notifications', { mode: 'boolean' }).default(false).notNull(),
+
+  // Timezone (IANA timezone string, e.g., "Asia/Singapore", "America/New_York")
+  timezone: text('timezone').default('Asia/Singapore').notNull(),
+
   createdAt: integer('created_at', { mode: 'timestamp' })
     .$defaultFn(() => new Date())
     .notNull(),
@@ -26,15 +42,19 @@ export const users = sqliteTable('users', {
  */
 export const careRecipients = sqliteTable('care_recipients', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  familyId: text('family_id')
+  familyAdminId: text('family_admin_id')
     .references(() => users.id, { onDelete: 'cascade' })
-    .notNull(),
+    .notNull(), // The family_admin who owns this care recipient
   name: text('name').notNull(),
   dateOfBirth: integer('date_of_birth', { mode: 'timestamp' }),
   condition: text('condition'), // e.g., "Progressive Supranuclear Palsy"
   location: text('location'),
   emergencyContact: text('emergency_contact'),
   photoUrl: text('photo_url'),
+
+  // Timezone (defaults to family admin's timezone, but can be different if care recipient is in different location)
+  timezone: text('timezone').default('Asia/Singapore').notNull(),
+
   createdAt: integer('created_at', { mode: 'timestamp' })
     .$defaultFn(() => new Date())
     .notNull(),
@@ -45,8 +65,34 @@ export const careRecipients = sqliteTable('care_recipients', {
 });
 
 /**
+ * Care Recipient Access Table (Junction Table)
+ * Tracks which family members have access to which care recipients
+ * - family_admin has implicit access (owner)
+ * - family_member needs explicit grant via this table
+ */
+export const careRecipientAccess = sqliteTable('care_recipient_access', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  careRecipientId: text('care_recipient_id')
+    .references(() => careRecipients.id, { onDelete: 'cascade' })
+    .notNull(),
+  userId: text('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  grantedBy: text('granted_by')
+    .references(() => users.id, { onDelete: 'set null' }), // Which family_admin granted access
+  grantedAt: integer('granted_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  revokedAt: integer('revoked_at', { mode: 'timestamp' }), // Soft revoke
+});
+
+/**
  * Caregivers Table (FDW/Helpers)
  * Foreign domestic workers providing hands-on care
+ *
+ * Management:
+ * - family_admin can create/edit/deactivate caregivers
+ * - family_member can only view caregiver names (read-only)
  */
 export const caregivers = sqliteTable('caregivers', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -55,12 +101,24 @@ export const caregivers = sqliteTable('caregivers', {
     .notNull(),
   name: text('name').notNull(),
   phone: text('phone'),
+  email: text('email'), // Optional email for caregiver
   language: text('language').default('en').notNull(),
   pinCode: text('pin_code').notNull(), // 6-digit PIN (hashed)
+
+  // Status tracking
   active: integer('active', { mode: 'boolean' }).default(true).notNull(),
+  deactivatedAt: integer('deactivated_at', { mode: 'timestamp' }),
+  deactivatedBy: text('deactivated_by').references(() => users.id),
+  deactivationReason: text('deactivation_reason'),
+
+  // Audit trail for admin actions
+  lastPinResetAt: integer('last_pin_reset_at', { mode: 'timestamp' }),
+  lastPinResetBy: text('last_pin_reset_by').references(() => users.id),
+
   createdAt: integer('created_at', { mode: 'timestamp' })
     .$defaultFn(() => new Date())
     .notNull(),
+  createdBy: text('created_by').references(() => users.id), // Which family_admin created this caregiver
   updatedAt: integer('updated_at', { mode: 'timestamp' })
     .$defaultFn(() => new Date())
     .$onUpdateFn(() => new Date())
@@ -70,6 +128,11 @@ export const caregivers = sqliteTable('caregivers', {
 /**
  * Care Logs Table (Daily Care Records)
  * Comprehensive daily care data logged by caregivers
+ *
+ * Status Workflow:
+ * - draft: Auto-saved progress, editable by caregiver
+ * - submitted: Final version, locked (immutable)
+ * - invalidated: Flagged by family_admin for correction
  */
 export const careLogs = sqliteTable('care_logs', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -80,6 +143,13 @@ export const careLogs = sqliteTable('care_logs', {
     .references(() => caregivers.id, { onDelete: 'set null' }),
   logDate: integer('log_date', { mode: 'timestamp' }).notNull(),
   timePeriod: text('time_period', { enum: ['morning', 'afternoon', 'evening', 'night'] }),
+
+  // Draft/Submit Status
+  status: text('status', { enum: ['draft', 'submitted', 'invalidated'] }).default('draft').notNull(),
+  submittedAt: integer('submitted_at', { mode: 'timestamp' }),
+  invalidatedAt: integer('invalidated_at', { mode: 'timestamp' }),
+  invalidatedBy: text('invalidated_by').references(() => users.id), // family_admin who invalidated
+  invalidationReason: text('invalidation_reason'),
 
   // Morning Routine
   wakeTime: text('wake_time'), // HH:MM format
@@ -241,6 +311,7 @@ export const alerts = sqliteTable('alerts', {
 export const schema = {
   users,
   careRecipients,
+  careRecipientAccess,
   caregivers,
   careLogs,
   medicationSchedules,
