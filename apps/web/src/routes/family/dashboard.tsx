@@ -1,8 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Settings } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -26,6 +27,29 @@ interface User {
   email: string;
   name: string;
   role: string;
+}
+
+// Status Badge Component
+function StatusBadge({ status }: { status?: string }) {
+  if (!status) return null;
+
+  const styles = {
+    draft: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    submitted: 'bg-green-100 text-green-800 border-green-200',
+    invalidated: 'bg-red-100 text-red-800 border-red-200',
+  };
+
+  const labels = {
+    draft: '📝 Draft (In Progress)',
+    submitted: '✅ Submitted',
+    invalidated: '⚠️ Needs Correction',
+  };
+
+  return (
+    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${styles[status as keyof typeof styles] || ''}`}>
+      {labels[status as keyof typeof labels] || status}
+    </span>
+  );
 }
 
 function DashboardComponent() {
@@ -110,9 +134,17 @@ function DashboardComponent() {
             <h1 className="text-3xl font-bold text-primary-700">Anchor</h1>
             {user && <p className="text-sm text-gray-600 mt-1">Welcome back, {user.name}</p>}
           </div>
-          <Button onClick={handleLogout} variant="ghost" size="sm">
-            Log out
-          </Button>
+          <div className="flex items-center gap-3">
+            <Link to="/family/settings">
+              <Button variant="ghost" size="sm">
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </Link>
+            <Button onClick={handleLogout} variant="ghost" size="sm">
+              Log out
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -234,8 +266,15 @@ function DashboardComponent() {
                   )}
 
                   {viewMode === 'today' && (
-                    <div className="text-right text-sm text-gray-600">
-                      <p>Last updated: {todayLog ? new Date(todayLog.updatedAt).toLocaleTimeString() : 'No data'}</p>
+                    <div className="text-right">
+                      {todayLog?.status && (
+                        <div className="mb-2">
+                          <StatusBadge status={todayLog.status} />
+                        </div>
+                      )}
+                      <p className="text-sm text-gray-600">
+                        Last updated: {todayLog ? new Date(todayLog.updatedAt).toLocaleTimeString() : 'No data'}
+                      </p>
                     </div>
                   )}
                 </div>
