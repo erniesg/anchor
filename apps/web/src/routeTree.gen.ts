@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FamilyTrendsRouteImport } from './routes/family/trends'
 import { Route as FamilyDashboardRouteImport } from './routes/family/dashboard'
 import { Route as CaregiverLoginRouteImport } from './routes/caregiver/login'
 import { Route as CaregiverFormRouteImport } from './routes/caregiver/form'
@@ -21,6 +22,11 @@ import { Route as FamilyOnboardingCaregiverRouteImport } from './routes/family/o
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FamilyTrendsRoute = FamilyTrendsRouteImport.update({
+  id: '/family/trends',
+  path: '/family/trends',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FamilyDashboardRoute = FamilyDashboardRouteImport.update({
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/caregiver/form': typeof CaregiverFormRoute
   '/caregiver/login': typeof CaregiverLoginRoute
   '/family/dashboard': typeof FamilyDashboardRoute
+  '/family/trends': typeof FamilyTrendsRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
   '/family/onboarding': typeof FamilyOnboardingIndexRoute
 }
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/caregiver/form': typeof CaregiverFormRoute
   '/caregiver/login': typeof CaregiverLoginRoute
   '/family/dashboard': typeof FamilyDashboardRoute
+  '/family/trends': typeof FamilyTrendsRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
   '/family/onboarding': typeof FamilyOnboardingIndexRoute
 }
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/caregiver/form': typeof CaregiverFormRoute
   '/caregiver/login': typeof CaregiverLoginRoute
   '/family/dashboard': typeof FamilyDashboardRoute
+  '/family/trends': typeof FamilyTrendsRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
   '/family/onboarding/': typeof FamilyOnboardingIndexRoute
 }
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/caregiver/form'
     | '/caregiver/login'
     | '/family/dashboard'
+    | '/family/trends'
     | '/family/onboarding/caregiver'
     | '/family/onboarding'
   fileRoutesByTo: FileRoutesByTo
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/caregiver/form'
     | '/caregiver/login'
     | '/family/dashboard'
+    | '/family/trends'
     | '/family/onboarding/caregiver'
     | '/family/onboarding'
   id:
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/caregiver/form'
     | '/caregiver/login'
     | '/family/dashboard'
+    | '/family/trends'
     | '/family/onboarding/caregiver'
     | '/family/onboarding/'
   fileRoutesById: FileRoutesById
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   CaregiverFormRoute: typeof CaregiverFormRoute
   CaregiverLoginRoute: typeof CaregiverLoginRoute
   FamilyDashboardRoute: typeof FamilyDashboardRoute
+  FamilyTrendsRoute: typeof FamilyTrendsRoute
   FamilyOnboardingCaregiverRoute: typeof FamilyOnboardingCaregiverRoute
   FamilyOnboardingIndexRoute: typeof FamilyOnboardingIndexRoute
 }
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/family/trends': {
+      id: '/family/trends'
+      path: '/family/trends'
+      fullPath: '/family/trends'
+      preLoaderRoute: typeof FamilyTrendsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/family/dashboard': {
@@ -203,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   CaregiverFormRoute: CaregiverFormRoute,
   CaregiverLoginRoute: CaregiverLoginRoute,
   FamilyDashboardRoute: FamilyDashboardRoute,
+  FamilyTrendsRoute: FamilyTrendsRoute,
   FamilyOnboardingCaregiverRoute: FamilyOnboardingCaregiverRoute,
   FamilyOnboardingIndexRoute: FamilyOnboardingIndexRoute,
 }

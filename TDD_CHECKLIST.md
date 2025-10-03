@@ -517,22 +517,27 @@
 ### Week 7: Dashboard Foundation
 
 #### Day 31-32: Dashboard Layout & API
+- [x] **Frontend**: Create dashboard layout
+  - [x] 🔴 Test: Test responsive grid
+  - [x] 🟢 Implement: Card-based dashboard layout
+  - [x] 📝 Commit: `feat(web): add dashboard 3-mode view toggle`
+
+- [x] **Frontend**: Create header with view modes
+  - [x] 🟢 Implement: 3-mode toggle (Today/Week/Month)
+  - [x] 🟢 Implement: Mon-Sun week navigation
+  - [x] 📝 Commit: `feat(web): add dashboard header with view modes`
+
+- [x] **Frontend**: Implement Mon-Sun week logic
+  - [x] 🟢 Implement: Week calculation using date-fns
+  - [x] 🟢 Implement: Week navigation controls (← →)
+  - [x] 📝 Commit: `feat(web): add week navigation with mon-sun logic`
+
 - [ ] **API**: Create GET /dashboard/:recipientId endpoint
   - [ ] 🔴 Test: Test dashboard data aggregation
   - [ ] 🔴 Test: Verify RLS (only family access)
   - [ ] 🟢 Implement: Dashboard data service
   - [ ] 🔵 Refactor: Add caching (30s)
   - [ ] 📝 Commit: `feat(api): add dashboard endpoint`
-
-- [ ] **Frontend**: Create dashboard layout
-  - [ ] 🔴 Test: Test responsive grid
-  - [ ] 🟢 Implement: Card-based dashboard layout
-  - [ ] 📝 Commit: `feat(web): add dashboard layout`
-
-- [ ] **Frontend**: Create header with completion status
-  - [ ] 🔴 Test: Test completion percentage calculation
-  - [ ] 🟢 Implement: Dashboard header
-  - [ ] 📝 Commit: `feat(web): add dashboard header`
 
 #### Day 33-34: Medication Card
 - [ ] **API**: Create GET /analytics/medications endpoint
@@ -563,22 +568,35 @@
 
 ### Week 8: Trend Analysis & Charts
 
-#### Day 36-37: Vital Signs Card
+#### Day 36-37: Vital Signs Trend Charts (✅ COMPLETED 2025-10-03)
+- [x] **Frontend**: Add Blood Pressure trend chart
+  - [x] 🟢 Implement: Dual-line chart (systolic/diastolic)
+  - [x] 🟢 Implement: Recharts with proper axes (60-180 mmHg)
+  - [x] 📝 Commit: `feat(web): add blood pressure trend chart`
+
+- [x] **Frontend**: Add Pulse & Oxygen trend chart
+  - [x] 🟢 Implement: Dual-axis line chart
+  - [x] 🟢 Implement: Left axis (pulse 50-120), Right axis (O2 90-100)
+  - [x] 📝 Commit: `feat(web): add pulse and oxygen trend chart`
+
+- [x] **Frontend**: Add Blood Sugar trend chart
+  - [x] 🟢 Implement: Single-line chart (4-10 mmol/L)
+  - [x] 📝 Commit: `feat(web): add blood sugar trend chart`
+
+- [x] **Frontend**: Add Appetite & Consumption chart
+  - [x] 🟢 Implement: Dual-axis bar chart (appetite 1-5, consumption 0-100%)
+  - [x] 📝 Commit: `feat(web): add appetite and consumption chart`
+
+- [x] **Frontend**: Implement week data fetching
+  - [x] 🟢 Implement: Fetch all 7 days (Mon-Sun) with TanStack Query
+  - [x] 🟢 Implement: Data transformation for charts
+  - [x] 🟢 Implement: Empty states for missing data
+  - [x] 📝 Commit: `feat(web): add week data fetching and transformation`
+
 - [ ] **API**: Create GET /analytics/vitals endpoint
-  - [ ] 🔴 Test: Test 7-day vitals data
-  - [ ] 🟢 Implement: Vitals analytics
+  - [ ] 🔴 Test: Test 7-day vitals data aggregation
+  - [ ] 🟢 Implement: Vitals analytics service
   - [ ] 📝 Commit: `feat(api): add vitals analytics endpoint`
-
-- [ ] **Frontend**: Create vitals card component
-  - [ ] 🔴 Test: Test latest readings display
-  - [ ] 🟢 Implement: Vitals card with sparklines
-  - [ ] 📝 Commit: `feat(web): add vitals card`
-
-- [ ] **Frontend**: Add vitals trend line chart
-  - [ ] 🔴 Test: Test multi-line chart (BP, pulse, O2)
-  - [ ] 🟢 Implement: Recharts line chart
-  - [ ] 🔵 Refactor: Add metric selector
-  - [ ] 📝 Commit: `feat(web): add vitals trend chart`
 
 #### Day 38: Safety & Incidents Card
 - [ ] **API**: Create GET /analytics/safety endpoint
