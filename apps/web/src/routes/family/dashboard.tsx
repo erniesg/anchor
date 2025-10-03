@@ -3,6 +3,19 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks } from 'date-fns';
 
 export const Route = createFileRoute('/family/dashboard')({
   component: DashboardComponent,
@@ -18,6 +31,8 @@ interface User {
 function DashboardComponent() {
   const [user, setUser] = useState<User | null>(null);
   const [careRecipient, setCareRecipient] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<'today' | 'week' | 'month'>('today');
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, -1 = last week, etc.
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -25,6 +40,17 @@ function DashboardComponent() {
     if (userData) setUser(JSON.parse(userData));
     if (recipientData) setCareRecipient(JSON.parse(recipientData));
   }, []);
+
+  // Calculate week range (Mon-Sun)
+  const getWeekRange = (offset: number = 0) => {
+    const referenceDate = addWeeks(new Date(), offset);
+    const weekStart = startOfWeek(referenceDate, { weekStartsOn: 1 }); // Monday
+    const weekEnd = endOfWeek(referenceDate, { weekStartsOn: 1 }); // Sunday
+    return { start: weekStart, end: weekEnd };
+  };
+
+  const currentWeek = getWeekRange(weekOffset);
+  const weekDates = eachDayOfInterval({ start: currentWeek.start, end: currentWeek.end });
 
   // Fetch today's care log
   const { data: todayLog, isLoading } = useQuery({
@@ -35,9 +61,39 @@ function DashboardComponent() {
       if (!response.ok) return null;
       return response.json();
     },
-    enabled: !!careRecipient?.id,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    enabled: !!careRecipient?.id && viewMode === 'today',
+    refetchInterval: 30000,
   });
+
+  // Fetch week data (Mon-Sun)
+  const { data: weekLogs, isLoading: weekLoading } = useQuery({
+    queryKey: ['care-logs-week', careRecipient?.id, weekOffset],
+    queryFn: async () => {
+      if (!careRecipient?.id) return [];
+      const promises = weekDates.map((date) =>
+        fetch(`/api/care-logs/recipient/${careRecipient.id}/date/${format(date, 'yyyy-MM-dd')}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null)
+      );
+      const results = await Promise.all(promises);
+      return results.filter(Boolean);
+    },
+    enabled: !!careRecipient?.id && viewMode === 'week',
+    refetchInterval: 60000,
+  });
+
+  // Transform week data for charts
+  const chartData =
+    weekLogs?.map((log: any) => ({
+      date: format(new Date(log.logDate), 'MMM dd'),
+      systolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[0]) : null,
+      diastolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[1]) : null,
+      pulse: log.pulseRate,
+      oxygen: log.oxygenLevel,
+      bloodSugar: log.bloodSugar,
+      appetite: log.meals?.breakfast?.appetite || 0,
+      amountEaten: log.meals?.breakfast?.amountEaten || 0,
+    })) || [];
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -110,32 +166,84 @@ function DashboardComponent() {
         ) : (
           // Dashboard with care logs
           <div className="space-y-6">
-            {/* Care Recipient Info */}
+            {/* Care Recipient Info + View Toggle */}
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-4">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">{careRecipient.name}</h2>
                     <p className="text-sm text-gray-600">{careRecipient.condition || 'No condition specified'}</p>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <Button
-                      onClick={() => (window.location.href = '/family/trends')}
-                      variant="ghost"
-                      size="sm"
+                </div>
+
+                {/* View Mode Toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="flex bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => { setViewMode('today'); setWeekOffset(0); }}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        viewMode === 'today'
+                          ? 'bg-white text-primary-700 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
                     >
-                      📊 View 7-Day Trends
-                    </Button>
+                      Today
+                    </button>
+                    <button
+                      onClick={() => setViewMode('week')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        viewMode === 'week'
+                          ? 'bg-white text-primary-700 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Week
+                    </button>
+                    <button
+                      onClick={() => setViewMode('month')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        viewMode === 'month'
+                          ? 'bg-white text-primary-700 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Month
+                    </button>
+                  </div>
+
+                  {/* Week Navigation */}
+                  {viewMode === 'week' && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setWeekOffset(weekOffset - 1)}
+                        className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                      >
+                        ←
+                      </button>
+                      <span className="text-sm text-gray-700 min-w-[200px] text-center">
+                        {weekOffset === 0 ? 'This Week' : `${format(currentWeek.start, 'MMM dd')} - ${format(currentWeek.end, 'MMM dd')}`}
+                      </span>
+                      <button
+                        onClick={() => setWeekOffset(weekOffset + 1)}
+                        disabled={weekOffset >= 0}
+                        className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        →
+                      </button>
+                    </div>
+                  )}
+
+                  {viewMode === 'today' && (
                     <div className="text-right text-sm text-gray-600">
                       <p>Last updated: {todayLog ? new Date(todayLog.updatedAt).toLocaleTimeString() : 'No data'}</p>
                     </div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
             {/* Alerts */}
-            {todayLog?.emergencyFlag && (
+            {viewMode === 'today' && todayLog?.emergencyFlag && (
               <Card className="border-2 border-error bg-error/5">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
@@ -149,14 +257,119 @@ function DashboardComponent() {
               </Card>
             )}
 
+            {/* Week View - Trend Charts */}
+            {viewMode === 'week' && (
+              <div className="space-y-6">
+                {weekLoading ? (
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <p className="text-gray-600">Loading week data...</p>
+                    </CardContent>
+                  </Card>
+                ) : chartData.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <p className="text-gray-600">No data for this week</p>
+                      <p className="text-sm text-gray-500 mt-2">Navigate to weeks with caregiver submissions</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <>
+                    {/* Blood Pressure */}
+                    <Card>
+                      <CardHeader>
+                        <h3 className="font-semibold">📈 Blood Pressure</h3>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={250}>
+                          <LineChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" />
+                            <YAxis domain={[60, 180]} />
+                            <Tooltip />
+                            <Legend />
+                            <Line type="monotone" dataKey="systolic" stroke="#ef4444" name="Systolic" strokeWidth={2} />
+                            <Line type="monotone" dataKey="diastolic" stroke="#3b82f6" name="Diastolic" strokeWidth={2} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+
+                    {/* Vitals Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <h3 className="font-semibold">💓 Pulse & Oxygen</h3>
+                        </CardHeader>
+                        <CardContent>
+                          <ResponsiveContainer width="100%" height={200}>
+                            <LineChart data={chartData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="date" />
+                              <YAxis yAxisId="left" domain={[50, 120]} />
+                              <YAxis yAxisId="right" orientation="right" domain={[90, 100]} />
+                              <Tooltip />
+                              <Legend />
+                              <Line yAxisId="left" type="monotone" dataKey="pulse" stroke="#10b981" name="Pulse" strokeWidth={2} />
+                              <Line yAxisId="right" type="monotone" dataKey="oxygen" stroke="#06b6d4" name="O₂ %" strokeWidth={2} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <h3 className="font-semibold">🩸 Blood Sugar</h3>
+                        </CardHeader>
+                        <CardContent>
+                          <ResponsiveContainer width="100%" height={200}>
+                            <LineChart data={chartData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="date" />
+                              <YAxis domain={[4, 10]} />
+                              <Tooltip />
+                              <Line type="monotone" dataKey="bloodSugar" stroke="#8b5cf6" name="mmol/L" strokeWidth={2} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Appetite & Meals */}
+                    <Card>
+                      <CardHeader>
+                        <h3 className="font-semibold">🍽️ Appetite & Consumption</h3>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={250}>
+                          <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" />
+                            <YAxis yAxisId="left" domain={[0, 5]} />
+                            <YAxis yAxisId="right" orientation="right" domain={[0, 100]} />
+                            <Tooltip />
+                            <Legend />
+                            <Bar yAxisId="left" dataKey="appetite" fill="#f59e0b" name="Appetite (1-5)" />
+                            <Bar yAxisId="right" dataKey="amountEaten" fill="#84cc16" name="Eaten %" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Today's Summary */}
-            {isLoading ? (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <p className="text-gray-600">Loading today's care log...</p>
-                </CardContent>
-              </Card>
-            ) : !todayLog ? (
+            {viewMode === 'today' && (
+              <>
+                {isLoading ? (
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <p className="text-gray-600">Loading today's care log...</p>
+                    </CardContent>
+                  </Card>
+                ) : !todayLog ? (
               <Card>
                 <CardContent className="p-6 text-center">
                   <div className="py-8">
@@ -293,6 +506,17 @@ function DashboardComponent() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-700">{todayLog.notes}</p>
+                </CardContent>
+              </Card>
+            )}
+              </>
+            )}
+
+            {/* Month View - Coming Soon */}
+            {viewMode === 'month' && (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-gray-600">Month view coming soon</p>
                 </CardContent>
               </Card>
             )}
