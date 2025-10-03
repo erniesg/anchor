@@ -83,11 +83,12 @@ app.get('/', (c) => {
 import auth from './routes/auth';
 import careRecipientsRoute from './routes/care-recipients';
 import caregiversRoute from './routes/caregivers';
+import careLogsRoute from './routes/care-logs';
 
 app.route('/auth', auth);
 app.route('/care-recipients', careRecipientsRoute);
 app.route('/caregivers', caregiversRoute);
-// app.route('/care-logs', careLogsRoutes);
+app.route('/care-logs', careLogsRoute);
 // app.route('/dashboard', dashboardRoutes);
 // app.route('/alerts', alertsRoutes);
 

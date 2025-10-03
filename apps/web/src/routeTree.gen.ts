@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FamilyDashboardRouteImport } from './routes/family/dashboard'
+import { Route as CaregiverLoginRouteImport } from './routes/caregiver/login'
+import { Route as CaregiverFormRouteImport } from './routes/caregiver/form'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as FamilyOnboardingIndexRouteImport } from './routes/family/onboarding/index'
@@ -24,6 +26,16 @@ const IndexRoute = IndexRouteImport.update({
 const FamilyDashboardRoute = FamilyDashboardRouteImport.update({
   id: '/family/dashboard',
   path: '/family/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CaregiverLoginRoute = CaregiverLoginRouteImport.update({
+  id: '/caregiver/login',
+  path: '/caregiver/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CaregiverFormRoute = CaregiverFormRouteImport.update({
+  id: '/caregiver/form',
+  path: '/caregiver/form',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
@@ -52,6 +64,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/caregiver/form': typeof CaregiverFormRoute
+  '/caregiver/login': typeof CaregiverLoginRoute
   '/family/dashboard': typeof FamilyDashboardRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
   '/family/onboarding': typeof FamilyOnboardingIndexRoute
@@ -60,6 +74,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/caregiver/form': typeof CaregiverFormRoute
+  '/caregiver/login': typeof CaregiverLoginRoute
   '/family/dashboard': typeof FamilyDashboardRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
   '/family/onboarding': typeof FamilyOnboardingIndexRoute
@@ -69,6 +85,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/caregiver/form': typeof CaregiverFormRoute
+  '/caregiver/login': typeof CaregiverLoginRoute
   '/family/dashboard': typeof FamilyDashboardRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
   '/family/onboarding/': typeof FamilyOnboardingIndexRoute
@@ -79,6 +97,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/login'
     | '/auth/signup'
+    | '/caregiver/form'
+    | '/caregiver/login'
     | '/family/dashboard'
     | '/family/onboarding/caregiver'
     | '/family/onboarding'
@@ -87,6 +107,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/login'
     | '/auth/signup'
+    | '/caregiver/form'
+    | '/caregiver/login'
     | '/family/dashboard'
     | '/family/onboarding/caregiver'
     | '/family/onboarding'
@@ -95,6 +117,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/login'
     | '/auth/signup'
+    | '/caregiver/form'
+    | '/caregiver/login'
     | '/family/dashboard'
     | '/family/onboarding/caregiver'
     | '/family/onboarding/'
@@ -104,6 +128,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSignupRoute: typeof AuthSignupRoute
+  CaregiverFormRoute: typeof CaregiverFormRoute
+  CaregiverLoginRoute: typeof CaregiverLoginRoute
   FamilyDashboardRoute: typeof FamilyDashboardRoute
   FamilyOnboardingCaregiverRoute: typeof FamilyOnboardingCaregiverRoute
   FamilyOnboardingIndexRoute: typeof FamilyOnboardingIndexRoute
@@ -123,6 +149,20 @@ declare module '@tanstack/react-router' {
       path: '/family/dashboard'
       fullPath: '/family/dashboard'
       preLoaderRoute: typeof FamilyDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/caregiver/login': {
+      id: '/caregiver/login'
+      path: '/caregiver/login'
+      fullPath: '/caregiver/login'
+      preLoaderRoute: typeof CaregiverLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/caregiver/form': {
+      id: '/caregiver/form'
+      path: '/caregiver/form'
+      fullPath: '/caregiver/form'
+      preLoaderRoute: typeof CaregiverFormRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/signup': {
@@ -160,6 +200,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthSignupRoute: AuthSignupRoute,
+  CaregiverFormRoute: CaregiverFormRoute,
+  CaregiverLoginRoute: CaregiverLoginRoute,
   FamilyDashboardRoute: FamilyDashboardRoute,
   FamilyOnboardingCaregiverRoute: FamilyOnboardingCaregiverRoute,
   FamilyOnboardingIndexRoute: FamilyOnboardingIndexRoute,
