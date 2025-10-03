@@ -1,0 +1,17 @@
+name = "anchor-dev-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-27"
+
+vars = { ENVIRONMENT = "dev" }
+
+[[d1_databases]]
+binding = "DB"
+database_name = "anchor-dev-db"
+database_id = ""
+
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "anchor-dev-storage"
+
+[miniflare]
+d1_persist = true
