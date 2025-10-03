@@ -84,7 +84,7 @@ function DashboardComponent() {
                 </div>
               </div>
               <div className="mt-8 pt-6 border-t border-gray-100">
-                <Button variant="primary" size="lg">
+                <Button variant="primary" size="lg" onClick={() => window.location.href = '/family/onboarding'}>
                   Start Setup
                 </Button>
               </div>

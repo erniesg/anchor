@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as FamilyDashboardRouteImport } from './routes/family/dashboard'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as FamilyOnboardingIndexRouteImport } from './routes/family/onboarding/index'
+import { Route as FamilyOnboardingCaregiverRouteImport } from './routes/family/onboarding/caregiver'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +36,33 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FamilyOnboardingIndexRoute = FamilyOnboardingIndexRouteImport.update({
+  id: '/family/onboarding/',
+  path: '/family/onboarding/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FamilyOnboardingCaregiverRoute =
+  FamilyOnboardingCaregiverRouteImport.update({
+    id: '/family/onboarding/caregiver',
+    path: '/family/onboarding/caregiver',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/family/dashboard': typeof FamilyDashboardRoute
+  '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
+  '/family/onboarding': typeof FamilyOnboardingIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/family/dashboard': typeof FamilyDashboardRoute
+  '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
+  '/family/onboarding': typeof FamilyOnboardingIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +70,34 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/family/dashboard': typeof FamilyDashboardRoute
+  '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
+  '/family/onboarding/': typeof FamilyOnboardingIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth/login' | '/auth/signup' | '/family/dashboard'
+  fullPaths:
+    | '/'
+    | '/auth/login'
+    | '/auth/signup'
+    | '/family/dashboard'
+    | '/family/onboarding/caregiver'
+    | '/family/onboarding'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth/login' | '/auth/signup' | '/family/dashboard'
-  id: '__root__' | '/' | '/auth/login' | '/auth/signup' | '/family/dashboard'
+  to:
+    | '/'
+    | '/auth/login'
+    | '/auth/signup'
+    | '/family/dashboard'
+    | '/family/onboarding/caregiver'
+    | '/family/onboarding'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth/login'
+    | '/auth/signup'
+    | '/family/dashboard'
+    | '/family/onboarding/caregiver'
+    | '/family/onboarding/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +105,8 @@ export interface RootRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSignupRoute: typeof AuthSignupRoute
   FamilyDashboardRoute: typeof FamilyDashboardRoute
+  FamilyOnboardingCaregiverRoute: typeof FamilyOnboardingCaregiverRoute
+  FamilyOnboardingIndexRoute: typeof FamilyOnboardingIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +139,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/family/onboarding/': {
+      id: '/family/onboarding/'
+      path: '/family/onboarding'
+      fullPath: '/family/onboarding'
+      preLoaderRoute: typeof FamilyOnboardingIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/family/onboarding/caregiver': {
+      id: '/family/onboarding/caregiver'
+      path: '/family/onboarding/caregiver'
+      fullPath: '/family/onboarding/caregiver'
+      preLoaderRoute: typeof FamilyOnboardingCaregiverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +161,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthSignupRoute: AuthSignupRoute,
   FamilyDashboardRoute: FamilyDashboardRoute,
+  FamilyOnboardingCaregiverRoute: FamilyOnboardingCaregiverRoute,
+  FamilyOnboardingIndexRoute: FamilyOnboardingIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
