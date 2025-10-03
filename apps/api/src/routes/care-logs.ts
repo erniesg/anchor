@@ -2,7 +2,9 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppContext } from '../index';
 import { careLogs } from '@anchor/database/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
+import { caregiverOnly, familyAdminOnly, familyMemberAccess } from '../middleware/rbac';
+import { requireCareLogOwnership, requireLogInvalidation, requireCareRecipientAccess } from '../middleware/permissions';
 
 const careLogsRoute = new Hono<AppContext>();
 
@@ -23,6 +25,7 @@ const mealLogSchema = z.object({
 
 const createCareLogSchema = z.object({
   careRecipientId: z.string().uuid(),
+  caregiverId: z.string().uuid().optional(), // Optional, will use auth context if not provided
   logDate: z.string(), // ISO date string
 
   // Morning Routine
@@ -66,20 +69,23 @@ const createCareLogSchema = z.object({
   notes: z.string().optional(),
 });
 
-// Create care log
-careLogsRoute.post('/', async (c) => {
+// Create care log (caregivers only) - creates as draft
+careLogsRoute.post('/', ...caregiverOnly, async (c) => {
   try {
     const body = await c.req.json();
     const data = createCareLogSchema.parse(body);
 
     const db = c.get('db');
+    const caregiverId = c.get('caregiverId')!; // From caregiverOnly middleware
 
     const newLog = await db
       .insert(careLogs)
       .values({
         id: crypto.randomUUID(),
         careRecipientId: data.careRecipientId,
+        caregiverId: data.caregiverId || caregiverId, // Use from body or auth context
         logDate: new Date(data.logDate),
+        status: 'draft', // Always create as draft
         wakeTime: data.wakeTime,
         mood: data.mood,
         showerTime: data.showerTime,
@@ -111,8 +117,8 @@ careLogsRoute.post('/', async (c) => {
   }
 });
 
-// Get care logs for a care recipient
-careLogsRoute.get('/recipient/:recipientId', async (c) => {
+// Get care logs for a care recipient (family members only see submitted logs)
+careLogsRoute.get('/recipient/:recipientId', ...familyMemberAccess, requireCareRecipientAccess, async (c) => {
   try {
     const recipientId = c.req.param('recipientId');
     const db = c.get('db');
@@ -120,7 +126,12 @@ careLogsRoute.get('/recipient/:recipientId', async (c) => {
     const logs = await db
       .select()
       .from(careLogs)
-      .where(eq(careLogs.careRecipientId, recipientId))
+      .where(
+        and(
+          eq(careLogs.careRecipientId, recipientId),
+          eq(careLogs.status, 'submitted') // Only show submitted logs
+        )
+      )
       .orderBy(desc(careLogs.logDate))
       .all();
 
@@ -139,8 +150,8 @@ careLogsRoute.get('/recipient/:recipientId', async (c) => {
   }
 });
 
-// Get today's care log for a recipient
-careLogsRoute.get('/recipient/:recipientId/today', async (c) => {
+// Get today's care log for a recipient (family members only)
+careLogsRoute.get('/recipient/:recipientId/today', ...familyMemberAccess, requireCareRecipientAccess, async (c) => {
   try {
     const recipientId = c.req.param('recipientId');
     const db = c.get('db');
@@ -150,7 +161,12 @@ careLogsRoute.get('/recipient/:recipientId/today', async (c) => {
     const log = await db
       .select()
       .from(careLogs)
-      .where(eq(careLogs.careRecipientId, recipientId))
+      .where(
+        and(
+          eq(careLogs.careRecipientId, recipientId),
+          eq(careLogs.status, 'submitted') // Only show submitted logs
+        )
+      )
       .orderBy(desc(careLogs.logDate))
       .limit(1)
       .get();
@@ -174,8 +190,8 @@ careLogsRoute.get('/recipient/:recipientId/today', async (c) => {
   }
 });
 
-// Get care log for a specific date
-careLogsRoute.get('/recipient/:recipientId/date/:date', async (c) => {
+// Get care log for a specific date (family members only)
+careLogsRoute.get('/recipient/:recipientId/date/:date', ...familyMemberAccess, requireCareRecipientAccess, async (c) => {
   try {
     const recipientId = c.req.param('recipientId');
     const date = c.req.param('date'); // Expected format: YYYY-MM-DD
@@ -184,7 +200,12 @@ careLogsRoute.get('/recipient/:recipientId/date/:date', async (c) => {
     const logs = await db
       .select()
       .from(careLogs)
-      .where(eq(careLogs.careRecipientId, recipientId))
+      .where(
+        and(
+          eq(careLogs.careRecipientId, recipientId),
+          eq(careLogs.status, 'submitted') // Only show submitted logs
+        )
+      )
       .orderBy(desc(careLogs.logDate))
       .all();
 
@@ -210,6 +231,96 @@ careLogsRoute.get('/recipient/:recipientId/date/:date', async (c) => {
     return c.json(parsedLog);
   } catch (error) {
     console.error('Get date log error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// Submit care log (caregiver only, locks the log)
+careLogsRoute.post('/:id/submit', ...caregiverOnly, requireCareLogOwnership, async (c) => {
+  try {
+    const logId = c.req.param('id');
+    const db = c.get('db');
+
+    // Get the log to verify it's a draft
+    const log = await db
+      .select()
+      .from(careLogs)
+      .where(eq(careLogs.id, logId))
+      .get();
+
+    if (!log) {
+      return c.json({ error: 'Care log not found' }, 404);
+    }
+
+    if (log.status !== 'draft') {
+      return c.json({ error: 'Only draft logs can be submitted' }, 400);
+    }
+
+    // Mark as submitted (immutable)
+    await db
+      .update(careLogs)
+      .set({
+        status: 'submitted',
+        submittedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(careLogs.id, logId));
+
+    return c.json({
+      success: true,
+      message: 'Care log submitted successfully',
+    });
+  } catch (error) {
+    console.error('Submit care log error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// Invalidate care log (family_admin only)
+careLogsRoute.post('/:id/invalidate', ...familyAdminOnly, requireLogInvalidation, async (c) => {
+  try {
+    const logId = c.req.param('id');
+    const userId = c.get('userId')!;
+    const body = await c.req.json();
+    const { reason } = body;
+
+    const db = c.get('db');
+
+    // Get the log to verify it's submitted
+    const log = await db
+      .select()
+      .from(careLogs)
+      .where(eq(careLogs.id, logId))
+      .get();
+
+    if (!log) {
+      return c.json({ error: 'Care log not found' }, 404);
+    }
+
+    if (log.status !== 'submitted') {
+      return c.json({ error: 'Only submitted logs can be invalidated' }, 400);
+    }
+
+    // Mark as invalidated
+    await db
+      .update(careLogs)
+      .set({
+        status: 'invalidated',
+        invalidatedAt: new Date(),
+        invalidatedBy: userId,
+        invalidationReason: reason,
+        updatedAt: new Date(),
+      })
+      .where(eq(careLogs.id, logId));
+
+    // TODO: Send notification to caregiver
+
+    return c.json({
+      success: true,
+      message: 'Care log has been invalidated',
+    });
+  } catch (error) {
+    console.error('Invalidate care log error:', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
 });
