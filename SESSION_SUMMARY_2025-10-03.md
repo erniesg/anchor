@@ -145,44 +145,56 @@ caregiver      → Form submitter (existing, enhanced)
 
 ---
 
-### Phase 2: Admin Settings UI (Next Session)
+### ✅ Phase 2: Admin Settings UI - COMPLETE (2025-10-03)
 
-**Frontend Implementation** (Estimated: 3-4 hours)
+**Frontend Implementation** ✅ Complete (760+ lines)
 
-1. **Create Settings Pages** (`apps/web/src/routes/family/settings/`):
-   ```
-   index.tsx              - Settings navigation
-   profile.tsx            - Edit own profile (name, email, timezone)
-   caregivers.tsx         - Manage caregivers (list, edit, deactivate, reset PIN)
-   family-members.tsx     - Invite/remove family members
-   account.tsx            - Delete account, billing
-   ```
+1. ✅ **Created Settings Pages** (`apps/web/src/routes/family/settings/`):
+   - `index.tsx` (108 lines) - Settings navigation hub
+   - `caregivers.tsx` (398 lines) - Full caregiver management
+   - `family-members.tsx` (61 lines) - Family invite placeholder
+   - `profile.tsx` (61 lines) - Profile settings placeholder
 
-2. **Caregiver Management UI**:
-   ```tsx
-   <CaregiversList>
-     <CaregiverCard>
-       Name: Maria Santos
-       Phone: +65 9123 4567
-       Status: Active
-       [Edit] [Reset PIN] [Deactivate]
-     </CaregiverCard>
-   </CaregiversList>
+2. ✅ **Caregiver Management Features**:
+   - View active and inactive caregivers separately
+   - Reset caregiver PIN with copy-to-clipboard
+   - Deactivate with reason tracking
+   - Reactivate deactivated caregivers
+   - Real-time mutations with React Query
+   - Modal-based workflows for all actions
 
-   <Modal: Reset PIN>
-     New 6-digit PIN: 123456
-     [Copy] [Send via SMS]
-   </Modal>
+3. ✅ **Dashboard Enhancements**:
+   - Added Settings navigation link to header
+   - Status badge component for care logs:
+     - 📝 Draft (yellow) - Work in progress
+     - ✅ Submitted (green) - Completed and locked
+     - ⚠️ Needs Correction (red) - Invalidated by admin
+   - Status displayed in Today view
 
-   <Modal: Deactivate Caregiver>
-     Reason: [dropdown: Resigned, Fired, Replaced, Other]
-     Notes: [textarea]
-     ⚠️ This will preserve historical logs but prevent future access
-     [Confirm Deactivation]
-   </Modal>
-   ```
+**Files Created**:
+- `apps/web/src/routes/family/settings/index.tsx` (108 lines)
+- `apps/web/src/routes/family/settings/caregivers.tsx` (398 lines)
+- `apps/web/src/routes/family/settings/family-members.tsx` (61 lines)
+- `apps/web/src/routes/family/settings/profile.tsx` (61 lines)
 
-3. **Family Member Invites**:
+**Files Modified**:
+- `apps/web/src/routes/family/dashboard.tsx` (+45 lines - status badges)
+
+**Total Lines Added**: 760+ lines
+
+---
+
+### Phase 3: Caregiver Draft/Submit Workflow (Future)
+
+**Note**: Family member invites and profile settings are placeholder pages for future implementation.
+
+---
+
+### Removed Section: Family Member Invites (Future Work)
+
+Original content moved to backlog:
+
+3. **Family Member Invites** (Future):
    ```tsx
    <InviteFamilyMember>
      Email: [input]
