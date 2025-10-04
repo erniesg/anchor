@@ -39,14 +39,14 @@ pnpm dev
 - **Testing:** 50+ E2E tests ready (Playwright)
 
 ### ⏳ TODO Before Production
-- [ ] Implement real JWT auth (currently mock tokens)
-- [ ] Hash passwords/PINs (bcrypt)
+- [x] Implement real JWT auth ✅ **DONE** (JWT with 30-day expiry)
+- [x] Hash passwords/PINs ✅ **DONE** (bcrypt with 10 rounds)
+- [x] Add `name` attributes to auth forms ✅ **DONE** (E2E test-ready)
 - [ ] Set up CI/CD (E2E tests)
 - [ ] Add error tracking (Sentry)
 - [ ] Run E2E tests: `pnpm test:e2e`
-- [ ] Fix Drizzle ORM type inference issue in care-logs.ts (line 85) - runtime works, TypeScript quirk
 
-**Time to Production:** 3-4 days
+**Time to Production:** 1 day (just testing & deployment!)
 
 ### ⚠️ Known Issues
 - **TypeScript**: Drizzle ORM type inference issue with JSON fields in `apps/api/src/routes/care-logs.ts:85`. Code works at runtime, suppressed with `@ts-ignore`
