@@ -11,20 +11,23 @@ test.describe('Admin Settings', () => {
     await page.goto('/auth/login');
     await page.fill('input[name="email"]', 'admin@example.com');
     await page.fill('input[name="password"]', 'admin123');
-    await page.click('button:has-text("Login")');
+    await page.click('button:has-text("Log in")');
 
-    // Navigate to settings
-    await page.click('text=Settings');
+    // Navigate to settings page
+    await page.goto('/family/settings');
     await expect(page).toHaveURL(/\/family\/settings/);
   });
 
   test('should display caregiver management section', async ({ page }) => {
-    await expect(page.locator('text=Caregiver Management')).toBeVisible();
-    await expect(page.locator('text=Active Caregivers')).toBeVisible();
+    // Check that Caregivers link is visible on settings page
+    await expect(page.locator('text=Caregivers')).toBeVisible();
+    await expect(page.locator('text=Manage caregivers, reset PINs')).toBeVisible();
   });
 
   test('should list all caregivers with status', async ({ page }) => {
-    await page.click('text=Caregiver Management');
+    // Navigate to caregivers page
+    await page.click('text=Caregivers');
+    await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
 
     // Should show caregiver list
     const caregiverList = page.locator('[data-testid="caregiver-list"]');
@@ -36,7 +39,9 @@ test.describe('Admin Settings', () => {
   });
 
   test('should deactivate caregiver', async ({ page }) => {
-    await page.click('text=Caregiver Management');
+    // Navigate to caregivers page
+    await page.click('text=Caregivers');
+    await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
 
     // Click deactivate button
     const deactivateBtn = page.locator('button:has-text("Deactivate")').first();
@@ -59,7 +64,9 @@ test.describe('Admin Settings', () => {
   });
 
   test('should reset caregiver PIN', async ({ page }) => {
-    await page.click('text=Caregiver Management');
+    // Navigate to caregivers page
+    await page.click('text=Caregivers');
+    await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
 
     // Click reset PIN button
     const resetBtn = page.locator('button:has-text("Reset PIN")').first();
@@ -82,7 +89,9 @@ test.describe('Admin Settings', () => {
   });
 
   test('should create new caregiver', async ({ page }) => {
-    await page.click('text=Caregiver Management');
+    // Navigate to caregivers page
+    await page.click('text=Caregivers');
+    await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
     await page.click('button:has-text("Add Caregiver")');
 
     // Fill caregiver form
@@ -104,7 +113,9 @@ test.describe('Admin Settings', () => {
   });
 
   test('should edit caregiver details', async ({ page }) => {
-    await page.click('text=Caregiver Management');
+    // Navigate to caregivers page
+    await page.click('text=Caregivers');
+    await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
 
     // Click edit button
     const editBtn = page.locator('button:has-text("Edit")').first();
@@ -126,7 +137,9 @@ test.describe('Admin Settings', () => {
   });
 
   test('should view caregiver audit trail', async ({ page }) => {
-    await page.click('text=Caregiver Management');
+    // Navigate to caregivers page
+    await page.click('text=Caregivers');
+    await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
 
     // Click on caregiver to view details
     await page.click('text=Maria Santos');
@@ -138,7 +151,9 @@ test.describe('Admin Settings', () => {
   });
 
   test('should reactivate deactivated caregiver', async ({ page }) => {
-    await page.click('text=Caregiver Management');
+    // Navigate to caregivers page
+    await page.click('text=Caregivers');
+    await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
 
     // Filter to show deactivated caregivers
     await page.click('button:has-text("Show Inactive")');
@@ -164,13 +179,15 @@ test.describe('RBAC - family_member restrictions', () => {
     await page.goto('/auth/login');
     await page.fill('input[name="email"]', 'member@example.com');
     await page.fill('input[name="password"]', 'member123');
-    await page.click('button:has-text("Login")');
+    await page.click('button:has-text("Log in")');
 
     await page.goto('/family/settings');
   });
 
   test('should view but not edit caregivers', async ({ page }) => {
-    await page.click('text=Caregiver Management');
+    // Navigate to caregivers page
+    await page.click('text=Caregivers');
+    await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
 
     // Can see caregiver list
     await expect(page.locator('[data-testid="caregiver-list"]')).toBeVisible();
@@ -199,13 +216,15 @@ test.describe('Settings Navigation', () => {
     await page.goto('/auth/login');
     await page.fill('input[name="email"]', 'admin@example.com');
     await page.fill('input[name="password"]', 'admin123');
-    await page.click('button:has-text("Login")');
+    await page.click('button:has-text("Log in")');
     await page.goto('/family/settings');
   });
 
   test('should navigate to all settings sections', async ({ page }) => {
     // Caregiver Management
-    await page.click('text=Caregiver Management');
+    // Navigate to caregivers page
+    await page.click('text=Caregivers');
+    await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
     await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
 
     // Family Invitations (placeholder)
@@ -218,7 +237,9 @@ test.describe('Settings Navigation', () => {
   });
 
   test('should show breadcrumb navigation', async ({ page }) => {
-    await page.click('text=Caregiver Management');
+    // Navigate to caregivers page
+    await page.click('text=Caregivers');
+    await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
 
     // Should show breadcrumbs
     await expect(page.locator('text=Home')).toBeVisible();
@@ -232,7 +253,7 @@ test.describe('Caregiver Search & Filter', () => {
     await page.goto('/auth/login');
     await page.fill('input[name="email"]', 'admin@example.com');
     await page.fill('input[name="password"]', 'admin123');
-    await page.click('button:has-text("Login")');
+    await page.click('button:has-text("Log in")');
     await page.goto('/family/settings/caregivers');
   });
 
@@ -278,7 +299,7 @@ test.describe('Error Handling', () => {
     await page.goto('/auth/login');
     await page.fill('input[name="email"]', 'admin@example.com');
     await page.fill('input[name="password"]', 'admin123');
-    await page.click('button:has-text("Login")');
+    await page.click('button:has-text("Log in")');
     await page.goto('/family/settings/caregivers');
   });
 

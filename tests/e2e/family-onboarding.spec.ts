@@ -137,7 +137,7 @@ test.describe('Family Login Flow', () => {
     await page.goto('/auth/login');
     await page.fill('input[name="email"]', 'family@example.com');
     await page.fill('input[name="password"]', 'SecurePass123');
-    await page.click('button:has-text("Login")');
+    await page.click('button:has-text("Log in")');
 
     await expect(page).toHaveURL(/\/family\/dashboard/);
   });
@@ -146,7 +146,7 @@ test.describe('Family Login Flow', () => {
     await page.goto('/auth/login');
     await page.fill('input[name="email"]', 'wrong@example.com');
     await page.fill('input[name="password"]', 'wrongpassword');
-    await page.click('button:has-text("Login")');
+    await page.click('button:has-text("Log in")');
 
     await expect(page.locator('text=/invalid.*credentials/i')).toBeVisible();
   });
@@ -156,7 +156,7 @@ test.describe('Family Login Flow', () => {
     await page.goto('/auth/login');
     await page.fill('input[name="email"]', 'family@example.com');
     await page.fill('input[name="password"]', 'SecurePass123');
-    await page.click('button:has-text("Login")');
+    await page.click('button:has-text("Log in")');
 
     // Try to access login page again
     await page.goto('/auth/login');
