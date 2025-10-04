@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
-import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal } from 'lucide-react';
+import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal, Edit } from 'lucide-react';
 
 export const Route = createFileRoute('/family/settings/caregivers')({
   component: CaregiversSettingsComponent,
@@ -41,10 +41,18 @@ function CaregiversSettingsComponent() {
   const [showResetPinModal, setShowResetPinModal] = useState(false);
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [showReactivateModal, setShowReactivateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [newPin, setNewPin] = useState<string | null>(null);
   const [deactivationReason, setDeactivationReason] = useState('');
   const [copiedPin, setCopiedPin] = useState(false);
   const [userRole, setUserRole] = useState<'family_admin' | 'family_member' | null>(getUserRole);
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+  });
 
   // Search, filter, and sort state
   const [searchQuery, setSearchQuery] = useState('');
@@ -175,6 +183,38 @@ function CaregiversSettingsComponent() {
     },
   });
 
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ caregiverId, data }: { caregiverId: string; data: typeof editForm }) => {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/caregivers/${caregiverId}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to update caregiver');
+      return response.json();
+    },
+    onSuccess: () => {
+      setShowEditModal(false);
+      setSelectedCaregiver(null);
+      queryClient.invalidateQueries({ queryKey: ['caregivers'] });
+      addToast({
+        type: 'success',
+        message: 'Caregiver details updated successfully.',
+      });
+    },
+    onError: (error) => {
+      addToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to update caregiver. Please try again.',
+      });
+    },
+  });
+
   const handleResetPin = (caregiver: Caregiver) => {
     setSelectedCaregiver(caregiver);
     setShowResetPinModal(true);
@@ -191,6 +231,16 @@ function CaregiversSettingsComponent() {
     setShowReactivateModal(true);
   };
 
+  const handleEdit = (caregiver: Caregiver) => {
+    setSelectedCaregiver(caregiver);
+    setEditForm({
+      name: caregiver.name,
+      phone: caregiver.phone || '',
+      email: caregiver.email || '',
+    });
+    setShowEditModal(true);
+  };
+
   const confirmDeactivate = () => {
     if (selectedCaregiver && deactivationReason.trim()) {
       deactivateMutation.mutate({
@@ -203,6 +253,15 @@ function CaregiversSettingsComponent() {
   const confirmReactivate = () => {
     if (selectedCaregiver) {
       reactivateMutation.mutate(selectedCaregiver.id);
+    }
+  };
+
+  const confirmEdit = () => {
+    if (selectedCaregiver) {
+      updateMutation.mutate({
+        caregiverId: selectedCaregiver.id,
+        data: editForm,
+      });
     }
   };
 
@@ -402,6 +461,15 @@ function CaregiversSettingsComponent() {
                           {isAdmin && (
                             <div className="flex flex-col sm:flex-row gap-2">
                               <Button
+                                onClick={() => handleEdit(caregiver)}
+                                variant="outline"
+                                size="sm"
+                                className="text-gray-700 border-gray-200 hover:bg-gray-50"
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </Button>
+                              <Button
                                 onClick={() => handleResetPin(caregiver)}
                                 variant="outline"
                                 size="sm"
@@ -583,6 +651,65 @@ function CaregiversSettingsComponent() {
                   className="flex-1 bg-green-600 hover:bg-green-700"
                 >
                   {reactivateMutation.isPending ? 'Reactivating...' : 'Reactivate'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Caregiver Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <h3 className="text-lg font-semibold text-gray-900">Edit Caregiver Details</h3>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <Input
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    placeholder="Caregiver name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <Input
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    placeholder="Phone number (optional)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <Input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    placeholder="Email address (optional)"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedCaregiver(null);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmEdit}
+                  disabled={!editForm.name.trim() || updateMutation.isPending}
+                  className="flex-1"
+                >
+                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
             </CardContent>

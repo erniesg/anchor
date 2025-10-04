@@ -94,9 +94,40 @@ test.describe('Admin Settings', () => {
     // This test is skipped as the feature location changed
   });
 
-  test.skip('should edit caregiver details', async ({ page }) => {
-    // NOTE: Edit caregiver feature not yet implemented in settings UI
-    // Caregiver management currently supports: Reset PIN, Deactivate, Reactivate only
+  test('should edit caregiver details', async ({ page }) => {
+    // Navigate to caregivers page
+    await page.getByRole('link', { name: /Caregivers/i }).click();
+    await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
+
+    // Wait for caregivers list to load
+    await expect(page.locator('[data-testid="caregiver-list"]')).toBeVisible();
+
+    // Click edit button (if any caregivers exist)
+    const editBtn = page.getByRole('button', { name: /^Edit$/i }).first();
+    if (await editBtn.isVisible()) {
+      await editBtn.click();
+
+      // Should show edit modal
+      await expect(page.getByRole('heading', { name: 'Edit Caregiver Details' })).toBeVisible();
+
+      // Edit the name
+      const nameInput = page.locator('input[placeholder*="Caregiver name"]');
+      await nameInput.clear();
+      await nameInput.fill('Updated Caregiver Name');
+
+      // Save changes
+      await page.getByRole('button', { name: 'Save Changes' }).click();
+
+      // Should show success toast
+      await expect(page.locator('[role="alert"]')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('text=/updated successfully/i')).toBeVisible();
+
+      // Modal should close
+      await expect(page.getByRole('heading', { name: 'Edit Caregiver Details' })).not.toBeVisible();
+
+      // Updated name should appear in the list
+      await expect(page.locator('text=Updated Caregiver Name')).toBeVisible();
+    }
   });
 
   test.skip('should view caregiver audit trail', async ({ page }) => {

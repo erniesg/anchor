@@ -191,4 +191,48 @@ caregiversRoute.post('/:id/reactivate', ...familyAdminOnly, async (c) => {
   }
 });
 
+// Update caregiver details (family_admin only)
+const updateCaregiverSchema = z.object({
+  name: z.string().min(2).optional(),
+  phone: z.string().optional(),
+  email: z.string().email().optional(),
+  language: z.string().optional(),
+});
+
+caregiversRoute.put('/:id', ...familyAdminOnly, async (c) => {
+  try {
+    const caregiverId = c.req.param('id');
+    const body = await c.req.json();
+    const data = updateCaregiverSchema.parse(body);
+
+    const db = c.get('db');
+
+    // Build update object with only provided fields
+    const updateData: any = { updatedAt: new Date() };
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.language !== undefined) updateData.language = data.language;
+
+    // Update caregiver
+    const updated = await db
+      .update(caregivers)
+      .set(updateData)
+      .where(eq(caregivers.id, caregiverId))
+      .returning()
+      .get();
+
+    return c.json({
+      ...updated,
+      pinCode: undefined, // Don't return hashed PIN
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return c.json({ error: 'Validation failed', details: error.errors }, 400);
+    }
+    console.error('Update caregiver error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
 export default caregiversRoute;
