@@ -30,27 +30,31 @@ pnpm dev
 
 ---
 
-## 📊 Current Status (2025-10-03)
+## 📊 Current Status (2025-10-04)
 
 ### ✅ Complete (MVP Ready)
-- **Backend:** Auth, RBAC, care logs, caregiver management
-- **Frontend:** Onboarding, dashboard, caregiver form, admin settings
+- **Backend:** Auth (JWT + bcrypt), RBAC, care logs, caregiver management API
+- **Frontend:** Onboarding, dashboard, caregiver form, admin settings (partial)
 - **Features:** Draft/submit workflow, auto-save, status badges, 7-day trends
-- **Testing:** 50+ E2E tests ready (Playwright)
+- **Testing:** E2E infrastructure ready, authentication working
 
 ### ⏳ TODO Before Production
 - [x] Implement real JWT auth ✅ **DONE** (JWT with 30-day expiry)
 - [x] Hash passwords/PINs ✅ **DONE** (bcrypt with 10 rounds)
 - [x] Add `name` attributes to auth forms ✅ **DONE** (E2E test-ready)
+- [x] Fix E2E test infrastructure ✅ **DONE** (auth + migrations)
+- [ ] Complete caregiver management UI (CRUD operations)
+- [ ] Implement care recipient access permissions UI
 - [ ] Set up CI/CD (E2E tests)
 - [ ] Add error tracking (Sentry)
-- [ ] Run E2E tests: `pnpm test:e2e`
 
-**Time to Production:** 1 day (just testing & deployment!)
+**Time to Production:** 2-3 days (UI completion + testing + deployment)
 
 ### ⚠️ Known Issues
 - **TypeScript**: Drizzle ORM type inference issue with JSON fields in `apps/api/src/routes/care-logs.ts:85`. Code works at runtime, suppressed with `@ts-ignore`
-- **Test Count**: Documentation claims "50+ E2E tests" but actual count is 48 tests (close enough)
+- **Migration System**: Wrangler doesn't auto-detect migrations dir. Applied migrations 0001 & 0002 manually. Migration tracking needs improvement.
+- **Test Data**: E2E tests need database seeding before running. Run `scripts/seed-test-users.sh` and `scripts/populate-test-data.sh` first.
+- **Frontend UI**: Caregiver management page exists but CRUD operations not implemented (tests fail on missing buttons/forms)
 
 ---
 
@@ -82,11 +86,22 @@ anchor/
 
 See [TESTING.md](./TESTING.md) for full guide.
 
-**Quick:**
+**First-time setup:**
+```bash
+# Seed test users (required once)
+./scripts/populate-test-data.sh    # Care log data
+# Test users auto-created on first API signup
+```
+
+**Run tests:**
 ```bash
 # E2E tests
-pnpm dev                  # Terminal 1
+pnpm dev                  # Terminal 1 (wait for servers)
 pnpm test:e2e            # Terminal 2
+
+# Test users:
+# - admin@example.com / admin123 (family_admin)
+# - member@example.com / member123 (family_member)
 
 # API smoke test
 ./scripts/smoke-test.sh
