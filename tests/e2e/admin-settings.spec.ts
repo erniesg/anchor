@@ -194,20 +194,23 @@ test.describe('RBAC - family_member restrictions', () => {
   });
 });
 
-test.describe.skip('Settings Navigation', () => {
-  // NOTE: Breadcrumb navigation not yet implemented
-  // Family Invitations page placeholder does not exist yet
-  // Currently only have: Caregivers, Family Members, Profile
-
+test.describe('Settings Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/auth/login');
     await page.fill('input[name="email"]', 'admin@example.com');
     await page.fill('input[name="password"]', 'admin123');
     await page.click('button:has-text("Log in")');
+
+    // Wait for navigation after successful login
+    await page.waitForURL(/\/family\/dashboard/, { timeout: 10000 });
+
     await page.goto('/family/settings');
   });
 
-  test('should navigate to all settings sections', async ({ page }) => {
+  test.skip('should navigate to all settings sections', async ({ page }) => {
+    // NOTE: Family Invitations and Profile Settings pages do not exist yet
+    // Currently only have: Caregivers, Family Members
+
     // Caregiver Management
     await page.click('text=Caregivers');
     await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
@@ -226,10 +229,15 @@ test.describe.skip('Settings Navigation', () => {
     await page.click('text=Caregivers');
     await expect(page).toHaveURL(/\/family\/settings\/caregivers/);
 
-    // Should show breadcrumbs
-    await expect(page.locator('text=Home')).toBeVisible();
-    await expect(page.locator('text=Settings')).toBeVisible();
-    await expect(page.locator('text=Caregiver Management')).toBeVisible();
+    // Wait for page to load
+    await expect(page.locator('[data-testid="caregiver-list"]')).toBeVisible();
+
+    // Should show breadcrumbs within the breadcrumb nav
+    const breadcrumb = page.locator('nav[aria-label="Breadcrumb"]');
+    await expect(breadcrumb).toBeVisible();
+    await expect(breadcrumb.locator('text=Home')).toBeVisible();
+    await expect(breadcrumb.locator('text=Settings')).toBeVisible();
+    await expect(breadcrumb.locator('text=Caregiver Management')).toBeVisible();
   });
 });
 
