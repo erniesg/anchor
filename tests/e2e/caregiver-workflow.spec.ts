@@ -7,9 +7,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Caregiver Care Log Workflow', () => {
   test.beforeEach(async ({ page }) => {
-    // Login as caregiver
+    // Login as caregiver (using seeded E2E test caregiver)
     await page.goto('/caregiver/login');
-    await page.fill('input[name="caregiverId"]', 'caregiver-123');
+    await page.fill('input[name="caregiverId"]', 'e80c2b2a-4688-4a29-9579-51b3219f20fc');
     await page.fill('input[name="pin"]', '123456');
     await page.click('button:has-text("Login")');
 
@@ -211,7 +211,7 @@ test.describe('Caregiver Login', () => {
 test.describe('Draft/Submit Workflow', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/caregiver/login');
-    await page.fill('input[name="caregiverId"]', 'caregiver-123');
+    await page.fill('input[name="caregiverId"]', 'e80c2b2a-4688-4a29-9579-51b3219f20fc');
     await page.fill('input[name="pin"]', '123456');
     await page.click('button:has-text("Login")');
   });

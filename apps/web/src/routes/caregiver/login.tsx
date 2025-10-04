@@ -31,6 +31,8 @@ function CaregiverLoginComponent() {
     onSuccess: (data) => {
       localStorage.setItem('caregiverToken', data.token);
       localStorage.setItem('caregiver', JSON.stringify(data.caregiver));
+      // Store care recipient info for form access
+      localStorage.setItem('careRecipient', JSON.stringify({ id: data.caregiver.careRecipientId }));
       navigate({ to: '/caregiver/form' });
     },
     onError: (err: Error) => {
