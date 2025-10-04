@@ -195,3 +195,81 @@ export const optionalAuth = createMiddleware<AppContext>(async (c, next) => {
 
   await next();
 });
+
+/**
+ * Middleware: Require family member authentication (family_admin or family_member)
+ */
+export const familyOnly = createMiddleware<AppContext>(async (c, next) => {
+  const authHeader = c.req.header('Authorization');
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Unauthorized', message: 'Missing or invalid authorization header' }, 401);
+  }
+
+  const token = authHeader.substring(7);
+
+  try {
+    const payload = await verify(token, c.env.JWT_SECRET);
+
+    if (!payload.userId || !payload.role) {
+      return c.json({ error: 'Unauthorized', message: 'Invalid token payload' }, 401);
+    }
+
+    const userId = payload.userId as string;
+    const role = payload.role as 'family_admin' | 'family_member';
+
+    // Verify user exists and is active
+    const db = c.get('db');
+    const active = await isActiveUser(db, userId);
+
+    if (!active) {
+      return c.json({ error: 'Unauthorized', message: 'User account is inactive or deleted' }, 401);
+    }
+
+    c.set('userId', userId);
+    c.set('userRole', role);
+
+    await next();
+  } catch (error) {
+    console.error('JWT verification failed:', error);
+    return c.json({ error: 'Unauthorized', message: 'Invalid or expired token' }, 401);
+  }
+});
+
+/**
+ * Middleware: Require caregiver authentication
+ */
+export const caregiverOnly = createMiddleware<AppContext>(async (c, next) => {
+  const authHeader = c.req.header('Authorization');
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Unauthorized', message: 'Missing caregiver authorization' }, 401);
+  }
+
+  const token = authHeader.substring(7);
+
+  try {
+    const payload = await verify(token, c.env.JWT_SECRET);
+
+    if (!payload.caregiverId) {
+      return c.json({ error: 'Unauthorized', message: 'Invalid caregiver token' }, 401);
+    }
+
+    const caregiverId = payload.caregiverId as string;
+
+    // Verify caregiver exists and is active
+    const db = c.get('db');
+    const active = await isActiveCaregiver(db, caregiverId);
+
+    if (!active) {
+      return c.json({ error: 'Unauthorized', message: 'Caregiver account is inactive' }, 401);
+    }
+
+    c.set('caregiverId', caregiverId);
+
+    await next();
+  } catch (error) {
+    console.error('Caregiver auth failed:', error);
+    return c.json({ error: 'Unauthorized', message: 'Invalid caregiver token' }, 401);
+  }
+});

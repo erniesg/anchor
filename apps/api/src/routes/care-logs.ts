@@ -80,7 +80,6 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
 
     const newLog = await db
       .insert(careLogs)
-      // @ts-ignore - Drizzle ORM type inference issue with JSON fields. Runtime works correctly.
       .values({
         careRecipientId: data.careRecipientId,
         caregiverId: data.caregiverId || caregiverId,
@@ -90,18 +89,18 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         mood: data.mood,
         showerTime: data.showerTime,
         hairWash: data.hairWash,
-        medications: data.medications,
-        meals: data.meals,
+        medications: data.medications as any,
+        meals: data.meals as any,
         bloodPressure: data.bloodPressure,
         pulseRate: data.pulseRate,
         oxygenLevel: data.oxygenLevel,
         bloodSugar: data.bloodSugar,
         vitalsTime: data.vitalsTime,
-        toileting: data.toileting,
+        toileting: data.toileting as any,
         emergencyFlag: data.emergencyFlag,
         emergencyNote: data.emergencyNote,
         notes: data.notes,
-      })
+      } as any)
       .returning()
       .get();
 

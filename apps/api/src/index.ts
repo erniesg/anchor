@@ -89,11 +89,15 @@ import auth from './routes/auth';
 import careRecipientsRoute from './routes/care-recipients';
 import caregiversRoute from './routes/caregivers';
 import careLogsRoute from './routes/care-logs';
+import familyMembersRoute from './routes/family-members';
+import usersRoute from './routes/users';
 
 app.route('/auth', auth);
 app.route('/care-recipients', careRecipientsRoute);
 app.route('/caregivers', caregiversRoute);
 app.route('/care-logs', careLogsRoute);
+app.route('/family-members', familyMembersRoute);
+app.route('/users', usersRoute);
 // app.route('/dashboard', dashboardRoutes);
 // app.route('/alerts', alertsRoutes);
 
