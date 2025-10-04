@@ -56,6 +56,7 @@ function LoginComponent() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input
               label="Email"
+              name="email"
               type="email"
               required
               value={email}
@@ -65,6 +66,7 @@ function LoginComponent() {
 
             <Input
               label="Password"
+              name="password"
               type="password"
               required
               value={password}

@@ -15,6 +15,9 @@ export const users = sqliteTable('users', {
   phone: text('phone'),
   role: text('role', { enum: ['family_admin', 'family_member'] }).default('family_admin').notNull(),
 
+  // Authentication
+  passwordHash: text('password_hash').notNull(),
+
   // Account status
   active: integer('active', { mode: 'boolean' }).default(true).notNull(),
   deletedAt: integer('deleted_at', { mode: 'timestamp' }), // Soft delete

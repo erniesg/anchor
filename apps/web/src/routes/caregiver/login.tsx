@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 
 export const Route = createFileRoute('/caregiver/login')({
@@ -10,22 +11,26 @@ export const Route = createFileRoute('/caregiver/login')({
 
 function CaregiverLoginComponent() {
   const navigate = useNavigate();
-  const [pin, setPin] = useState(['', '', '', '', '', '']);
+  const [caregiverId, setCaregiverId] = useState('');
+  const [pin, setPin] = useState('');
   const [error, setError] = useState('');
 
   const loginMutation = useMutation({
-    mutationFn: async (pinCode: string) => {
-      // For now, just validate PIN exists and navigate
-      // TODO: Implement actual PIN verification against caregiver table
-      if (pinCode.length !== 6 || !/^\d{6}$/.test(pinCode)) {
-        throw new Error('Invalid PIN format');
+    mutationFn: async (data: { caregiverId: string; pin: string }) => {
+      const response = await fetch('/api/auth/caregiver/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Login failed');
       }
-
-      // Store caregiver session (mock for now)
-      localStorage.setItem('caregiverPin', pinCode);
-      return { success: true };
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      localStorage.setItem('caregiverToken', data.token);
+      localStorage.setItem('caregiver', JSON.stringify(data.caregiver));
       navigate({ to: '/caregiver/form' });
     },
     onError: (err: Error) => {
@@ -33,40 +38,14 @@ function CaregiverLoginComponent() {
     },
   });
 
-  const handlePinChange = (index: number, value: string) => {
-    if (value && !/^\d$/.test(value)) return; // Only allow single digits
-
-    const newPin = [...pin];
-    newPin[index] = value;
-    setPin(newPin);
-
-    // Auto-focus next input
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`pin-${index + 1}`);
-      nextInput?.focus();
-    }
-
-    // Auto-submit when all 6 digits are entered
-    if (newPin.every(digit => digit !== '') && index === 5) {
-      loginMutation.mutate(newPin.join(''));
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !pin[index] && index > 0) {
-      const prevInput = document.getElementById(`pin-${index - 1}`);
-      prevInput?.focus();
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').slice(0, 6);
-    if (/^\d{6}$/.test(pastedData)) {
-      const newPin = pastedData.split('');
-      setPin(newPin);
-      loginMutation.mutate(pastedData);
+    if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+      setError('PIN must be exactly 6 digits');
+      return;
     }
+    setError('');
+    loginMutation.mutate({ caregiverId, pin });
   };
 
   return (
@@ -83,23 +62,28 @@ function CaregiverLoginComponent() {
             <p className="text-gray-600">Enter your 6-digit PIN</p>
           </div>
 
-          <div className="space-y-6">
-            <div className="flex justify-center gap-3" onPaste={handlePaste}>
-              {pin.map((digit, index) => (
-                <input
-                  key={index}
-                  id={`pin-${index}`}
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handlePinChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  className="w-14 h-16 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none transition-colors"
-                  autoFocus={index === 0}
-                />
-              ))}
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <Input
+              label="Caregiver ID"
+              name="caregiverId"
+              type="text"
+              required
+              value={caregiverId}
+              onChange={(e) => setCaregiverId(e.target.value)}
+              placeholder="Enter your caregiver ID"
+            />
+
+            <Input
+              label="PIN"
+              name="pin"
+              type="password"
+              inputMode="numeric"
+              required
+              maxLength={6}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+              placeholder="Enter 6-digit PIN"
+            />
 
             {error && (
               <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg text-sm text-center">
@@ -107,11 +91,21 @@ function CaregiverLoginComponent() {
               </div>
             )}
 
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              isLoading={loginMutation.isPending}
+            >
+              Login
+            </Button>
+
             <div className="text-center text-sm text-gray-600">
               <p>Don't have a PIN?</p>
               <p className="mt-1">Ask your family member to create an account for you</p>
             </div>
-          </div>
+          </form>
         </CardContent>
       </Card>
     </div>

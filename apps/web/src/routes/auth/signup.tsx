@@ -63,6 +63,7 @@ function SignupComponent() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               label="Full Name"
+              name="name"
               type="text"
               required
               value={name}
@@ -72,6 +73,7 @@ function SignupComponent() {
 
             <Input
               label="Email"
+              name="email"
               type="email"
               required
               value={email}
@@ -81,6 +83,7 @@ function SignupComponent() {
 
             <Input
               label="Phone (optional)"
+              name="phone"
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -89,6 +92,7 @@ function SignupComponent() {
 
             <Input
               label="Password"
+              name="password"
               type="password"
               required
               minLength={8}
