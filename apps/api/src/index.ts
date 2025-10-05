@@ -41,7 +41,11 @@ const app = new Hono<AppContext>();
  * Middleware: CORS
  */
 app.use('*', cors({
-  origin: ['http://localhost:5173', 'https://*.pages.dev', 'https://anchor.app'],
+  origin: [
+    'http://localhost:5173',
+    'https://anchor-dev.erniesg.workers.dev',
+    'https://anchor.erniesg.workers.dev',
+  ],
   credentials: true,
 }));
 
