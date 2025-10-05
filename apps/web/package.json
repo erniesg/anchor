@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
+    "build:dev": "VITE_API_URL=https://anchor-dev-api.erniesg.workers.dev vite build",
+    "build:prod": "VITE_API_URL=https://anchor-api.erniesg.workers.dev vite build",
     "preview": "vite preview",
+    "deploy:dev": "pnpm build:dev && wrangler deploy --env dev",
+    "deploy:prod": "pnpm build:prod && wrangler deploy --env production",
     "lint": "eslint . --ext ts,tsx",
     "typecheck": "tsc --noEmit"
   },
