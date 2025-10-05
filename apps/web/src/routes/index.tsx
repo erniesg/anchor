@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import { apiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/')({
   component: HomeComponent,
@@ -9,9 +10,7 @@ function HomeComponent() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['health'],
     queryFn: async () => {
-      const response = await fetch('/api/health');
-      if (!response.ok) throw new Error('API health check failed');
-      return response.json();
+      return apiCall('/health');
     },
   });
 
