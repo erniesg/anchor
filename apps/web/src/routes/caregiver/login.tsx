@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { apiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/caregiver/login')({
   component: CaregiverLoginComponent,
@@ -17,16 +18,10 @@ function CaregiverLoginComponent() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: { caregiverId: string; pin: string }) => {
-      const response = await fetch('/api/auth/caregiver/login', {
+      return apiCall('/auth/caregiver/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Login failed');
-      }
-      return response.json();
     },
     onSuccess: (data) => {
       localStorage.setItem('caregiverToken', data.token);

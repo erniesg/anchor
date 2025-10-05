@@ -14,6 +14,7 @@ vars = { ENVIRONMENT = "dev" }
 binding = "DB"
 database_name = "anchor-dev-db"
 database_id = "900612ba-b5f7-4593-ac31-8bb9abac2c11"
+migrations_dir = "../../packages/database/drizzle/migrations"
 
 [[env.dev.r2_buckets]]
 binding = "STORAGE"

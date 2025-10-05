@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAutoSave } from '@/hooks/use-auto-save';
 import { Save, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { authenticatedApiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/caregiver/form')({
   component: CareLogFormComponent,
@@ -95,19 +96,13 @@ function CareLogFormComponent() {
   // Create/Update mutation (for auto-save)
   const saveDraftMutation = useMutation({
     mutationFn: async (data: any) => {
-      const url = careLogId ? `/api/care-logs/${careLogId}` : '/api/care-logs';
+      const url = careLogId ? `/care-logs/${careLogId}` : '/care-logs';
       const method = careLogId ? 'PATCH' : 'POST';
 
-      const response = await fetch(url, {
+      return authenticatedApiCall(url, caregiverToken, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${caregiverToken}`,
-        },
         body: JSON.stringify({ ...data, status: 'draft' }),
       });
-      if (!response.ok) throw new Error('Failed to save draft');
-      return response.json();
     },
     onSuccess: (data) => {
       if (!careLogId && data.id) {
@@ -121,14 +116,9 @@ function CareLogFormComponent() {
     mutationFn: async () => {
       if (!careLogId) throw new Error('No draft to submit');
 
-      const response = await fetch(`/api/care-logs/${careLogId}/submit`, {
+      return authenticatedApiCall(`/care-logs/${careLogId}/submit`, caregiverToken, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${caregiverToken}`,
-        },
       });
-      if (!response.ok) throw new Error('Failed to submit care log');
-      return response.json();
     },
     onSuccess: () => {
       setLogStatus('submitted');
