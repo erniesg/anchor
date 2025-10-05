@@ -13,7 +13,7 @@ vars = { ENVIRONMENT = "dev" }
 [[env.dev.d1_databases]]
 binding = "DB"
 database_name = "anchor-dev-db"
-database_id = "" # Auto-filled by setup-cloudflare.js
+database_id = "900612ba-b5f7-4593-ac31-8bb9abac2c11"
 
 [[env.dev.r2_buckets]]
 binding = "STORAGE"
@@ -27,7 +27,7 @@ vars = { ENVIRONMENT = "production" }
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "anchor-prod-db"
-database_id = "" # Auto-filled by setup-cloudflare.js
+database_id = "df69ea4c-71f6-45db-bd47-3f1e3f3bdaee"
 
 [[env.production.r2_buckets]]
 binding = "STORAGE"
