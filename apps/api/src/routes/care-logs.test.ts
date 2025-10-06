@@ -654,4 +654,193 @@ describe('Care Logs API', () => {
       expect(res.status).toBe(403);
     });
   });
+
+  describe('Sprint 1: Fall Risk Assessment', () => {
+    it('should accept valid fall risk data', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        // Sprint 1: Fall Risk fields
+        balanceIssues: 3,
+        nearFalls: 'once_or_twice',
+        actualFalls: 'none',
+        walkingPattern: ['shuffling', 'slow'],
+        freezingEpisodes: 'mild',
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      });
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.balanceIssues).toBe(3);
+      expect(data.nearFalls).toBe('once_or_twice');
+      expect(data.actualFalls).toBe('none');
+      expect(data.walkingPattern).toEqual(['shuffling', 'slow']);
+      expect(data.freezingEpisodes).toBe('mild');
+    });
+
+    it('should validate balance issues range (1-5)', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        balanceIssues: 6, // Invalid: out of range
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBe('Validation failed');
+    });
+
+    it('should validate nearFalls enum values', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        nearFalls: 'invalid_value',
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBe('Validation failed');
+    });
+
+    it('should validate actualFalls enum values', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        actualFalls: 'invalid',
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      });
+
+      expect(res.status).toBe(400);
+    });
+
+    it('should log major fall alert to console', async () => {
+      const consoleLogSpy = vi.spyOn(console, 'log');
+
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        actualFalls: 'major', // Should trigger alert
+        balanceIssues: 5,
+        walkingPattern: ['stumbling', 'cannot_lift_feet'],
+      };
+
+      await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      });
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('MAJOR FALL ALERT'),
+        expect.anything()
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should accept unaccompanied time data', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        unaccompaniedTime: [
+          {
+            startTime: '14:00',
+            endTime: '14:30',
+            reason: 'Caregiver lunch break',
+            replacementPerson: 'Family member',
+            duration: 30,
+            incidents: 'None',
+          },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      });
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.unaccompaniedTime).toHaveLength(1);
+      expect(data.unaccompaniedTime[0].duration).toBe(30);
+    });
+
+    it('should accept safety checks and emergency prep data', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        safetyChecks: {
+          tripHazards: { checked: true, action: 'removed' },
+          cables: { checked: true, action: 'secured' },
+        },
+        emergencyPrep: {
+          icePack: true,
+          wheelchair: true,
+          commode: true,
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      });
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.safetyChecks.tripHazards.checked).toBe(true);
+      expect(data.emergencyPrep.wheelchair).toBe(true);
+    });
+  });
 });

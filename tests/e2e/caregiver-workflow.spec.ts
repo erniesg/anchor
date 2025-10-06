@@ -325,4 +325,108 @@ test.describe('Mobile Workflow', () => {
     const pulseInput = page.locator('input[name="pulseRate"]');
     await expect(pulseInput).toHaveAttribute('type', 'number');
   });
+
+  // Sprint 1: Fall Risk Assessment Tests
+  test('should complete fall risk assessment section', async ({ page }) => {
+    // Navigate to Section 6: Fall Risk & Safety
+    await page.click('text=Fall Risk & Safety');
+
+    // Balance Issues - select level 3
+    await page.click('button:has-text("3")');
+    await expect(page.locator('button:has-text("3")')).toHaveClass(/bg-orange-500/);
+
+    // Near Falls
+    await page.selectOption('select[name="nearFalls"]', 'once_or_twice');
+
+    // Actual Falls
+    await page.selectOption('select[name="actualFalls"]', 'none');
+
+    // Walking Pattern - select multiple
+    await page.check('input[value="shuffling"]');
+    await page.check('input[value="very_slow"]');
+
+    // Freezing Episodes
+    await page.selectOption('select[name="freezingEpisodes"]', 'mild');
+
+    // Save and continue
+    await page.click('button:has-text("Next")');
+
+    // Wait for auto-save
+    await page.waitForSelector('text=/Saved/i', { timeout: 35000 });
+  });
+
+  test('should show major fall alert warning', async ({ page }) => {
+    await page.click('text=Fall Risk & Safety');
+
+    // Select MAJOR fall
+    await page.selectOption('select[name="actualFalls"]', 'major');
+
+    // Should show warning banner
+    await expect(page.locator('text=/MAJOR FALL ALERT/i')).toBeVisible();
+    await expect(page.locator('text=/Family will be notified/i')).toBeVisible();
+
+    // Warning should have red styling
+    const alert = page.locator('text=/MAJOR FALL ALERT/i').locator('..');
+    await expect(alert).toHaveClass(/border-red/);
+  });
+
+  test('should validate balance issues range', async ({ page }) => {
+    await page.click('text=Fall Risk & Safety');
+
+    // Balance buttons should only allow 1-5
+    const balanceButtons = page.locator('button').filter({ hasText: /^[1-5]$/ });
+    await expect(balanceButtons).toHaveCount(5);
+
+    // Each button should work
+    for (let i = 1; i <= 5; i++) {
+      await page.click(`button:has-text("${i}")`);
+      await expect(page.locator(`button:has-text("${i}")`)).toHaveClass(/bg-orange-500/);
+    }
+  });
+
+  test('should allow multiple walking pattern selections', async ({ page }) => {
+    await page.click('text=Fall Risk & Safety');
+
+    // Select multiple patterns
+    await page.check('input[value="shuffling"]');
+    await page.check('input[value="uneven"]');
+    await page.check('input[value="stumbling"]');
+
+    // All should be checked
+    await expect(page.locator('input[value="shuffling"]')).toBeChecked();
+    await expect(page.locator('input[value="uneven"]')).toBeChecked();
+    await expect(page.locator('input[value="stumbling"]')).toBeChecked();
+
+    // Uncheck one
+    await page.uncheck('input[value="shuffling"]');
+    await expect(page.locator('input[value="shuffling"]')).not.toBeChecked();
+    await expect(page.locator('input[value="uneven"]')).toBeChecked();
+  });
+
+  test('should persist fall risk data on navigation', async ({ page }) => {
+    await page.click('text=Fall Risk & Safety');
+
+    // Fill fall risk data
+    await page.click('button:has-text("4")');
+    await page.selectOption('select[name="nearFalls"]', 'multiple');
+    await page.check('input[value="shuffling"]');
+
+    // Navigate away
+    await page.click('button:has-text("← Back")');
+
+    // Navigate back
+    await page.click('button:has-text("Next →")');
+
+    // Wait for auto-save
+    await page.waitForSelector('text=/Saved/i', { timeout: 35000 });
+
+    // Reload page
+    await page.reload();
+
+    // Data should persist
+    await page.click('text=Fall Risk & Safety');
+    await expect(page.locator('button:has-text("4")')).toHaveClass(/bg-orange-500/);
+    await expect(page.locator('select[name="nearFalls"]')).toHaveValue('multiple');
+    await expect(page.locator('input[value="shuffling"]')).toBeChecked();
+  });
 });
