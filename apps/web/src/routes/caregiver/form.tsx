@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState, useEffect, useMemo } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -11,6 +11,125 @@ import { authenticatedApiCall } from '@/lib/api';
 export const Route = createFileRoute('/caregiver/form')({
   component: CareLogFormComponent,
 });
+
+// Vital signs validation ranges
+interface VitalAlert {
+  level: 'normal' | 'warning' | 'critical';
+  message: string;
+}
+
+// Calculate age from date of birth
+const calculateAge = (dateOfBirth: Date | null): number | null => {
+  if (!dateOfBirth) return null;
+  const today = new Date();
+  const birthDate = new Date(dateOfBirth);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+const validateVitals = (
+  bloodPressure: string,
+  pulseRate: string,
+  oxygenLevel: string,
+  bloodSugar: string,
+  age: number | null = null,
+  gender: string | null = null
+): VitalAlert[] => {
+  const alerts: VitalAlert[] = [];
+
+  // Blood Pressure (format: "120/80") - Age and gender-adjusted
+  if (bloodPressure) {
+    const [systolic, diastolic] = bloodPressure.split('/').map(Number);
+    if (systolic && diastolic) {
+      // Critical ranges (universal)
+      if (systolic >= 180 || diastolic >= 120) {
+        alerts.push({ level: 'critical', message: `🚨 CRITICAL: Blood pressure ${bloodPressure} is dangerously high (Hypertensive Crisis)` });
+      } else if (systolic < 90 || diastolic < 60) {
+        alerts.push({ level: 'critical', message: `🚨 CRITICAL: Blood pressure ${bloodPressure} is dangerously low (Hypotension)` });
+      } else {
+        // Age-adjusted thresholds
+        let systolicTarget = 130;
+        let diastolicTarget = 80;
+
+        if (age !== null) {
+          if (age >= 80) {
+            // For elderly 80+: More lenient targets (ACC/AHA 2017)
+            systolicTarget = 140;
+            diastolicTarget = 90;
+          } else if (age >= 65) {
+            // For seniors 65-79: Slightly relaxed
+            systolicTarget = 135;
+            diastolicTarget = 85;
+          }
+          // Under 65: Standard targets (130/80)
+        }
+
+        // Gender adjustments (women typically 5-10 mmHg lower until menopause)
+        if (gender === 'female' && age && age < 55) {
+          systolicTarget -= 5;
+        }
+
+        const ageNote = age ? ` (Target for ${age}yo ${gender || 'patient'}: <${systolicTarget}/${diastolicTarget})` : '';
+
+        if (systolic >= systolicTarget + 10 || diastolic >= diastolicTarget + 10) {
+          alerts.push({ level: 'warning', message: `⚠️ WARNING: Blood pressure ${bloodPressure} is elevated${ageNote}` });
+        } else if (systolic >= systolicTarget || diastolic >= diastolicTarget) {
+          alerts.push({ level: 'warning', message: `⚠️ CAUTION: Blood pressure ${bloodPressure} is slightly elevated${ageNote}` });
+        }
+      }
+    }
+  }
+
+  // Pulse Rate (bpm)
+  if (pulseRate) {
+    const pulse = Number(pulseRate);
+    if (pulse > 0) {
+      if (pulse > 120) {
+        alerts.push({ level: 'critical', message: `🚨 CRITICAL: Pulse ${pulse} bpm is dangerously high (Severe Tachycardia)` });
+      } else if (pulse < 40) {
+        alerts.push({ level: 'critical', message: `🚨 CRITICAL: Pulse ${pulse} bpm is dangerously low (Severe Bradycardia)` });
+      } else if (pulse > 100) {
+        alerts.push({ level: 'warning', message: `⚠️ WARNING: Pulse ${pulse} bpm is elevated (Tachycardia)` });
+      } else if (pulse < 50) {
+        alerts.push({ level: 'warning', message: `⚠️ WARNING: Pulse ${pulse} bpm is low (Bradycardia)` });
+      }
+    }
+  }
+
+  // Oxygen Level (%)
+  if (oxygenLevel) {
+    const o2 = Number(oxygenLevel);
+    if (o2 > 0) {
+      if (o2 < 90) {
+        alerts.push({ level: 'critical', message: `🚨 CRITICAL: Oxygen level ${o2}% is dangerously low (Severe Hypoxemia) - SEEK IMMEDIATE MEDICAL ATTENTION` });
+      } else if (o2 < 95) {
+        alerts.push({ level: 'warning', message: `⚠️ WARNING: Oxygen level ${o2}% is below normal (Mild Hypoxemia)` });
+      }
+    }
+  }
+
+  // Blood Sugar (mmol/L - using Singapore/international standard)
+  if (bloodSugar) {
+    const sugar = Number(bloodSugar);
+    if (sugar > 0) {
+      if (sugar > 15) {
+        alerts.push({ level: 'critical', message: `🚨 CRITICAL: Blood sugar ${sugar} mmol/L is dangerously high (Severe Hyperglycemia)` });
+      } else if (sugar < 3.9) {
+        alerts.push({ level: 'critical', message: `🚨 CRITICAL: Blood sugar ${sugar} mmol/L is dangerously low (Hypoglycemia)` });
+      } else if (sugar > 11.1) {
+        alerts.push({ level: 'warning', message: `⚠️ WARNING: Blood sugar ${sugar} mmol/L is elevated (Hyperglycemia)` });
+      } else if (sugar < 4.4) {
+        alerts.push({ level: 'warning', message: `⚠️ CAUTION: Blood sugar ${sugar} mmol/L is slightly low` });
+      }
+    }
+  }
+
+  return alerts;
+};
 
 function CareLogFormComponent() {
   const navigate = useNavigate();
@@ -26,15 +145,15 @@ function CareLogFormComponent() {
 
   // Medications
   const [medications, setMedications] = useState([
-    { name: 'Glucophage 500mg', given: false, time: '', timeSlot: 'before_breakfast' as const },
-    { name: 'Forxiga 10mg', given: false, time: '', timeSlot: 'after_breakfast' as const },
-    { name: 'Ozempic 0.5mg', given: false, time: '', timeSlot: 'afternoon' as const },
+    { name: 'Glucophage 500mg', given: false, time: null, timeSlot: 'before_breakfast' as const },
+    { name: 'Forxiga 10mg', given: false, time: null, timeSlot: 'after_breakfast' as const },
+    { name: 'Ozempic 0.5mg', given: false, time: null, timeSlot: 'afternoon' as const },
   ]);
 
   // Meals
   const [breakfastTime, setBreakfastTime] = useState('');
-  const [breakfastAppetite, setBreakfastAppetite] = useState(3);
-  const [breakfastAmount, setBreakfastAmount] = useState(75);
+  const [breakfastAppetite, setBreakfastAppetite] = useState(0);
+  const [breakfastAmount, setBreakfastAmount] = useState(0);
 
   // Vitals
   const [bloodPressure, setBloodPressure] = useState('');
@@ -53,15 +172,72 @@ function CareLogFormComponent() {
   const [emergencyNote, setEmergencyNote] = useState('');
   const [notes, setNotes] = useState('');
 
+  // Sprint 1: Fall Risk Assessment
+  const [balanceIssues, setBalanceIssues] = useState<number | null>(null);
+  const [nearFalls, setNearFalls] = useState<'none' | 'once_or_twice' | 'multiple'>('none');
+  const [actualFalls, setActualFalls] = useState<'none' | 'minor' | 'major'>('none');
+  const [walkingPattern, setWalkingPattern] = useState<string[]>([]);
+  const [freezingEpisodes, setFreezingEpisodes] = useState<'none' | 'mild' | 'severe'>('none');
+
+  // Sprint 1: Unaccompanied Time
+  const [unaccompaniedTime, setUnaccompaniedTime] = useState<Array<{
+    startTime: string;
+    endTime: string;
+    reason: string;
+    replacementPerson: string;
+    duration: number;
+    incidents?: string;
+  }>>([]);
+
+  // Sprint 1: Safety Checks
+  const [safetyChecks, setSafetyChecks] = useState({
+    tripHazards: { checked: false, action: '' },
+    cables: { checked: false, action: '' },
+    sandals: { checked: false, action: '' },
+    slipHazards: { checked: false, action: '' },
+    mobilityAids: { checked: false, action: '' },
+    emergencyEquipment: { checked: false, action: '' },
+  });
+
+  // Sprint 1: Emergency Prep
+  const [emergencyPrep, setEmergencyPrep] = useState({
+    icePack: false,
+    wheelchair: false,
+    commode: false,
+    walkingStick: false,
+    walker: false,
+    bruiseOintment: false,
+    antiseptic: false,
+  });
+
   // Get care recipient ID (mock for now - should come from caregiver session)
   const careRecipientId = localStorage.getItem('careRecipientId') || '';
   const caregiverToken = localStorage.getItem('caregiverToken') || '';
 
+  // Get care recipient demographics for personalized validation
+  const careRecipient = useMemo(() => {
+    return JSON.parse(localStorage.getItem('careRecipient') || '{}');
+  }, []);
+
+  const recipientAge = useMemo(() => {
+    if (!careRecipient.dateOfBirth) return null;
+    return calculateAge(new Date(careRecipient.dateOfBirth));
+  }, [careRecipient]);
+
+  const recipientGender = careRecipient.gender || null;
+
   // Prepare form data
   const formData = useMemo(() => {
-    const careRecipient = JSON.parse(localStorage.getItem('careRecipient') || '{}');
+    const recipientId = careRecipient.id;
+
+    // Debug logging
+    if (!recipientId) {
+      console.error('No care recipient ID found in localStorage');
+      console.error('careRecipient:', careRecipient);
+    }
+
     return {
-      careRecipientId: careRecipient.id,
+      careRecipientId: recipientId,
       logDate: new Date().toISOString().split('T')[0],
       wakeTime,
       mood,
@@ -85,13 +261,24 @@ function CareLogFormComponent() {
         urineFrequency: urineFreq,
         diaperChanges,
       },
+      // Sprint 1: Fall Risk & Safety
+      balanceIssues,
+      nearFalls,
+      actualFalls,
+      walkingPattern,
+      freezingEpisodes,
+      unaccompaniedTime,
+      safetyChecks,
+      emergencyPrep,
       emergencyFlag,
       emergencyNote,
       notes,
     };
   }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite,
       breakfastAmount, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime,
-      bowelFreq, urineFreq, diaperChanges, emergencyFlag, emergencyNote, notes]);
+      bowelFreq, urineFreq, diaperChanges, balanceIssues, nearFalls, actualFalls,
+      walkingPattern, freezingEpisodes, unaccompaniedTime, safetyChecks, emergencyPrep,
+      emergencyFlag, emergencyNote, notes]);
 
   // Create/Update mutation (for auto-save)
   const saveDraftMutation = useMutation({
@@ -139,12 +326,36 @@ function CareLogFormComponent() {
 
   const handleSubmit = async () => {
     try {
+      // Validate care recipient ID
+      if (!formData.careRecipientId) {
+        alert('Error: No care recipient assigned. Please log in again.');
+        navigate({ to: '/caregiver/login' });
+        return;
+      }
+
       // Save current draft first if needed
       if (!careLogId) {
-        await saveDraftMutation.mutateAsync(formData);
+        console.log('Creating draft before submit...');
+        const draft = await saveDraftMutation.mutateAsync(formData);
+        if (draft?.id) {
+          setCareLogId(draft.id);
+          // Wait a moment for state to update
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
+
+      // Verify we have a careLogId
+      const logIdToSubmit = careLogId || (await saveDraftMutation.mutateAsync(formData))?.id;
+      if (!logIdToSubmit) {
+        throw new Error('Failed to create draft log');
+      }
+
       // Then submit
       await submitMutation.mutateAsync();
+
+      // Success! Show message and reset form
+      setLogStatus('submitted');
+      alert('Care log submitted successfully! ✅');
     } catch (error) {
       console.error('Submit error:', error);
       alert('Failed to submit. Please try again.');
@@ -154,13 +365,72 @@ function CareLogFormComponent() {
   // Check if form is locked (submitted or invalidated)
   const isLocked = logStatus === 'submitted' || logStatus === 'invalidated';
 
+  // Validation and section completion tracking
+  const sectionValidation = useMemo(() => {
+    // Track if any data has been entered in each section
+    const morningRoutineData = wakeTime || mood || showerTime || hairWash;
+    const medicationsData = medications.some(med => med.given || med.time);
+    const mealsData = breakfastTime || breakfastAppetite > 0 || breakfastAmount > 0;
+    const vitalsData = bloodPressure || pulseRate || oxygenLevel || bloodSugar || vitalsTime;
+    const toiletingData = bowelFreq > 0 || urineFreq > 0 || diaperChanges > 0;
+    const notesData = notes || emergencyFlag;
+
+    return {
+      1: { // Morning Routine - optional but track if started
+        complete: !morningRoutineData || (morningRoutineData && true), // Always complete if touched
+        hasData: morningRoutineData,
+        missing: [],
+      },
+      2: { // Medications - if marked as given, need time
+        complete: medications.every(med => !med.given || (med.given && med.time !== null && med.time !== '')),
+        hasData: medicationsData,
+        missing: medications
+          .filter(med => med.given && (!med.time || med.time === ''))
+          .map(med => `⏰ Time for ${med.name}`),
+      },
+      3: { // Meals & Nutrition - if time entered, need all fields
+        complete: !breakfastTime || (breakfastTime && breakfastAppetite > 0 && breakfastAmount > 0),
+        hasData: mealsData,
+        missing: [
+          ...(breakfastTime && !breakfastAppetite ? ['🍽️ Breakfast appetite (1-5)'] : []),
+          ...(breakfastTime && !breakfastAmount ? ['🍽️ Breakfast amount eaten (%)'] : []),
+        ],
+      },
+      4: { // Vital Signs - all optional
+        complete: true,
+        hasData: vitalsData,
+        missing: [],
+      },
+      5: { // Toileting - required fields, at least one must be > 0
+        complete: toiletingData,
+        hasData: toiletingData,
+        missing: !toiletingData ? ['At least one toileting record (bowel, urine, or diaper change)'] : [],
+      },
+      6: { // Notes & Submit
+        complete: true,
+        hasData: notesData,
+        missing: [],
+      },
+    };
+  }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite, breakfastAmount, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime, bowelFreq, urineFreq, diaperChanges, notes, emergencyFlag]);
+
+  const allSectionsComplete = Object.values(sectionValidation).every(s => s.complete);
+  const sectionsWithData = Object.values(sectionValidation).filter(s => s.hasData).length;
+  const totalSections = Object.keys(sectionValidation).length;
+  const completionPercentage = Math.round((sectionsWithData / totalSections) * 100);
+
+  const incompleteSections = Object.entries(sectionValidation)
+    .filter(([_, validation]) => !validation.complete)
+    .map(([id]) => parseInt(id));
+
   const sections = [
     { id: 1, title: 'Morning Routine', emoji: '🌅' },
     { id: 2, title: 'Medications', emoji: '💊' },
     { id: 3, title: 'Meals & Nutrition', emoji: '🍽️' },
     { id: 4, title: 'Vital Signs', emoji: '❤️' },
     { id: 5, title: 'Toileting', emoji: '🚽' },
-    { id: 6, title: 'Notes & Submit', emoji: '📝' },
+    { id: 6, title: 'Fall Risk & Safety', emoji: '⚠️' },
+    { id: 7, title: 'Notes & Submit', emoji: '📝' },
   ];
 
   return (
@@ -193,7 +463,9 @@ function CareLogFormComponent() {
                   ) : (
                     <>
                       <Clock className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-400">Not saved yet</span>
+                      <span className="text-gray-400">
+                        {completionPercentage}% complete
+                      </span>
                     </>
                   )}
                 </div>
@@ -218,20 +490,37 @@ function CareLogFormComponent() {
       {/* Section Navigation */}
       <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="flex gap-2 overflow-x-auto pb-2">
-          {sections.map(section => (
-            <button
-              key={section.id}
-              onClick={() => setCurrentSection(section.id)}
-              className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-colors ${
-                currentSection === section.id
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <span className="mr-2">{section.emoji}</span>
-              {section.title}
-            </button>
-          ))}
+          {sections.map(section => {
+            const validation = sectionValidation[section.id as keyof typeof sectionValidation];
+            const isComplete = validation?.complete ?? true;
+            const hasData = validation?.hasData ?? false;
+            const isIncomplete = !isComplete;
+
+            return (
+              <button
+                key={section.id}
+                onClick={() => setCurrentSection(section.id)}
+                className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-colors relative ${
+                  currentSection === section.id
+                    ? 'bg-primary-600 text-white'
+                    : isIncomplete
+                    ? 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300'
+                    : hasData
+                    ? 'bg-green-50 text-green-900 hover:bg-green-100 border border-green-300'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span className="mr-2">{section.emoji}</span>
+                {section.title}
+                {hasData && isComplete && currentSection !== section.id && (
+                  <CheckCircle className="inline-block ml-2 h-4 w-4 text-green-600" />
+                )}
+                {isIncomplete && (
+                  <AlertCircle className="inline-block ml-2 h-4 w-4 text-amber-600" />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -441,6 +730,34 @@ function CareLogFormComponent() {
               <h2 className="text-xl font-semibold">❤️ Vital Signs</h2>
             </CardHeader>
             <CardContent className="space-y-4">
+              {(() => {
+                const vitalAlerts = validateVitals(bloodPressure, pulseRate, oxygenLevel, bloodSugar, recipientAge, recipientGender);
+                const criticalAlerts = vitalAlerts.filter(a => a.level === 'critical');
+                const warningAlerts = vitalAlerts.filter(a => a.level === 'warning');
+
+                return (
+                  <>
+                    {criticalAlerts.length > 0 && (
+                      <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 space-y-2">
+                        {criticalAlerts.map((alert, idx) => (
+                          <p key={idx} className="text-red-900 font-semibold text-sm">{alert.message}</p>
+                        ))}
+                        <p className="text-red-700 text-xs font-medium mt-2">⚕️ Consider notifying family immediately</p>
+                      </div>
+                    )}
+
+                    {warningAlerts.length > 0 && criticalAlerts.length === 0 && (
+                      <div className="bg-yellow-50 border border-yellow-400 rounded-lg p-4 space-y-2">
+                        {warningAlerts.map((alert, idx) => (
+                          <p key={idx} className="text-yellow-900 text-sm">{alert.message}</p>
+                        ))}
+                        <p className="text-yellow-700 text-xs font-medium mt-2">⚕️ Monitor closely and inform family</p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
               <Input
                 label="Time Measured"
                 type="time"
@@ -453,7 +770,7 @@ function CareLogFormComponent() {
                 value={bloodPressure}
                 onChange={(e) => setBloodPressure(e.target.value)}
                 placeholder="e.g., 120/80"
-                helperText="Format: systolic/diastolic (e.g., 120/80)"
+                helperText="Normal: <120/80 | Elevated: 120-129/<80 | High: ≥130/80"
               />
               <Input
                 label="Pulse Rate (bpm)"
@@ -461,6 +778,7 @@ function CareLogFormComponent() {
                 value={pulseRate}
                 onChange={(e) => setPulseRate(e.target.value)}
                 placeholder="e.g., 72"
+                helperText="Normal: 60-100 bpm"
               />
               <Input
                 label="Oxygen Level (%)"
@@ -470,6 +788,7 @@ function CareLogFormComponent() {
                 value={oxygenLevel}
                 onChange={(e) => setOxygenLevel(e.target.value)}
                 placeholder="e.g., 98"
+                helperText="Normal: 95-100% | Low: <95%"
               />
               <Input
                 label="Blood Sugar (mmol/L)"
@@ -478,6 +797,7 @@ function CareLogFormComponent() {
                 value={bloodSugar}
                 onChange={(e) => setBloodSugar(e.target.value)}
                 placeholder="e.g., 5.6"
+                helperText="Normal fasting: 4.0-5.9 | Normal after meal: <7.8"
               />
 
               <div className="flex gap-3">
@@ -533,8 +853,144 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 6: Notes & Submit */}
+        {/* Section 6: Fall Risk & Safety */}
         {currentSection === 6 && (
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-orange-500" />
+                Fall Risk & Safety Assessment
+              </h2>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Balance Issues Scale */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Balance Issues (1-5)
+                </label>
+                <div className="bg-gray-50 p-3 rounded-lg mb-2 text-xs">
+                  <p><strong>1</strong> = No balance problems</p>
+                  <p><strong>2</strong> = Slight unsteadiness occasionally</p>
+                  <p><strong>3</strong> = Moderate balance problems, careful walking</p>
+                  <p><strong>4</strong> = Severe balance problems, needs constant support</p>
+                  <p><strong>5</strong> = Cannot maintain balance, wheelchair/bed bound</p>
+                </div>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setBalanceIssues(value)}
+                      className={`flex-1 py-3 rounded-lg font-semibold transition-colors ${
+                        balanceIssues === value
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-gray-100 hover:bg-gray-200'
+                      }`}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Near Falls */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Near Falls</label>
+                <select
+                  value={nearFalls}
+                  onChange={(e) => setNearFalls(e.target.value as any)}
+                  className="w-full px-4 py-2 border rounded-lg"
+                >
+                  <option value="none">None</option>
+                  <option value="once_or_twice">1-2 times</option>
+                  <option value="multiple">Multiple times</option>
+                </select>
+              </div>
+
+              {/* Actual Falls */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Actual Falls 🚨
+                </label>
+                <select
+                  value={actualFalls}
+                  onChange={(e) => setActualFalls(e.target.value as any)}
+                  className={`w-full px-4 py-2 border rounded-lg ${actualFalls === 'major' ? 'border-2 border-red-500' : ''}`}
+                >
+                  <option value="none">None</option>
+                  <option value="minor">Minor</option>
+                  <option value="major">⚠️ MAJOR - REPORT IMMEDIATELY</option>
+                </select>
+                {actualFalls === 'major' && (
+                  <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800 font-semibold">
+                      ⚠️ MAJOR FALL ALERT: Family will be notified immediately
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Walking Pattern */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Walking Pattern (How she walks)
+                </label>
+                <div className="space-y-2">
+                  {['normal', 'shuffling', 'uneven', 'very_slow', 'stumbling', 'cannot_lift_feet'].map((pattern) => (
+                    <label key={pattern} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={walkingPattern.includes(pattern)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setWalkingPattern([...walkingPattern, pattern]);
+                          } else {
+                            setWalkingPattern(walkingPattern.filter(p => p !== pattern));
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-sm capitalize">
+                        {pattern.replace(/_/g, ' ')}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Freezing Episodes */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Freezing Episodes
+                </label>
+                <p className="text-xs text-gray-600 mb-2">
+                  (Suddenly stopping and being unable to move forward, like feet stuck to ground)
+                </p>
+                <select
+                  value={freezingEpisodes}
+                  onChange={(e) => setFreezingEpisodes(e.target.value as any)}
+                  className="w-full px-4 py-2 border rounded-lg"
+                >
+                  <option value="none">None</option>
+                  <option value="mild">Mild</option>
+                  <option value="severe">Severe</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3">
+                <Button onClick={() => setCurrentSection(5)} variant="outline" className="flex-1">
+                  ← Back
+                </Button>
+                <Button onClick={() => setCurrentSection(7)} variant="primary" className="flex-1">
+                  Next →
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Section 7: Notes & Submit */}
+        {currentSection === 7 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">📝 Notes & Submit</h2>
@@ -624,19 +1080,98 @@ function CareLogFormComponent() {
                   )}
                 </div>
               ) : (
-                <div className="flex gap-3">
-                  <Button onClick={() => setCurrentSection(5)} variant="outline" className="flex-1">
-                    ← Back
-                  </Button>
-                  <Button
-                    onClick={handleSubmit}
-                    variant="primary"
-                    size="lg"
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                    disabled={submitMutation.isPending || isSaving}
-                  >
-                    {submitMutation.isPending ? 'Submitting...' : 'Submit Report ✅'}
-                  </Button>
+                <div className="space-y-4">
+                  {/* Summary of entered data */}
+                  {allSectionsComplete && (
+                    <div className="bg-blue-50 border border-blue-300 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5" />
+                        Review Your Report
+                      </h4>
+                      <div className="space-y-2 text-sm text-blue-800">
+                        {wakeTime && <p>🌅 Wake time: {wakeTime}</p>}
+                        {mood && <p>😊 Mood: {mood}</p>}
+                        {medications.filter(m => m.given).length > 0 && (
+                          <div>
+                            <p className="font-semibold">💊 Medications given:</p>
+                            <ul className="ml-4 space-y-1">
+                              {medications.filter(m => m.given).map((m, idx) => (
+                                <li key={idx}>• {m.name} at {m.time || '(time not recorded)'}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {breakfastTime && (
+                          <p>🍽️ Breakfast: {breakfastTime} - Appetite: {breakfastAppetite}/5, Eaten: {breakfastAmount}%</p>
+                        )}
+                        {(bloodPressure || pulseRate || oxygenLevel || bloodSugar) && (
+                          <div>
+                            <p className="font-semibold">❤️ Vital Signs {vitalsTime && `at ${vitalsTime}`}:</p>
+                            <ul className="ml-4 space-y-1">
+                              {bloodPressure && <li>• Blood Pressure: {bloodPressure}</li>}
+                              {pulseRate && <li>• Pulse: {pulseRate} bpm</li>}
+                              {oxygenLevel && <li>• Oxygen: {oxygenLevel}%</li>}
+                              {bloodSugar && <li>• Blood Sugar: {bloodSugar} mmol/L</li>}
+                            </ul>
+                          </div>
+                        )}
+                        <p>🚽 Toileting: {bowelFreq} bowel, {urineFreq} urine, {diaperChanges} diaper changes</p>
+                        {notes && <p>📝 Notes: {notes.substring(0, 100)}{notes.length > 100 ? '...' : ''}</p>}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Validation warnings */}
+                  {!allSectionsComplete && (
+                    <div className="bg-amber-50 border border-amber-300 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-amber-900 mb-2">
+                            Please complete the following before submitting:
+                          </h4>
+                          <ul className="space-y-1">
+                            {Object.entries(sectionValidation).map(([sectionId, validation]) => {
+                              if (!validation.complete && validation.missing.length > 0) {
+                                const section = sections.find(s => s.id === parseInt(sectionId));
+                                return (
+                                  <li key={sectionId} className="text-sm text-amber-800">
+                                    <button
+                                      onClick={() => setCurrentSection(parseInt(sectionId))}
+                                      className="hover:underline font-medium"
+                                    >
+                                      {section?.emoji} {section?.title}:
+                                    </button>
+                                    <ul className="ml-6 mt-1">
+                                      {validation.missing.map((field, idx) => (
+                                        <li key={idx} className="text-amber-700">• {field}</li>
+                                      ))}
+                                    </ul>
+                                  </li>
+                                );
+                              }
+                              return null;
+                            })}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <Button onClick={() => setCurrentSection(6)} variant="outline" className="flex-1">
+                      ← Back
+                    </Button>
+                    <Button
+                      onClick={handleSubmit}
+                      variant="primary"
+                      size="lg"
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                      disabled={submitMutation.isPending || isSaving || !allSectionsComplete}
+                    >
+                      {submitMutation.isPending ? 'Submitting...' : allSectionsComplete ? 'Submit Report ✅' : 'Complete Required Fields'}
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>

@@ -49,6 +49,7 @@ export const careRecipients = sqliteTable('care_recipients', {
     .notNull(), // The family_admin who owns this care recipient
   name: text('name').notNull(),
   dateOfBirth: integer('date_of_birth', { mode: 'timestamp' }),
+  gender: text('gender', { enum: ['male', 'female', 'other'] }), // For personalized health ranges
   condition: text('condition'), // e.g., "Progressive Supranuclear Palsy"
   location: text('location'),
   emergencyContact: text('emergency_contact'),
@@ -216,14 +217,19 @@ export const careLogs = sqliteTable('care_logs', {
     }>(),
 
   // PSP-Specific Tracking
-  balanceScale: integer('balance_scale'), // 1-5
+  balanceScale: integer('balance_scale'), // 1-5 (legacy)
+  balanceIssues: integer('balance_issues'), // Sprint 1: 1-5 scale
   walkingPattern: text('walking_pattern', { mode: 'json' })
     .$type<string[]>(), // shuffling, uneven, slow, etc.
   freezingEpisodes: text('freezing_episodes', { enum: ['none', 'mild', 'severe'] }),
   eyeMovementProblems: integer('eye_movement_problems', { mode: 'boolean' }),
   speechCommunicationScale: integer('speech_communication_scale'), // 1-5
 
-  // Safety & Incidents
+  // Sprint 1: Fall Risk Assessment
+  nearFalls: text('near_falls', { enum: ['none', 'once_or_twice', 'multiple'] }),
+  actualFalls: text('actual_falls', { enum: ['none', 'minor', 'major'] }),
+
+  // Safety & Incidents (Legacy)
   falls: text('falls', { mode: 'json' })
     .$type<{
       occurred: boolean;
@@ -234,7 +240,7 @@ export const careLogs = sqliteTable('care_logs', {
   emergencyFlag: integer('emergency_flag', { mode: 'boolean' }).default(false).notNull(),
   emergencyNote: text('emergency_note'),
 
-  // Unaccompanied Time Tracking
+  // Sprint 1: Unaccompanied Time Tracking
   unaccompaniedPeriods: text('unaccompanied_periods', { mode: 'json' })
     .$type<Array<{
       from: string;
@@ -243,7 +249,37 @@ export const careLogs = sqliteTable('care_logs', {
       replacementPerson?: string;
       duration: number;
     }>>(),
+  unaccompaniedTime: text('unaccompanied_time', { mode: 'json' })
+    .$type<Array<{
+      startTime: string;
+      endTime: string;
+      reason: string;
+      replacementPerson: string;
+      duration: number;
+      incidents?: string;
+    }>>(),
   totalUnaccompaniedMinutes: integer('total_unaccompanied_minutes').default(0),
+
+  // Sprint 1: Safety Checks & Emergency Prep
+  safetyChecks: text('safety_checks', { mode: 'json' })
+    .$type<{
+      tripHazards?: { checked: boolean; action: string };
+      cables?: { checked: boolean; action: string };
+      sandals?: { checked: boolean; action: string };
+      slipHazards?: { checked: boolean; action: string };
+      mobilityAids?: { checked: boolean; action: string };
+      emergencyEquipment?: { checked: boolean; action: string };
+    }>(),
+  emergencyPrep: text('emergency_prep', { mode: 'json' })
+    .$type<{
+      icePack?: boolean;
+      wheelchair?: boolean;
+      commode?: boolean;
+      walkingStick?: boolean;
+      walker?: boolean;
+      bruiseOintment?: boolean;
+      antiseptic?: boolean;
+    }>(),
 
   // Notes
   notes: text('notes'),

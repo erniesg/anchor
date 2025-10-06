@@ -23,6 +23,37 @@ const mealLogSchema = z.object({
   swallowingIssues: z.array(z.string()).optional(),
 });
 
+// Sprint 1: Unaccompanied Time schema
+const unaccompaniedTimeSchema = z.object({
+  startTime: z.string(),
+  endTime: z.string(),
+  reason: z.string(),
+  replacementPerson: z.string(),
+  duration: z.number(),
+  incidents: z.string().optional(),
+});
+
+// Sprint 1: Safety Checks schema
+const safetyChecksSchema = z.object({
+  tripHazards: z.object({ checked: z.boolean(), action: z.string() }).optional(),
+  cables: z.object({ checked: z.boolean(), action: z.string() }).optional(),
+  sandals: z.object({ checked: z.boolean(), action: z.string() }).optional(),
+  slipHazards: z.object({ checked: z.boolean(), action: z.string() }).optional(),
+  mobilityAids: z.object({ checked: z.boolean(), action: z.string() }).optional(),
+  emergencyEquipment: z.object({ checked: z.boolean(), action: z.string() }).optional(),
+});
+
+// Sprint 1: Emergency Prep schema
+const emergencyPrepSchema = z.object({
+  icePack: z.boolean().optional(),
+  wheelchair: z.boolean().optional(),
+  commode: z.boolean().optional(),
+  walkingStick: z.boolean().optional(),
+  walker: z.boolean().optional(),
+  bruiseOintment: z.boolean().optional(),
+  antiseptic: z.boolean().optional(),
+});
+
 const createCareLogSchema = z.object({
   careRecipientId: z.string().uuid(),
   caregiverId: z.string().uuid().optional(), // Optional, will use auth context if not provided
@@ -61,6 +92,20 @@ const createCareLogSchema = z.object({
     pain: z.string().optional(),
   }).optional(),
 
+  // Sprint 1: Fall Risk Assessment
+  balanceIssues: z.number().min(1).max(5).optional(),
+  nearFalls: z.enum(['none', 'once_or_twice', 'multiple']).optional(),
+  actualFalls: z.enum(['none', 'minor', 'major']).optional(),
+  walkingPattern: z.array(z.string()).optional(), // ['shuffling', 'uneven', 'slow', 'stumbling', 'cannot_lift_feet']
+  freezingEpisodes: z.enum(['none', 'mild', 'severe']).optional(),
+
+  // Sprint 1: Unaccompanied Time
+  unaccompaniedTime: z.array(unaccompaniedTimeSchema).optional(),
+
+  // Sprint 1: Safety & Emergency Prep
+  safetyChecks: safetyChecksSchema.optional(),
+  emergencyPrep: emergencyPrepSchema.optional(),
+
   // Safety
   emergencyFlag: z.boolean().default(false),
   emergencyNote: z.string().optional(),
@@ -77,6 +122,17 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
 
     const db = c.get('db');
     const caregiverId = c.get('caregiverId')!; // From caregiverOnly middleware
+
+    // Verify caregiver has access to this care recipient
+    const { caregiverHasAccess } = await import('../lib/access-control');
+    const hasAccess = await caregiverHasAccess(db, caregiverId, data.careRecipientId);
+
+    if (!hasAccess) {
+      return c.json({
+        error: 'Forbidden',
+        message: 'You are not assigned to this care recipient'
+      }, 403);
+    }
 
     const newLog = await db
       .insert(careLogs)
@@ -97,6 +153,15 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         bloodSugar: data.bloodSugar,
         vitalsTime: data.vitalsTime,
         toileting: data.toileting as any,
+        // Sprint 1: Fall Risk & Safety fields
+        balanceIssues: data.balanceIssues,
+        nearFalls: data.nearFalls,
+        actualFalls: data.actualFalls,
+        walkingPattern: data.walkingPattern as any,
+        freezingEpisodes: data.freezingEpisodes,
+        unaccompaniedTime: data.unaccompaniedTime as any,
+        safetyChecks: data.safetyChecks as any,
+        emergencyPrep: data.emergencyPrep as any,
         emergencyFlag: data.emergencyFlag,
         emergencyNote: data.emergencyNote,
         notes: data.notes,
@@ -104,12 +169,107 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
       .returning()
       .get();
 
+    // Check for major fall alert
+    if (data.actualFalls === 'major') {
+      // TODO: Create alert/notification for family
+      console.log('🚨 MAJOR FALL ALERT for care recipient:', data.careRecipientId);
+    }
+
     return c.json(newLog, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return c.json({ error: 'Validation failed', details: error.errors }, 400);
     }
     console.error('Create care log error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// Update care log (caregivers only) - can only update drafts they own
+careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c) => {
+  try {
+    const logId = c.req.param('id');
+    const body = await c.req.json();
+    const data = createCareLogSchema.partial().parse(body);
+
+    const db = c.get('db');
+
+    // Get existing log to verify status
+    const existingLog = await db
+      .select()
+      .from(careLogs)
+      .where(eq(careLogs.id, logId))
+      .get();
+
+    if (!existingLog) {
+      return c.json({ error: 'Care log not found' }, 404);
+    }
+
+    if (existingLog.status !== 'draft') {
+      return c.json({ error: 'Can only update draft logs' }, 400);
+    }
+
+    // If careRecipientId is being changed, verify access
+    if (data.careRecipientId && data.careRecipientId !== existingLog.careRecipientId) {
+      const caregiverId = c.get('caregiverId')!;
+      const { caregiverHasAccess } = await import('../lib/access-control');
+      const hasAccess = await caregiverHasAccess(db, caregiverId, data.careRecipientId);
+
+      if (!hasAccess) {
+        return c.json({
+          error: 'Forbidden',
+          message: 'You are not assigned to this care recipient'
+        }, 403);
+      }
+    }
+
+    const updatedLog = await db
+      .update(careLogs)
+      .set({
+        careRecipientId: data.careRecipientId,
+        logDate: data.logDate ? new Date(data.logDate) : undefined,
+        wakeTime: data.wakeTime,
+        mood: data.mood,
+        showerTime: data.showerTime,
+        hairWash: data.hairWash,
+        medications: data.medications as any,
+        meals: data.meals as any,
+        bloodPressure: data.bloodPressure,
+        pulseRate: data.pulseRate,
+        oxygenLevel: data.oxygenLevel,
+        bloodSugar: data.bloodSugar,
+        vitalsTime: data.vitalsTime,
+        toileting: data.toileting as any,
+        // Sprint 1: Fall Risk & Safety fields
+        balanceIssues: data.balanceIssues,
+        nearFalls: data.nearFalls,
+        actualFalls: data.actualFalls,
+        walkingPattern: data.walkingPattern as any,
+        freezingEpisodes: data.freezingEpisodes,
+        unaccompaniedTime: data.unaccompaniedTime as any,
+        safetyChecks: data.safetyChecks as any,
+        emergencyPrep: data.emergencyPrep as any,
+        emergencyFlag: data.emergencyFlag,
+        emergencyNote: data.emergencyNote,
+        notes: data.notes,
+        updatedAt: new Date(),
+      } as any)
+      .where(eq(careLogs.id, logId))
+      .returning()
+      .get();
+
+    // Check for major fall alert
+    if (data.actualFalls === 'major') {
+      // TODO: Create alert/notification for family
+      console.log('🚨 MAJOR FALL ALERT for care recipient:', data.careRecipientId);
+    }
+
+    return c.json(updatedLog);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return c.json({ error: 'Validation failed', details: error.errors }, 400);
+    }
+    console.error('Update care log error:', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
 });
@@ -140,6 +300,38 @@ careLogsRoute.get('/recipient/:recipientId', ...familyMemberAccess, requireCareR
 });
 
 // Get today's care log for a recipient (family members only)
+// Helper to normalize meals data format
+const normalizeMealsData = (mealsData: any): any => {
+  if (!mealsData) return null;
+  try {
+    // Handle both string (from DB) and already parsed object
+    let meals = mealsData;
+    if (typeof mealsData === 'string') {
+      meals = JSON.parse(mealsData);
+    }
+
+    // If it's already an object with breakfast key, return as is
+    if (meals.breakfast) return meals;
+
+    // If it's an array, convert to object format
+    if (Array.isArray(meals)) {
+      const normalized: any = {};
+      meals.forEach((meal: any) => {
+        normalized[meal.meal] = {
+          time: meal.time,
+          appetite: meal.appetite,
+          amountEaten: meal.amount || meal.amountEaten,
+        };
+      });
+      return normalized;
+    }
+    return meals;
+  } catch (e) {
+    console.error('Error normalizing meals data:', e, mealsData);
+    return null;
+  }
+};
+
 careLogsRoute.get('/recipient/:recipientId/today', ...familyMemberAccess, requireCareRecipientAccess, async (c) => {
   try {
     const recipientId = c.req.param('recipientId');
@@ -162,7 +354,11 @@ careLogsRoute.get('/recipient/:recipientId/today', ...familyMemberAccess, requir
       return c.json(null);
     }
 
-    return c.json(log);
+    // Normalize meals data
+    return c.json({
+      ...log,
+      meals: normalizeMealsData(log.meals as any),
+    });
   } catch (error) {
     console.error('Get today log error:', error);
     return c.json({ error: 'Internal server error' }, 500);
@@ -199,7 +395,11 @@ careLogsRoute.get('/recipient/:recipientId/date/:date', ...familyMemberAccess, r
       return c.json(null);
     }
 
-    return c.json(matchingLog);
+    // Normalize meals data
+    return c.json({
+      ...matchingLog,
+      meals: normalizeMealsData(matchingLog.meals as any),
+    });
   } catch (error) {
     console.error('Get date log error:', error);
     return c.json({ error: 'Internal server error' }, 500);

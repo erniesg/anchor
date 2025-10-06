@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Settings } from 'lucide-react';
+import { authenticatedApiCall } from '@/lib/api';
+import { FamilyLayout } from '@/components/FamilyLayout';
 import {
   LineChart,
   Line,
@@ -55,14 +57,17 @@ function StatusBadge({ status }: { status?: string }) {
 function DashboardComponent() {
   const [user, setUser] = useState<User | null>(null);
   const [careRecipient, setCareRecipient] = useState<any>(null);
+  const [token, setToken] = useState<string>('');
   const [viewMode, setViewMode] = useState<'today' | 'week' | 'month'>('today');
   const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, -1 = last week, etc.
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
     const recipientData = localStorage.getItem('careRecipient');
+    const tokenData = localStorage.getItem('token');
     if (userData) setUser(JSON.parse(userData));
     if (recipientData) setCareRecipient(JSON.parse(recipientData));
+    if (tokenData) setToken(tokenData);
   }, []);
 
   // Calculate week range (Mon-Sun)
@@ -80,12 +85,15 @@ function DashboardComponent() {
   const { data: todayLog, isLoading } = useQuery({
     queryKey: ['care-log-today', careRecipient?.id],
     queryFn: async () => {
-      if (!careRecipient?.id) return null;
-      const response = await fetch(`/api/care-logs/recipient/${careRecipient.id}/today`);
-      if (!response.ok) return null;
-      return response.json();
+      if (!careRecipient?.id || !token) return null;
+      try {
+        return await authenticatedApiCall(`/care-logs/recipient/${careRecipient.id}/today`, token);
+      } catch (error) {
+        console.error('Failed to fetch today log:', error);
+        return null;
+      }
     },
-    enabled: !!careRecipient?.id && viewMode === 'today',
+    enabled: !!careRecipient?.id && !!token && viewMode === 'today',
     refetchInterval: 30000,
   });
 
@@ -93,10 +101,9 @@ function DashboardComponent() {
   const { data: weekLogs, isLoading: weekLoading } = useQuery({
     queryKey: ['care-logs-week', careRecipient?.id, weekOffset],
     queryFn: async () => {
-      if (!careRecipient?.id) return [];
+      if (!careRecipient?.id || !token) return [];
       const promises = weekDates.map((date) =>
-        fetch(`/api/care-logs/recipient/${careRecipient.id}/date/${format(date, 'yyyy-MM-dd')}`)
-          .then((res) => (res.ok ? res.json() : null))
+        authenticatedApiCall(`/care-logs/recipient/${careRecipient.id}/date/${format(date, 'yyyy-MM-dd')}`, token)
           .catch(() => null)
       );
       const results = await Promise.all(promises);
@@ -127,28 +134,20 @@ function DashboardComponent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-accent-50">
-      <header className="bg-white shadow-sm border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-primary-700">Anchor</h1>
-            {user && <p className="text-sm text-gray-600 mt-1">Welcome back, {user.name}</p>}
-          </div>
-          <div className="flex items-center gap-3">
-            <Link to="/family/settings">
-              <Button variant="ghost" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
-            </Link>
-            <Button onClick={handleLogout} variant="ghost" size="sm">
-              Log out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <FamilyLayout>
+      <div className="bg-gradient-to-br from-primary-50 to-accent-50 min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* User Greeting */}
+          {user && (
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold text-primary-700">Welcome back, {user.name}</h1>
+              <div className="flex items-center gap-3 mt-2">
+                <Button onClick={handleLogout} variant="ghost" size="sm">
+                  Log out
+                </Button>
+              </div>
+            </div>
+          )}
         {!careRecipient ? (
           // Onboarding prompt
           <Card>
@@ -523,6 +522,59 @@ function DashboardComponent() {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Sprint 1: Fall Risk Assessment */}
+                {(todayLog.balanceIssues || todayLog.nearFalls || todayLog.actualFalls || todayLog.freezingEpisodes) && (
+                  <Card className={todayLog.actualFalls === 'major' ? 'border-2 border-red-400' : ''}>
+                    <CardHeader>
+                      <h3 className="font-semibold">⚠️ Fall Risk & Movement</h3>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm">
+                        {todayLog.balanceIssues && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Balance:</span>
+                            <span className={`font-medium ${todayLog.balanceIssues >= 4 ? 'text-orange-600' : ''}`}>
+                              Level {todayLog.balanceIssues}/5
+                            </span>
+                          </div>
+                        )}
+                        {todayLog.nearFalls && todayLog.nearFalls !== 'none' && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Near Falls:</span>
+                            <span className="font-medium text-yellow-600 capitalize">
+                              {todayLog.nearFalls.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        )}
+                        {todayLog.actualFalls && todayLog.actualFalls !== 'none' && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Actual Falls:</span>
+                            <span className={`font-medium ${todayLog.actualFalls === 'major' ? 'text-red-600' : 'text-orange-600'}`}>
+                              {todayLog.actualFalls === 'major' ? '🚨 MAJOR' : 'Minor'}
+                            </span>
+                          </div>
+                        )}
+                        {todayLog.walkingPattern && todayLog.walkingPattern.length > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Walking:</span>
+                            <span className="font-medium text-xs">
+                              {todayLog.walkingPattern.join(', ').replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        )}
+                        {todayLog.freezingEpisodes && todayLog.freezingEpisodes !== 'none' && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Freezing:</span>
+                            <span className={`font-medium capitalize ${todayLog.freezingEpisodes === 'severe' ? 'text-red-600' : 'text-yellow-600'}`}>
+                              {todayLog.freezingEpisodes}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
 
@@ -534,6 +586,67 @@ function DashboardComponent() {
                 </CardHeader>
                 <CardContent className="pt-4">
                   <p className="text-gray-900">{todayLog.emergencyNote}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sprint 1: Fall Risk Alerts */}
+            {todayLog?.actualFalls === 'major' && (
+              <Card className="border-2 border-red-500">
+                <CardHeader className="bg-red-50">
+                  <h3 className="font-semibold text-red-800 flex items-center gap-2">
+                    🚨 MAJOR FALL REPORTED
+                  </h3>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-2">
+                  {todayLog.walkingPattern && todayLog.walkingPattern.length > 0 && (
+                    <p className="text-sm text-red-700">
+                      <strong>Walking pattern:</strong> {todayLog.walkingPattern.join(', ')}
+                    </p>
+                  )}
+                  {todayLog.balanceIssues && (
+                    <p className="text-sm text-red-700">
+                      <strong>Balance level:</strong> {todayLog.balanceIssues}/5
+                    </p>
+                  )}
+                  {todayLog.createdAt && (
+                    <p className="text-xs text-red-600 mt-2">
+                      Reported: {format(new Date(todayLog.createdAt), 'h:mm a')}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Balance Issues Warning */}
+            {todayLog?.balanceIssues >= 4 && todayLog?.actualFalls !== 'major' && (
+              <Card className="border-2 border-orange-300">
+                <CardHeader className="bg-orange-50">
+                  <h3 className="font-semibold text-orange-800">⚠️ Balance Concern</h3>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <p className="text-sm text-orange-800">
+                    Severe balance problems reported (Level {todayLog.balanceIssues}/5)
+                  </p>
+                  {todayLog.walkingPattern && todayLog.walkingPattern.length > 0 && (
+                    <p className="text-sm text-orange-700 mt-2">
+                      <strong>Walking pattern:</strong> {todayLog.walkingPattern.join(', ')}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Near Falls Warning */}
+            {todayLog?.nearFalls === 'multiple' && (
+              <Card className="border border-yellow-400">
+                <CardHeader className="bg-yellow-50">
+                  <h3 className="font-semibold text-yellow-800">⚠️ Multiple Near Falls</h3>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <p className="text-sm text-yellow-800">
+                    Multiple near falls reported today. Increased monitoring recommended.
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -561,7 +674,8 @@ function DashboardComponent() {
             )}
           </div>
         )}
-      </main>
-    </div>
+        </div>
+      </div>
+    </FamilyLayout>
   );
 }
