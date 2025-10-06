@@ -11,6 +11,7 @@ ALTER TABLE care_logs ADD COLUMN actual_falls TEXT CHECK(actual_falls IN ('none'
 
 -- Unaccompanied Time Tracking
 ALTER TABLE care_logs ADD COLUMN unaccompanied_time TEXT; -- JSON array
+ALTER TABLE care_logs ADD COLUMN unaccompanied_incidents TEXT; -- Incident report
 
 -- Safety Checks & Emergency Preparedness
 ALTER TABLE care_logs ADD COLUMN safety_checks TEXT; -- JSON object

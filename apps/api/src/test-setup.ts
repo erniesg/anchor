@@ -94,10 +94,13 @@ vi.mock('./lib/access-control', () => ({
   canAccessCareRecipient: vi.fn(async () => true),
 }));
 
+// Global test database store (cleared in test beforeEach)
+const testDataStore: Map<string, any> = new Map();
+
 // Mock @anchor/database to bypass Drizzle ORM D1 calls in tests
 vi.mock('@anchor/database', () => {
-  // In-memory database store (per-test isolation via beforeEach clearing)
-  const dataStore: Map<string, any> = new Map();
+  // Reference the global testDataStore
+  const dataStore = testDataStore;
 
   const mockDb = {
     // INSERT operation
@@ -127,10 +130,14 @@ vi.mock('@anchor/database', () => {
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn((condition: any) => {
-          // Return all records from store (could filter based on condition if needed)
+          // Return records from store
+          // Since we can't parse SQL conditions, return most recent record for .get()
+          // and all records for .all() (tests will filter if needed)
           const records = Array.from(dataStore.values());
+          const mostRecent = records[records.length - 1] || null; // Last inserted
+
           return {
-            get: vi.fn(async () => records[0] || null),
+            get: vi.fn(async () => mostRecent),
             all: vi.fn(async () => records),
             orderBy: vi.fn(() => ({
               all: vi.fn(async () => records),
@@ -152,16 +159,24 @@ vi.mock('@anchor/database', () => {
             const records = Array.from(dataStore.values());
             let updated = null;
             if (records.length > 0) {
-              updated = { ...records[0], ...vals, updatedAt: new Date() };
+              // Filter out undefined values from vals to avoid overwriting existing data
+              const filteredVals = Object.fromEntries(
+                Object.entries(vals).filter(([_, v]) => v !== undefined)
+              );
+              updated = { ...records[0], ...filteredVals, updatedAt: new Date() };
               dataStore.set(updated.id, updated);
             }
 
-            // Support .returning().get() pattern
-            return {
-              returning: vi.fn().mockReturnValue({
-                get: vi.fn(async () => updated),
-              }),
-            };
+            // Create a thenable object that supports both patterns:
+            // 1. await db.update().set().where()  (direct await)
+            // 2. await db.update().set().where().returning().get()  (with returning)
+
+            // Create a Promise that has .returning() method
+            const promise = Promise.resolve(updated);
+            (promise as any).returning = vi.fn().mockReturnValue({
+              get: vi.fn(async () => updated),
+            });
+            return promise;
           }),
         };
       }),
@@ -188,15 +203,15 @@ vi.mock('@anchor/database', () => {
       }),
     }),
 
-    // Internal helper to clear store between tests
-    __clearStore: () => dataStore.clear(),
   };
 
   return {
     createDbClient: vi.fn(() => mockDb),
-    __getMockDb: () => mockDb,
   };
 });
+
+// Export helper to clear test data between tests
+export const clearTestData = () => testDataStore.clear();
 
 // Export mock environment for tests
 export { mockEnv };

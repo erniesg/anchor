@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { apiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/auth/signup')({
   component: SignupComponent,
@@ -25,16 +26,10 @@ function SignupComponent() {
 
   const signupMutation = useMutation({
     mutationFn: async (data: SignupData) => {
-      const response = await fetch('/api/auth/signup', {
+      return apiCall('/auth/signup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Signup failed');
-      }
-      return response.json();
     },
     onSuccess: (data) => {
       localStorage.setItem('token', data.token);

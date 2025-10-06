@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import type { AppContext } from '../index';
 import { users } from '@anchor/database/schema';
 import { eq } from 'drizzle-orm';
-import { familyOnly } from '../middleware/auth';
+import { familyMemberAccess } from '../middleware/rbac';
 
 const usersRoute = new Hono<AppContext>();
 
@@ -24,7 +24,7 @@ const changePasswordSchema = z.object({
 });
 
 // Apply auth middleware to all routes
-usersRoute.use('*', familyOnly);
+usersRoute.use('*', ...familyMemberAccess);
 
 /**
  * GET /api/users/:userId

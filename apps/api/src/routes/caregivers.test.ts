@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import app from '../index';
 import { createDbClient } from '@anchor/database';
 import type { D1Database } from '@cloudflare/workers-types';
+import type { Env } from '../index';
 
 /**
  * Caregivers API Tests
@@ -11,6 +12,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 describe('Caregivers API', () => {
   let db: ReturnType<typeof createDbClient>;
   let mockD1: D1Database;
+  let mockEnv: Env;
   let familyAdminToken: string;
   let familyMemberToken: string;
   let careRecipientId: string;
@@ -22,6 +24,14 @@ describe('Caregivers API', () => {
       exec: vi.fn(),
       dump: vi.fn(),
     } as any;
+
+    mockEnv = {
+      DB: mockD1,
+      STORAGE: {} as any,
+      ENVIRONMENT: 'dev',
+      JWT_SECRET: 'test-secret',
+      LOGTO_APP_SECRET: 'test-logto-secret',
+    };
 
     db = createDbClient(mockD1);
 
@@ -47,7 +57,7 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify(caregiverData),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(201);
       const data = await res.json();
@@ -57,7 +67,7 @@ describe('Caregivers API', () => {
       expect(data.caregiver.active).toBe(true);
       expect(data.pin).toBeDefined();
       expect(data.pin).toMatch(/^\d{6}$/); // 6-digit PIN
-    });
+    }, mockEnv);
 
     it('should reject caregiver creation by family_member', async () => {
       const res = await app.request('/caregivers', {
@@ -70,7 +80,7 @@ describe('Caregivers API', () => {
           careRecipientId,
           name: 'Test Caregiver',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(403);
     });
@@ -85,7 +95,7 @@ describe('Caregivers API', () => {
         body: JSON.stringify({
           careRecipientId, // Missing name
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
     });
@@ -104,7 +114,7 @@ describe('Caregivers API', () => {
             careRecipientId,
             name: `Caregiver ${i}`,
           }),
-        });
+        }, mockEnv);
 
         const data = await res.json();
         pins.add(data.pin);
@@ -124,7 +134,7 @@ describe('Caregivers API', () => {
           careRecipientId,
           name: 'Minimal Caregiver',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(201);
     });
@@ -140,7 +150,7 @@ describe('Caregivers API', () => {
           careRecipientId,
           name: 'Default Lang Caregiver',
         }),
-      });
+      }, mockEnv);
 
       const data = await res.json();
       expect(data.caregiver.language).toBe('en');
@@ -157,7 +167,7 @@ describe('Caregivers API', () => {
           careRecipientId,
           name: 'Tracked Caregiver',
         }),
-      });
+      }, mockEnv);
 
       const data = await res.json();
       expect(data.caregiver.createdBy).toBeDefined();
@@ -177,7 +187,7 @@ describe('Caregivers API', () => {
           careRecipientId,
           name: 'Active Caregiver',
         }),
-      });
+      }, mockEnv);
 
       const deactivatedRes = await app.request('/caregivers', {
         method: 'POST',
@@ -189,7 +199,7 @@ describe('Caregivers API', () => {
           careRecipientId,
           name: 'Deactivated Caregiver',
         }),
-      });
+      }, mockEnv);
       const deactivated = await deactivatedRes.json();
 
       // Deactivate one caregiver
@@ -200,13 +210,13 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({ reason: 'Test deactivation' }),
-      });
+      }, mockEnv);
     });
 
     it('should list all caregivers (family_admin)', async () => {
       const res = await app.request(`/caregivers/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const caregivers = await res.json();
@@ -217,7 +227,7 @@ describe('Caregivers API', () => {
     it('should include active status', async () => {
       const res = await app.request(`/caregivers/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
 
       const caregivers = await res.json();
       caregivers.forEach((c: any) => {
@@ -229,7 +239,7 @@ describe('Caregivers API', () => {
     it('should allow family_member to view (read-only)', async () => {
       const res = await app.request(`/caregivers/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyMemberToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const caregivers = await res.json();
@@ -239,7 +249,7 @@ describe('Caregivers API', () => {
     it('should not leak PINs in response', async () => {
       const res = await app.request(`/caregivers/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
 
       const caregivers = await res.json();
       caregivers.forEach((c: any) => {
@@ -263,7 +273,7 @@ describe('Caregivers API', () => {
           careRecipientId,
           name: 'To Be Deactivated',
         }),
-      });
+      }, mockEnv);
       const data = await res.json();
       caregiverId = data.caregiver.id;
     });
@@ -276,7 +286,7 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({ reason: 'Contract ended' }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -291,7 +301,7 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({}), // Missing reason
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
     });
@@ -304,7 +314,7 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyMemberToken}`,
         },
         body: JSON.stringify({ reason: 'Test' }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(403);
     });
@@ -317,11 +327,11 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({ reason: 'Audit test' }),
-      });
+      }, mockEnv);
 
       const res = await app.request(`/caregivers/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
 
       const caregivers = await res.json();
       const deactivated = caregivers.find((c: any) => c.id === caregiverId);
@@ -339,11 +349,11 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({ reason: 'Test' }),
-      });
+      }, mockEnv);
 
       const res = await app.request(`/caregivers/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
 
       const caregivers = await res.json();
       const deactivated = caregivers.find((c: any) => c.id === caregiverId);
@@ -360,7 +370,7 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({ reason: 'First' }),
-      });
+      }, mockEnv);
 
       // Second deactivation
       const res = await app.request(`/caregivers/${caregiverId}/deactivate`, {
@@ -370,7 +380,7 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({ reason: 'Second' }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -393,7 +403,7 @@ describe('Caregivers API', () => {
           careRecipientId,
           name: 'PIN Reset Test',
         }),
-      });
+      }, mockEnv);
       const data = await res.json();
       caregiverId = data.caregiver.id;
       originalPin = data.pin;
@@ -403,7 +413,7 @@ describe('Caregivers API', () => {
       const res = await app.request(`/caregivers/${caregiverId}/reset-pin`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -416,7 +426,7 @@ describe('Caregivers API', () => {
       const res = await app.request(`/caregivers/${caregiverId}/reset-pin`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${familyMemberToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(403);
     });
@@ -425,11 +435,11 @@ describe('Caregivers API', () => {
       await app.request(`/caregivers/${caregiverId}/reset-pin`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
 
       const res = await app.request(`/caregivers/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
 
       const caregivers = await res.json();
       const resetCaregiver = caregivers.find((c: any) => c.id === caregiverId);
@@ -447,13 +457,13 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({ reason: 'Test' }),
-      });
+      }, mockEnv);
 
       // Reset PIN
       const res = await app.request(`/caregivers/${caregiverId}/reset-pin`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
     });
@@ -474,7 +484,7 @@ describe('Caregivers API', () => {
           name: 'Original Name',
           phone: '+6591111111',
         }),
-      });
+      }, mockEnv);
       const data = await res.json();
       caregiverId = data.caregiver.id;
     });
@@ -491,7 +501,7 @@ describe('Caregivers API', () => {
           phone: '+6592222222',
           language: 'zh',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -508,7 +518,7 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyMemberToken}`,
         },
         body: JSON.stringify({ name: 'New Name' }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(403);
     });
@@ -521,12 +531,12 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({ pinCode: '999999' }),
-      });
+      }, mockEnv);
 
       // PIN should not be updated
       const fetchRes = await app.request(`/caregivers/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
       const caregivers = await fetchRes.json();
       const caregiver = caregivers.find((c: any) => c.id === caregiverId);
 
@@ -546,7 +556,7 @@ describe('Caregivers API', () => {
           careRecipientId,
           name: 'Hash Test',
         }),
-      });
+      }, mockEnv);
 
       const data = await res.json();
       const plainPin = data.pin;
@@ -554,7 +564,7 @@ describe('Caregivers API', () => {
       // Fetch caregiver
       const fetchRes = await app.request(`/caregivers/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
       const caregivers = await fetchRes.json();
 
       // PIN should not be returned in list
@@ -575,7 +585,7 @@ describe('Caregivers API', () => {
           careRecipientId,
           name: 'Audit Trail Test',
         }),
-      });
+      }, mockEnv);
       const caregiver = await createRes.json();
 
       // Deactivate
@@ -586,18 +596,18 @@ describe('Caregivers API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({ reason: 'Audit test' }),
-      });
+      }, mockEnv);
 
       // Reset PIN
       await app.request(`/caregivers/${caregiver.caregiver.id}/reset-pin`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
 
       // Fetch and verify audit fields
       const fetchRes = await app.request(`/caregivers/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
       const caregivers = await fetchRes.json();
       const audited = caregivers.find((c: any) => c.id === caregiver.caregiver.id);
 

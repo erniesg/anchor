@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal, Edit } from 'lucide-react';
+import { FamilyLayout } from '@/components/FamilyLayout';
+import { authenticatedApiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/family/settings/caregivers')({
   component: CaregiversSettingsComponent,
@@ -80,11 +82,8 @@ function CaregiversSettingsComponent() {
     queryFn: async () => {
       if (!careRecipient?.id) return [];
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/caregivers/recipient/${careRecipient.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error('Failed to fetch caregivers');
-      return response.json();
+      if (!token) throw new Error('No authentication token');
+      return authenticatedApiCall(`/caregivers/recipient/${careRecipient.id}`, token);
     },
     enabled: !!careRecipient?.id,
   });
@@ -93,15 +92,10 @@ function CaregiversSettingsComponent() {
   const resetPinMutation = useMutation({
     mutationFn: async (caregiverId: string) => {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/caregivers/${caregiverId}/reset-pin`, {
+      if (!token) throw new Error('No authentication token');
+      return authenticatedApiCall(`/caregivers/${caregiverId}/reset-pin`, token, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
       });
-      if (!response.ok) throw new Error('Failed to reset PIN');
-      return response.json();
     },
     onSuccess: (data) => {
       setNewPin(data.pin);
@@ -123,16 +117,11 @@ function CaregiversSettingsComponent() {
   const deactivateMutation = useMutation({
     mutationFn: async ({ caregiverId, reason }: { caregiverId: string; reason: string }) => {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/caregivers/${caregiverId}/deactivate`, {
+      if (!token) throw new Error('No authentication token');
+      return authenticatedApiCall(`/caregivers/${caregiverId}/deactivate`, token, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ reason }),
       });
-      if (!response.ok) throw new Error('Failed to deactivate caregiver');
-      return response.json();
     },
     onSuccess: () => {
       setShowDeactivateModal(false);
@@ -156,15 +145,10 @@ function CaregiversSettingsComponent() {
   const reactivateMutation = useMutation({
     mutationFn: async (caregiverId: string) => {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/caregivers/${caregiverId}/reactivate`, {
+      if (!token) throw new Error('No authentication token');
+      return authenticatedApiCall(`/caregivers/${caregiverId}/reactivate`, token, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
       });
-      if (!response.ok) throw new Error('Failed to reactivate caregiver');
-      return response.json();
     },
     onSuccess: () => {
       setShowReactivateModal(false);
@@ -187,16 +171,11 @@ function CaregiversSettingsComponent() {
   const updateMutation = useMutation({
     mutationFn: async ({ caregiverId, data }: { caregiverId: string; data: typeof editForm }) => {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/caregivers/${caregiverId}`, {
+      if (!token) throw new Error('No authentication token');
+      return authenticatedApiCall(`/caregivers/${caregiverId}`, token, {
         method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Failed to update caregiver');
-      return response.json();
     },
     onSuccess: () => {
       setShowEditModal(false);
@@ -318,20 +297,11 @@ function CaregiversSettingsComponent() {
   const isReadOnly = userRole !== null && userRole !== 'family_admin';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          {/* Breadcrumb Navigation */}
-          <div className="mb-4">
-            <Breadcrumb
-              items={[
-                { label: 'Home', href: '/family/dashboard' },
-                { label: 'Settings', href: '/family/settings' },
-                { label: 'Caregiver Management' },
-              ]}
-            />
-          </div>
+    <FamilyLayout>
+      <div className="bg-gray-50 min-h-screen">
+        {/* Page Header */}
+        <div className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 py-6">
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -716,6 +686,7 @@ function CaregiversSettingsComponent() {
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </FamilyLayout>
   );
 }

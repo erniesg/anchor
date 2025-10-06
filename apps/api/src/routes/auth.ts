@@ -3,7 +3,7 @@ import { z } from 'zod';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import type { AppContext } from '../index';
-import { users, caregivers } from '@anchor/database/schema';
+import { users, caregivers, careRecipients } from '@anchor/database/schema';
 import { eq } from 'drizzle-orm';
 
 const auth = new Hono<AppContext>();
@@ -59,7 +59,7 @@ auth.post('/signup', async (c) => {
     // Generate JWT token
     const token = jwt.sign(
       {
-        userId: newUser.id,
+        sub: newUser.id,
         email: newUser.email,
         role: newUser.role,
       },
@@ -117,7 +117,7 @@ auth.post('/login', async (c) => {
     // Generate JWT token
     const token = jwt.sign(
       {
-        userId: user.id,
+        sub: user.id,
         email: user.email,
         role: user.role,
       },
@@ -174,6 +174,13 @@ auth.post('/caregiver/login', async (c) => {
       return c.json({ error: 'Caregiver account is inactive' }, 403);
     }
 
+    // Fetch care recipient details (for personalized validation)
+    const careRecipient = await db
+      .select()
+      .from(careRecipients)
+      .where(eq(careRecipients.id, caregiver.careRecipientId))
+      .get();
+
     // Generate JWT token
     const token = jwt.sign(
       {
@@ -191,6 +198,13 @@ auth.post('/caregiver/login', async (c) => {
         name: caregiver.name,
         careRecipientId: caregiver.careRecipientId,
       },
+      careRecipient: careRecipient ? {
+        id: careRecipient.id,
+        name: careRecipient.name,
+        dateOfBirth: careRecipient.dateOfBirth,
+        gender: careRecipient.gender,
+        condition: careRecipient.condition,
+      } : null,
       token,
     });
   } catch (error) {

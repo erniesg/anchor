@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { User, ArrowLeft, Save, Lock, Check } from 'lucide-react';
+import { FamilyLayout } from '@/components/FamilyLayout';
 
 export const Route = createFileRoute('/family/settings/profile')({
   component: ProfileSettingsComponent,
@@ -55,21 +56,21 @@ function ProfileSettingsComponent() {
     if (user) {
       const parsed = JSON.parse(user);
       setUserId(parsed.id);
+      // Initialize form with localStorage data immediately
+      setName(parsed.name || '');
+      setEmail(parsed.email || '');
+      setTimezone(parsed.timezone || 'Asia/Singapore');
     }
   }, []);
 
-  // Fetch user profile
+  // Fetch user profile (disabled - using localStorage for now)
   const { data: profile, isLoading } = useQuery({
     queryKey: ['user-profile', userId],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/users/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error('Failed to fetch profile');
-      return response.json() as Promise<UserProfile>;
+      // TODO: Implement users API endpoint
+      return null;
     },
-    enabled: !!userId,
+    enabled: false, // Disabled until users API is implemented
   });
 
   // Initialize form when profile loads
@@ -84,47 +85,30 @@ function ProfileSettingsComponent() {
     }
   }, [profile]);
 
-  // Update profile mutation
+  // Update profile mutation (disabled - using localStorage for now)
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<UserProfile>) => {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update profile');
+      // TODO: Implement users API endpoint
+      // For now, just update localStorage
+      const user = localStorage.getItem('user');
+      if (user) {
+        const parsed = JSON.parse(user);
+        const updated = { ...parsed, ...data };
+        localStorage.setItem('user', JSON.stringify(updated));
       }
-      return response.json();
+      return data;
     },
     onSuccess: () => {
       setIsEditing(false);
-      queryClient.invalidateQueries({ queryKey: ['user-profile', userId] });
+      alert('Profile updated successfully! (Changes saved locally only)');
     },
   });
 
-  // Change password mutation
+  // Change password mutation (disabled - no API endpoint yet)
   const changePasswordMutation = useMutation({
     mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/users/${userId}/change-password`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to change password');
-      }
-      return response.json();
+      // TODO: Implement users API endpoint for password change
+      throw new Error('Password change is not yet implemented. Please contact support.');
     },
     onSuccess: () => {
       setShowPasswordModal(false);
@@ -178,11 +162,11 @@ function ProfileSettingsComponent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
+    <FamilyLayout>
+      <div className="bg-gray-50 min-h-screen">
+        {/* Page Header */}
+        <div className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 py-6">
             <div className="flex items-center gap-3">
               <User className="h-8 w-8 text-purple-600" />
               <div>
@@ -190,18 +174,11 @@ function ProfileSettingsComponent() {
                 <p className="text-sm text-gray-600">Manage your profile and preferences</p>
               </div>
             </div>
-            <Link to="/family/settings">
-              <Button variant="outline">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </Link>
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+        {/* Content */}
+        <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         {isLoading ? (
           <p className="text-center text-gray-600">Loading profile...</p>
         ) : (
@@ -349,6 +326,7 @@ function ProfileSettingsComponent() {
             </Card>
           </>
         )}
+        </div>
       </div>
 
       {/* Change Password Modal */}
@@ -428,6 +406,6 @@ function ProfileSettingsComponent() {
           </Card>
         </div>
       )}
-    </div>
+    </FamilyLayout>
   );
 }

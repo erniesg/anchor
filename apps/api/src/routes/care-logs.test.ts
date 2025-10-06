@@ -20,6 +20,10 @@ describe('Care Logs API', () => {
   let caregiverId: string;
 
   beforeEach(async () => {
+    // Clear test data store for isolation
+    const { clearTestData } = await import('../test-setup');
+    clearTestData();
+
     // Mock D1 database
     mockD1 = {
       prepare: vi.fn(),

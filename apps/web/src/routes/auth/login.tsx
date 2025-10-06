@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { apiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/auth/login')({
   component: LoginComponent,
@@ -21,17 +22,28 @@ function LoginComponent() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginData) => {
-      const response = await fetch('/api/auth/login', {
+      return apiCall('/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Login failed');
-      return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
+
+      // Fetch care recipients for this family admin
+      try {
+        const recipients = await apiCall('/care-recipients', {
+          headers: { 'Authorization': `Bearer ${data.token}` }
+        });
+        if (recipients && recipients.length > 0) {
+          // Store first care recipient (can extend to support multiple later)
+          localStorage.setItem('careRecipient', JSON.stringify(recipients[0]));
+        }
+      } catch (error) {
+        console.error('Failed to fetch care recipients:', error);
+      }
+
       navigate({ to: '/family/dashboard' });
     },
   });

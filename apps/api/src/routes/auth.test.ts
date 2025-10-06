@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import app from '../index';
 import { createDbClient } from '@anchor/database';
 import type { D1Database } from '@cloudflare/workers-types';
+import type { Env } from '../index';
 
 /**
  * Authentication API Tests
@@ -11,6 +12,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 describe('Authentication API', () => {
   let db: ReturnType<typeof createDbClient>;
   let mockD1: D1Database;
+  let mockEnv: Env;
 
   beforeEach(async () => {
     mockD1 = {
@@ -19,6 +21,14 @@ describe('Authentication API', () => {
       exec: vi.fn(),
       dump: vi.fn(),
     } as any;
+
+    mockEnv = {
+      DB: mockD1,
+      STORAGE: {} as any,
+      ENVIRONMENT: 'dev',
+      JWT_SECRET: 'test-secret',
+      LOGTO_APP_SECRET: 'test-logto-secret',
+    };
 
     db = createDbClient(mockD1);
   });
@@ -36,7 +46,7 @@ describe('Authentication API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(signupData),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(201);
       const data = await res.json();
@@ -46,7 +56,7 @@ describe('Authentication API', () => {
       expect(data.user.name).toBe(signupData.name);
       expect(data.user.role).toBe('family');
       expect(data.token).toBeDefined();
-    });
+    }, mockEnv);
 
     it('should validate email format', async () => {
       const res = await app.request('/auth/signup', {
@@ -57,7 +67,7 @@ describe('Authentication API', () => {
           name: 'John Doe',
           password: 'password123',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -74,7 +84,7 @@ describe('Authentication API', () => {
           name: 'John Doe',
           password: 'short',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -90,7 +100,7 @@ describe('Authentication API', () => {
           name: 'J',
           password: 'password123',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
     });
@@ -107,7 +117,7 @@ describe('Authentication API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(signupData),
-      });
+      }, mockEnv);
 
       // Second signup with same email
       const res = await app.request('/auth/signup', {
@@ -117,7 +127,7 @@ describe('Authentication API', () => {
           ...signupData,
           name: 'Second User',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(409);
       const data = await res.json();
@@ -133,7 +143,7 @@ describe('Authentication API', () => {
           name: 'No Phone User',
           password: 'password123',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(201);
     });
@@ -147,7 +157,7 @@ describe('Authentication API', () => {
           name: 'Admin User',
           password: 'password123',
         }),
-      });
+      }, mockEnv);
 
       const data = await res.json();
       expect(data.user.role).toBe('family_admin');
@@ -167,7 +177,7 @@ describe('Authentication API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(testUser),
-      });
+      }, mockEnv);
     });
 
     it('should login with valid credentials', async () => {
@@ -178,7 +188,7 @@ describe('Authentication API', () => {
           email: testUser.email,
           password: testUser.password,
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -197,7 +207,7 @@ describe('Authentication API', () => {
           email: 'nonexistent@example.com',
           password: 'password123',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(401);
       const data = await res.json();
@@ -212,7 +222,7 @@ describe('Authentication API', () => {
           email: testUser.email,
           password: 'wrongpassword',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(401);
       const data = await res.json();
@@ -227,7 +237,7 @@ describe('Authentication API', () => {
           email: 'not-an-email',
           password: 'password123',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
     });
@@ -239,7 +249,7 @@ describe('Authentication API', () => {
         body: JSON.stringify({
           email: testUser.email,
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
     });
@@ -252,7 +262,7 @@ describe('Authentication API', () => {
           email: testUser.email,
           password: testUser.password,
         }),
-      });
+      }, mockEnv);
 
       const data = await res.json();
       expect(data.user.role).toBeDefined();
@@ -272,7 +282,7 @@ describe('Authentication API', () => {
           caregiverId,
           pin: validPin,
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -290,7 +300,7 @@ describe('Authentication API', () => {
           caregiverId,
           pin: '12345', // Only 5 digits
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -305,7 +315,7 @@ describe('Authentication API', () => {
           caregiverId,
           pin: 'abc123',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
     });
@@ -318,7 +328,7 @@ describe('Authentication API', () => {
           caregiverId: 'not-a-uuid',
           pin: '123456',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
     });
@@ -328,7 +338,7 @@ describe('Authentication API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pin: '123456' }), // Missing caregiverId
-      });
+      }, mockEnv);
 
       expect(res1.status).toBe(400);
 
@@ -336,7 +346,7 @@ describe('Authentication API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ caregiverId }), // Missing PIN
-      });
+      }, mockEnv);
 
       expect(res2.status).toBe(400);
     });
@@ -349,7 +359,7 @@ describe('Authentication API', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ caregiverId, pin }),
-        });
+        }, mockEnv);
 
         expect(res.status).toBe(400);
       }
@@ -366,7 +376,7 @@ describe('Authentication API', () => {
           name: 'Security Test',
           password: 'supersecret123',
         }),
-      });
+      }, mockEnv);
 
       const data = await res.json();
       expect(data.user.password).toBeUndefined();
@@ -387,14 +397,14 @@ describe('Authentication API', () => {
           ...loginData,
           name: 'Token Test',
         }),
-      });
+      }, mockEnv);
 
       // First login
       const res1 = await app.request('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData),
-      });
+      }, mockEnv);
       const data1 = await res1.json();
 
       // Second login
@@ -402,7 +412,7 @@ describe('Authentication API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData),
-      });
+      }, mockEnv);
       const data2 = await res2.json();
 
       // Tokens should be different (stateless JWT) or same (session-based)
@@ -419,7 +429,7 @@ describe('Authentication API', () => {
           email: 'nonexistent@example.com',
           password: 'password123',
         }),
-      });
+      }, mockEnv);
 
       const res2 = await app.request('/auth/login', {
         method: 'POST',
@@ -428,7 +438,7 @@ describe('Authentication API', () => {
           email: 'existing@example.com',
           password: 'wrongpassword',
         }),
-      });
+      }, mockEnv);
 
       const data1 = await res1.json();
       const data2 = await res2.json();

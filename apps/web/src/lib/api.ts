@@ -25,6 +25,13 @@ export async function apiCall<T = any>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: response.statusText }));
+    // Include validation details if present
+    if (error.details) {
+      console.error('Validation errors:', JSON.stringify(error.details, null, 2));
+      error.details.forEach((detail: any) => {
+        console.error(`  - ${detail.path.join('.')}: ${detail.message}`);
+      });
+    }
     throw new Error(error.error || `API error: ${response.statusText}`);
   }
 

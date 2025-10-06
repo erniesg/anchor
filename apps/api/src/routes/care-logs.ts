@@ -23,14 +23,24 @@ const mealLogSchema = z.object({
   swallowingIssues: z.array(z.string()).optional(),
 });
 
-// Sprint 1: Unaccompanied Time schema
-const unaccompaniedTimeSchema = z.object({
-  startTime: z.string(),
-  endTime: z.string(),
-  reason: z.string(),
-  replacementPerson: z.string(),
-  duration: z.number(),
-  incidents: z.string().optional(),
+// Sprint 1 Day 2: Unaccompanied Time schema
+const unaccompaniedTimePeriodSchema = z.object({
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+  reason: z.string().min(1, 'Reason is required'),
+  replacementPerson: z.string().optional(),
+  durationMinutes: z.number().int().positive('Duration must be positive'),
+  notes: z.string().optional(),
+}).refine((data) => {
+  // Validate start < end
+  const [startHour, startMin] = data.startTime.split(':').map(Number);
+  const [endHour, endMin] = data.endTime.split(':').map(Number);
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+  return startMinutes < endMinutes;
+}, {
+  message: 'Start time must be before end time',
+  path: ['startTime'],
 });
 
 // Sprint 1: Safety Checks schema
@@ -99,8 +109,9 @@ const createCareLogSchema = z.object({
   walkingPattern: z.array(z.string()).optional(), // ['shuffling', 'uneven', 'slow', 'stumbling', 'cannot_lift_feet']
   freezingEpisodes: z.enum(['none', 'mild', 'severe']).optional(),
 
-  // Sprint 1: Unaccompanied Time
-  unaccompaniedTime: z.array(unaccompaniedTimeSchema).optional(),
+  // Sprint 1 Day 2: Unaccompanied Time
+  unaccompaniedTime: z.array(unaccompaniedTimePeriodSchema).optional(),
+  unaccompaniedIncidents: z.string().optional(),
 
   // Sprint 1: Safety & Emergency Prep
   safetyChecks: safetyChecksSchema.optional(),
@@ -113,6 +124,12 @@ const createCareLogSchema = z.object({
   // Notes
   notes: z.string().optional(),
 });
+
+// Helper function to calculate total unaccompanied time
+function calculateTotalUnaccompaniedTime(periods: any[]): number {
+  if (!periods || periods.length === 0) return 0;
+  return periods.reduce((total, period) => total + (period.durationMinutes || 0), 0);
+}
 
 // Create care log (caregivers only) - creates as draft
 careLogsRoute.post('/', ...caregiverOnly, async (c) => {
@@ -160,6 +177,7 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         walkingPattern: data.walkingPattern as any,
         freezingEpisodes: data.freezingEpisodes,
         unaccompaniedTime: data.unaccompaniedTime as any,
+        unaccompaniedIncidents: data.unaccompaniedIncidents,
         safetyChecks: data.safetyChecks as any,
         emergencyPrep: data.emergencyPrep as any,
         emergencyFlag: data.emergencyFlag,
@@ -175,7 +193,10 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
       console.log('🚨 MAJOR FALL ALERT for care recipient:', data.careRecipientId);
     }
 
-    return c.json(newLog, 201);
+    // Calculate total unaccompanied time
+    const totalUnaccompaniedMinutes = calculateTotalUnaccompaniedTime(data.unaccompaniedTime || []);
+
+    return c.json({ ...newLog, totalUnaccompaniedMinutes }, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return c.json({ error: 'Validation failed', details: error.errors }, 400);
@@ -247,6 +268,7 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
         walkingPattern: data.walkingPattern as any,
         freezingEpisodes: data.freezingEpisodes,
         unaccompaniedTime: data.unaccompaniedTime as any,
+        unaccompaniedIncidents: data.unaccompaniedIncidents,
         safetyChecks: data.safetyChecks as any,
         emergencyPrep: data.emergencyPrep as any,
         emergencyFlag: data.emergencyFlag,

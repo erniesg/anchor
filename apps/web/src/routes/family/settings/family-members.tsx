@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Users, ArrowLeft, UserPlus, Shield, ShieldOff, Trash2, Mail } from 'lucide-react';
+import { FamilyLayout } from '@/components/FamilyLayout';
 
 export const Route = createFileRoute('/family/settings/family-members')({
   component: FamilyMembersSettingsComponent,
@@ -175,35 +176,28 @@ function FamilyMembersSettingsComponent() {
   const regularMembers = members?.filter((m) => m.role === 'family_member') || [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Users className="h-8 w-8 text-green-600" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Family Members</h1>
-                <p className="text-sm text-gray-600">Invite and manage family member access</p>
+    <FamilyLayout>
+      <div className="bg-gray-50 min-h-screen">
+        {/* Page Header */}
+        <div className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Users className="h-8 w-8 text-green-600" />
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Family Members</h1>
+                  <p className="text-sm text-gray-600">Invite and manage family member access</p>
+                </div>
               </div>
-            </div>
-            <div className="flex gap-3">
               <Button onClick={() => setShowInviteModal(true)}>
                 <UserPlus className="h-4 w-4 mr-2" />
                 Invite Member
               </Button>
-              <Link to="/family/settings">
-                <Button variant="outline">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-              </Link>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Family Members List */}
+        {/* Family Members List */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         {isLoading ? (
           <p className="text-center text-gray-600">Loading family members...</p>
@@ -403,6 +397,7 @@ function FamilyMembersSettingsComponent() {
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </FamilyLayout>
   );
 }

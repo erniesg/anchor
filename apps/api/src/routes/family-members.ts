@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AppContext } from '../index';
 import { users, careRecipientAccess, careRecipients } from '@anchor/database/schema';
 import { eq, and } from 'drizzle-orm';
-import { familyOnly } from '../middleware/auth';
+import { familyMemberAccess } from '../middleware/rbac';
 
 const familyMembers = new Hono<AppContext>();
 
@@ -25,7 +25,7 @@ const revokeAccessSchema = z.object({
 });
 
 // Apply auth middleware to all routes
-familyMembers.use('*', familyOnly);
+familyMembers.use('*', ...familyMemberAccess);
 
 /**
  * GET /api/family-members

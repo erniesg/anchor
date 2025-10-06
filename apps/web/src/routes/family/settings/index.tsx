@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings, Users, UserCog, User, LogOut } from 'lucide-react';
+import { FamilyLayout } from '@/components/FamilyLayout';
 
 export const Route = createFileRoute('/family/settings/')({
   component: SettingsIndexComponent,
@@ -40,11 +41,11 @@ function SettingsIndexComponent() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
+    <FamilyLayout>
+      <div className="bg-gray-50 min-h-screen">
+        {/* Page Header */}
+        <div className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 py-6">
             <div className="flex items-center gap-3">
               <Settings className="h-8 w-8 text-gray-700" />
               <div>
@@ -52,15 +53,11 @@ function SettingsIndexComponent() {
                 <p className="text-sm text-gray-600">Manage your account and preferences</p>
               </div>
             </div>
-            <Link to="/family/dashboard">
-              <Button variant="outline">Back to Dashboard</Button>
-            </Link>
           </div>
         </div>
-      </div>
 
-      {/* Settings Grid */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Settings Grid */}
+        <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {settingsSections.map((section) => {
             const Icon = section.icon;
@@ -102,7 +99,8 @@ function SettingsIndexComponent() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
-    </div>
+    </FamilyLayout>
   );
 }

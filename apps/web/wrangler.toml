@@ -6,6 +6,8 @@ compatibility_flags = ["nodejs_compat"]
 # SPA Static Assets - Routes all 404s to index.html for client-side routing
 [assets]
 directory = "dist"
+html_handling = "auto-trailing-slash"
+not_found_handling = "single-page-application"
 
 # Development Environment
 [env.dev]

@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppContext } from '../index';
-import { careRecipients } from '@anchor/database/schema';
+import { careRecipients, caregivers } from '@anchor/database/schema';
 import { eq } from 'drizzle-orm';
+import { familyMemberAccess } from '../middleware/rbac';
 
 const careRecipientsRoute = new Hono<AppContext>();
 
@@ -51,22 +52,40 @@ careRecipientsRoute.post('/', async (c) => {
   }
 });
 
-// Get all care recipients for user
-careRecipientsRoute.get('/', async (c) => {
+// Get all care recipients for user (with caregivers)
+careRecipientsRoute.get('/', ...familyMemberAccess, async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = c.get('userId');
     if (!userId) {
       return c.json({ error: 'User ID required' }, 401);
     }
 
     const db = c.get('db');
+
+    // Get care recipients owned by this family admin
     const recipients = await db
       .select()
       .from(careRecipients)
       .where(eq(careRecipients.familyAdminId, userId))
       .all();
 
-    return c.json(recipients);
+    // For each recipient, get their caregivers
+    const recipientsWithCaregivers = await Promise.all(
+      recipients.map(async (recipient) => {
+        const recipientCaregivers = await db
+          .select()
+          .from(caregivers)
+          .where(eq(caregivers.careRecipientId, recipient.id))
+          .all();
+
+        return {
+          ...recipient,
+          caregivers: recipientCaregivers,
+        };
+      })
+    );
+
+    return c.json(recipientsWithCaregivers);
   } catch (error) {
     console.error('Get care recipients error:', error);
     return c.json({ error: 'Internal server error' }, 500);

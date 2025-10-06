@@ -26,8 +26,13 @@ function CaregiverLoginComponent() {
     onSuccess: (data) => {
       localStorage.setItem('caregiverToken', data.token);
       localStorage.setItem('caregiver', JSON.stringify(data.caregiver));
-      // Store care recipient info for form access
-      localStorage.setItem('careRecipient', JSON.stringify({ id: data.caregiver.careRecipientId }));
+      // Store full care recipient info including age/gender for personalized validation
+      if (data.careRecipient) {
+        localStorage.setItem('careRecipient', JSON.stringify(data.careRecipient));
+      } else {
+        // Fallback for backward compatibility
+        localStorage.setItem('careRecipient', JSON.stringify({ id: data.caregiver.careRecipientId }));
+      }
       navigate({ to: '/caregiver/form' });
     },
     onError: (err: Error) => {
