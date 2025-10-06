@@ -85,7 +85,12 @@ caregiversRoute.get('/recipient/:recipientId', ...familyMemberAccess, async (c) 
         active: caregivers.active,
         language: caregivers.language,
         createdAt: caregivers.createdAt,
+        createdBy: caregivers.createdBy,
         deactivatedAt: caregivers.deactivatedAt,
+        deactivatedBy: caregivers.deactivatedBy,
+        deactivationReason: caregivers.deactivationReason,
+        lastPinResetAt: caregivers.lastPinResetAt,
+        lastPinResetBy: caregivers.lastPinResetBy,
       })
       .from(caregivers)
       .where(eq(caregivers.careRecipientId, recipientId))
@@ -139,7 +144,27 @@ caregiversRoute.post('/:id/deactivate', ...familyAdminOnly, async (c) => {
     const body = await c.req.json();
     const { reason } = body;
 
+    // Validate reason is provided
+    if (!reason || reason.trim() === '') {
+      return c.json({ error: 'Deactivation reason is required' }, 400);
+    }
+
     const db = c.get('db');
+
+    // Check if caregiver is already deactivated
+    const caregiver = await db
+      .select()
+      .from(caregivers)
+      .where(eq(caregivers.id, caregiverId))
+      .get();
+
+    if (!caregiver) {
+      return c.json({ error: 'Caregiver not found' }, 404);
+    }
+
+    if (!caregiver.active) {
+      return c.json({ error: 'Caregiver is already deactivated' }, 400);
+    }
 
     // Deactivate caregiver
     await db

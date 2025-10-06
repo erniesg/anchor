@@ -64,11 +64,13 @@ describe('Caregivers API', () => {
       expect(res.status).toBe(201);
       const data = await res.json();
 
-      expect(data.caregiver).toBeDefined();
-      expect(data.caregiver.name).toBe(caregiverData.name);
-      expect(data.caregiver.active).toBe(true);
+      // API returns caregiver object directly (not nested under 'caregiver' key)
+      expect(data.id).toBeDefined();
+      expect(data.name).toBe(caregiverData.name);
+      expect(data.active).toBe(true);
       expect(data.pin).toBeDefined();
       expect(data.pin).toMatch(/^\d{6}$/); // 6-digit PIN
+      expect(data.pinCode).toBeUndefined(); // Hashed PIN should not be exposed
     }, mockEnv);
 
     it('should reject caregiver creation by family_member', async () => {
@@ -155,7 +157,7 @@ describe('Caregivers API', () => {
       }, mockEnv);
 
       const data = await res.json();
-      expect(data.caregiver.language).toBe('en');
+      expect(data.language).toBe('en'); // API returns caregiver directly
     });
 
     it('should record createdBy (family_admin)', async () => {
@@ -172,7 +174,7 @@ describe('Caregivers API', () => {
       }, mockEnv);
 
       const data = await res.json();
-      expect(data.caregiver.createdBy).toBeDefined();
+      expect(data.createdBy).toBeDefined(); // API returns caregiver directly
     });
   });
 
@@ -205,7 +207,7 @@ describe('Caregivers API', () => {
       const deactivated = await deactivatedRes.json();
 
       // Deactivate one caregiver
-      await app.request(`/caregivers/${deactivated.caregiver.id}/deactivate`, {
+      await app.request(`/caregivers/${deactivated.id}/deactivate`, { // API returns caregiver directly
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -277,7 +279,7 @@ describe('Caregivers API', () => {
         }),
       }, mockEnv);
       const data = await res.json();
-      caregiverId = data.caregiver.id;
+      caregiverId = data.id;
     });
 
     it('should deactivate caregiver (family_admin only)', async () => {
@@ -407,7 +409,7 @@ describe('Caregivers API', () => {
         }),
       }, mockEnv);
       const data = await res.json();
-      caregiverId = data.caregiver.id;
+      caregiverId = data.id;
       originalPin = data.pin;
     });
 
@@ -419,9 +421,9 @@ describe('Caregivers API', () => {
 
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.newPin).toBeDefined();
-      expect(data.newPin).toMatch(/^\d{6}$/);
-      expect(data.newPin).not.toBe(originalPin); // Should be different
+      expect(data.pin).toBeDefined();
+      expect(data.pin).toMatch(/^\d{6}$/);
+      expect(data.pin).not.toBe(originalPin); // Should be different
     });
 
     it('should reject PIN reset by family_member', async () => {
@@ -488,7 +490,7 @@ describe('Caregivers API', () => {
         }),
       }, mockEnv);
       const data = await res.json();
-      caregiverId = data.caregiver.id;
+      caregiverId = data.id;
     });
 
     it('should update caregiver details (family_admin only)', async () => {
@@ -591,7 +593,7 @@ describe('Caregivers API', () => {
       const caregiver = await createRes.json();
 
       // Deactivate
-      await app.request(`/caregivers/${caregiver.caregiver.id}/deactivate`, {
+      await app.request(`/caregivers/${caregiver.id}/deactivate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -601,7 +603,7 @@ describe('Caregivers API', () => {
       }, mockEnv);
 
       // Reset PIN
-      await app.request(`/caregivers/${caregiver.caregiver.id}/reset-pin`, {
+      await app.request(`/caregivers/${caregiver.id}/reset-pin`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${familyAdminToken}` },
       }, mockEnv);
@@ -611,7 +613,7 @@ describe('Caregivers API', () => {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
       }, mockEnv);
       const caregivers = await fetchRes.json();
-      const audited = caregivers.find((c: any) => c.id === caregiver.caregiver.id);
+      const audited = caregivers.find((c: any) => c.id === caregiver.id);
 
       expect(audited.createdBy).toBeDefined();
       expect(audited.deactivatedBy).toBeDefined();
