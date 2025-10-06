@@ -254,7 +254,7 @@ describe('Care Logs API', () => {
 
       expect(res.status).toBe(400);
       const data = await res.json();
-      expect(data.error).toContain('submitted');
+      expect(data.error).toContain('draft'); // Error message is "Can only update draft logs"
     });
 
     it('should reject submission by family members', async () => {

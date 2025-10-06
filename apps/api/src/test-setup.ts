@@ -92,6 +92,7 @@ vi.mock('./lib/access-control', () => ({
   familyMemberHasAccess: vi.fn(async () => true),
   caregiverOwnsCareLog: vi.fn(async () => true),
   canAccessCareRecipient: vi.fn(async () => true),
+  canInvalidateCareLog: vi.fn(async () => true),
 }));
 
 // Global test database store (cleared in test beforeEach)
