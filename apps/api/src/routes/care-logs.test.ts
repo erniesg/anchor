@@ -126,7 +126,7 @@ describe('Care Logs API', () => {
         body: JSON.stringify({ careRecipientId, logDate: '2025-10-03' }),
       }, mockEnv);
 
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(401); // Caregiver auth required
     });
 
     it('should validate required fields', async () => {
@@ -181,7 +181,7 @@ describe('Care Logs API', () => {
 
       // Auto-save update (simulated)
       const res2 = await app.request(`/care-logs/${log1.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${caregiverToken}`,
@@ -240,7 +240,7 @@ describe('Care Logs API', () => {
 
       // Try to update submitted log
       const res = await app.request(`/care-logs/${draftLogId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${caregiverToken}`,
@@ -259,7 +259,7 @@ describe('Care Logs API', () => {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
       }, mockEnv);
 
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(401); // Caregiver auth required
     });
 
     it('should reject double submission', async () => {
@@ -347,7 +347,7 @@ describe('Care Logs API', () => {
         body: JSON.stringify({ reason: 'My mistake' }),
       }, mockEnv);
 
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(401); // Family admin auth required
     });
 
     it('should require invalidation reason', async () => {
@@ -376,7 +376,7 @@ describe('Care Logs API', () => {
 
       // Caregiver should be able to edit
       const res = await app.request(`/care-logs/${submittedLogId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${caregiverToken}`,
