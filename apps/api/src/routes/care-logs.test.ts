@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import app from '../index';
 import { createDbClient } from '@anchor/database';
 import type { D1Database } from '@cloudflare/workers-types';
+import type { Env } from '../index';
 
 /**
  * Care Logs API Tests
@@ -11,6 +12,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 describe('Care Logs API', () => {
   let db: ReturnType<typeof createDbClient>;
   let mockD1: D1Database;
+  let mockEnv: Env;
   let familyAdminToken: string;
   let familyMemberToken: string;
   let caregiverToken: string;
@@ -26,14 +28,22 @@ describe('Care Logs API', () => {
       dump: vi.fn(),
     } as any;
 
+    mockEnv = {
+      DB: mockD1,
+      STORAGE: {} as any,
+      ENVIRONMENT: 'dev',
+      JWT_SECRET: 'test-secret',
+      LOGTO_APP_SECRET: 'test-logto-secret',
+    };
+
     db = createDbClient(mockD1);
 
-    // Setup test data
+    // Setup test data with valid UUIDs
     familyAdminToken = 'mock-token-family-admin';
     familyMemberToken = 'mock-token-family-member';
     caregiverToken = 'mock-token-caregiver';
-    careRecipientId = 'recipient-123';
-    caregiverId = 'caregiver-123';
+    careRecipientId = '550e8400-e29b-41d4-a716-446655440000'; // Valid UUID
+    caregiverId = '550e8400-e29b-41d4-a716-446655440001'; // Valid UUID
   });
 
   describe('POST /care-logs - Create Draft', () => {
@@ -86,7 +96,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${caregiverToken}`,
         },
         body: JSON.stringify(careLogData),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(201);
       const data = await res.json();
@@ -101,7 +111,7 @@ describe('Care Logs API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ careRecipientId, logDate: '2025-10-03' }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(401);
     });
@@ -114,7 +124,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({ careRecipientId, logDate: '2025-10-03' }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(403);
     });
@@ -127,7 +137,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${caregiverToken}`,
         },
         body: JSON.stringify({ logDate: '2025-10-03' }), // Missing careRecipientId
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -146,7 +156,7 @@ describe('Care Logs API', () => {
           logDate: '2025-10-03',
           medications: [{ name: 'Test', given: true }], // Missing timeSlot
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
     });
@@ -163,7 +173,7 @@ describe('Care Logs API', () => {
           logDate: '2025-10-03',
           wakeTime: '07:30',
         }),
-      });
+      }, mockEnv);
 
       expect(res1.status).toBe(201);
       const log1 = await res1.json();
@@ -179,7 +189,7 @@ describe('Care Logs API', () => {
         body: JSON.stringify({
           wakeTime: '07:45', // Updated time
         }),
-      });
+      }, mockEnv);
 
       expect(res2.status).toBe(200);
       const log2 = await res2.json();
@@ -204,7 +214,7 @@ describe('Care Logs API', () => {
           logDate: '2025-10-03',
           wakeTime: '07:30',
         }),
-      });
+      }, mockEnv);
       const log = await res.json();
       draftLogId = log.id;
     });
@@ -213,7 +223,7 @@ describe('Care Logs API', () => {
       const res = await app.request(`/care-logs/${draftLogId}/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${caregiverToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -226,7 +236,7 @@ describe('Care Logs API', () => {
       await app.request(`/care-logs/${draftLogId}/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${caregiverToken}` },
-      });
+      }, mockEnv);
 
       // Try to update submitted log
       const res = await app.request(`/care-logs/${draftLogId}`, {
@@ -236,7 +246,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${caregiverToken}`,
         },
         body: JSON.stringify({ wakeTime: '08:00' }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -247,7 +257,7 @@ describe('Care Logs API', () => {
       const res = await app.request(`/care-logs/${draftLogId}/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${familyAdminToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(403);
     });
@@ -257,13 +267,13 @@ describe('Care Logs API', () => {
       await app.request(`/care-logs/${draftLogId}/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${caregiverToken}` },
-      });
+      }, mockEnv);
 
       // Second submission attempt
       const res = await app.request(`/care-logs/${draftLogId}/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${caregiverToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -287,13 +297,13 @@ describe('Care Logs API', () => {
           logDate: '2025-10-03',
           wakeTime: '07:30',
         }),
-      });
+      }, mockEnv);
       const log = await createRes.json();
 
       await app.request(`/care-logs/${log.id}/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${caregiverToken}` },
-      });
+      }, mockEnv);
 
       submittedLogId = log.id;
     });
@@ -306,7 +316,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({ reason: 'Incorrect wake time recorded' }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -322,7 +332,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${familyMemberToken}`,
         },
         body: JSON.stringify({ reason: 'Wrong data' }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(403);
     });
@@ -335,7 +345,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${caregiverToken}`,
         },
         body: JSON.stringify({ reason: 'My mistake' }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(403);
     });
@@ -348,7 +358,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({}), // Missing reason
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
     });
@@ -362,7 +372,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${familyAdminToken}`,
         },
         body: JSON.stringify({ reason: 'Incorrect data' }),
-      });
+      }, mockEnv);
 
       // Caregiver should be able to edit
       const res = await app.request(`/care-logs/${submittedLogId}`, {
@@ -372,7 +382,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${caregiverToken}`,
         },
         body: JSON.stringify({ wakeTime: '08:00' }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const log = await res.json();
@@ -385,7 +395,7 @@ describe('Care Logs API', () => {
     it('should return submitted logs only (family members)', async () => {
       const res = await app.request(`/care-logs/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyMemberToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const logs = await res.json();
@@ -408,12 +418,12 @@ describe('Care Logs API', () => {
           logDate: '2025-10-03',
           wakeTime: '07:30',
         }),
-      });
+      }, mockEnv);
 
       // Family member tries to view
       const res = await app.request(`/care-logs/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyMemberToken}` },
-      });
+      }, mockEnv);
 
       const logs = await res.json();
       const draftLogs = logs.filter((log: any) => log.status === 'draft');
@@ -423,7 +433,7 @@ describe('Care Logs API', () => {
     it('should reject unauthorized access', async () => {
       const res = await app.request(`/care-logs/recipient/${careRecipientId}`, {
         headers: {},
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(401);
     });
@@ -445,18 +455,18 @@ describe('Care Logs API', () => {
           logDate: today,
           wakeTime: '07:30',
         }),
-      });
+      }, mockEnv);
       const log = await createRes.json();
 
       await app.request(`/care-logs/${log.id}/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${caregiverToken}` },
-      });
+      }, mockEnv);
 
       // Fetch today's log
       const res = await app.request(`/care-logs/recipient/${careRecipientId}/today`, {
         headers: { Authorization: `Bearer ${familyMemberToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const todayLog = await res.json();
@@ -467,7 +477,7 @@ describe('Care Logs API', () => {
     it('should return null if no log for today', async () => {
       const res = await app.request(`/care-logs/recipient/${careRecipientId}/today`, {
         headers: { Authorization: `Bearer ${familyMemberToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const todayLog = await res.json();
@@ -491,18 +501,18 @@ describe('Care Logs API', () => {
           logDate: targetDate,
           wakeTime: '07:30',
         }),
-      });
+      }, mockEnv);
       const log = await createRes.json();
 
       await app.request(`/care-logs/${log.id}/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${caregiverToken}` },
-      });
+      }, mockEnv);
 
       // Fetch log by date
       const res = await app.request(`/care-logs/recipient/${careRecipientId}/date/${targetDate}`, {
         headers: { Authorization: `Bearer ${familyMemberToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const dateLog = await res.json();
@@ -512,7 +522,7 @@ describe('Care Logs API', () => {
     it('should return null for date with no log', async () => {
       const res = await app.request(`/care-logs/recipient/${careRecipientId}/date/2025-01-01`, {
         headers: { Authorization: `Bearer ${familyMemberToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(200);
       const log = await res.json();
@@ -534,7 +544,7 @@ describe('Care Logs API', () => {
           emergencyFlag: true,
           emergencyNote: 'Patient had a fall',
         }),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(201);
       const log = await res.json();
@@ -566,17 +576,17 @@ describe('Care Logs API', () => {
           logDate: '2025-10-03',
           medications,
         }),
-      });
+      }, mockEnv);
 
       const log = await createRes.json();
       const submitRes = await app.request(`/care-logs/${log.id}/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${caregiverToken}` },
-      });
+      }, mockEnv);
 
       const fetchRes = await app.request(`/care-logs/recipient/${careRecipientId}`, {
         headers: { Authorization: `Bearer ${familyMemberToken}` },
-      });
+      }, mockEnv);
 
       const logs = await fetchRes.json();
       const fetchedLog = logs.find((l: any) => l.id === log.id);
@@ -600,17 +610,17 @@ describe('Care Logs API', () => {
           logDate: '2025-10-03',
           meals,
         }),
-      });
+      }, mockEnv);
 
       const log = await createRes.json();
       await app.request(`/care-logs/${log.id}/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${caregiverToken}` },
-      });
+      }, mockEnv);
 
       const fetchRes = await app.request(`/care-logs/recipient/${careRecipientId}/today`, {
         headers: { Authorization: `Bearer ${familyMemberToken}` },
-      });
+      }, mockEnv);
 
       const fetchedLog = await fetchRes.json();
       expect(fetchedLog.meals).toEqual(meals);
@@ -632,14 +642,14 @@ describe('Care Logs API', () => {
           careRecipientId,
           logDate: '2025-10-03',
         }),
-      });
+      }, mockEnv);
       const log = await createRes.json();
 
       // Try to submit with different caregiver
       const res = await app.request(`/care-logs/${log.id}/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${otherCaregiverToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(403);
     });
@@ -649,7 +659,7 @@ describe('Care Logs API', () => {
 
       const res = await app.request(`/care-logs/recipient/${otherRecipientId}`, {
         headers: { Authorization: `Bearer ${familyMemberToken}` },
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(403);
     });
@@ -676,7 +686,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${caregiverToken}`,
         },
         body: JSON.stringify(careLogData),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(201);
       const data = await res.json();
@@ -702,7 +712,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${caregiverToken}`,
         },
         body: JSON.stringify(careLogData),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -724,7 +734,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${caregiverToken}`,
         },
         body: JSON.stringify(careLogData),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -746,7 +756,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${caregiverToken}`,
         },
         body: JSON.stringify(careLogData),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(400);
     });
@@ -770,7 +780,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${caregiverToken}`,
         },
         body: JSON.stringify(careLogData),
-      });
+      }, mockEnv);
 
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining('MAJOR FALL ALERT'),
@@ -780,19 +790,59 @@ describe('Care Logs API', () => {
       consoleLogSpy.mockRestore();
     });
 
-    it('should accept unaccompanied time data', async () => {
+    it('should accept valid unaccompanied time data', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        wakeTime: '07:00',
+        mood: 'calm',
+        unaccompaniedTime: [
+          {
+            startTime: '14:00',
+            endTime: '14:30',
+            reason: 'Emergency break',
+            replacementPerson: 'Family member',
+            durationMinutes: 30,
+            notes: '',
+          },
+        ],
+        unaccompaniedIncidents: '',
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      if (res.status !== 201) {
+        const error = await res.json();
+        console.log('Validation error:', JSON.stringify(error, null, 2));
+      }
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.unaccompaniedTime).toHaveLength(1);
+      expect(data.unaccompaniedTime[0].durationMinutes).toBe(30);
+    });
+
+    it('should validate time period start < end', async () => {
       const careLogData = {
         careRecipientId,
         caregiverId,
         logDate: '2025-10-06',
         unaccompaniedTime: [
           {
-            startTime: '14:00',
-            endTime: '14:30',
-            reason: 'Caregiver lunch break',
-            replacementPerson: 'Family member',
-            duration: 30,
-            incidents: 'None',
+            startTime: '14:30',  // Invalid: start after end
+            endTime: '14:00',
+            reason: 'Break',
+            replacementPerson: 'Sister',
+            durationMinutes: -30,
+            notes: '',
           },
         ],
       };
@@ -804,12 +854,172 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${caregiverToken}`,
         },
         body: JSON.stringify(careLogData),
-      });
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+      const error = await res.json();
+      expect(error.error).toBe('Validation failed');
+      const errorMessage = error.details.map((d: any) => d.message).join(' ');
+      expect(errorMessage).toContain('Start time must be before end time');
+    });
+
+    it('should validate duration is positive', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        unaccompaniedTime: [
+          {
+            startTime: '14:00',
+            endTime: '14:30',
+            reason: 'Break',
+            replacementPerson: 'Sister',
+            durationMinutes: -10,  // Invalid
+            notes: '',
+          },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+      const error = await res.json();
+      expect(error.error).toBe('Validation failed');
+      const errorMessage = error.details.map((d: any) => d.message).join(' ');
+      expect(errorMessage).toContain('Duration must be positive');
+    });
+
+    it('should require reason when time period added', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        unaccompaniedTime: [
+          {
+            startTime: '14:00',
+            endTime: '14:30',
+            reason: '',  // Invalid: empty
+            replacementPerson: 'Sister',
+            durationMinutes: 30,
+            notes: '',
+          },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+      const error = await res.json();
+      expect(error.error).toBe('Validation failed');
+      const errorMessage = error.details.map((d: any) => d.message).join(' ');
+      expect(errorMessage).toContain('Reason');
+    });
+
+    it('should accept empty unaccompanied time array', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        unaccompaniedTime: [],  // Valid: never left alone
+        unaccompaniedIncidents: '',
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+    });
+
+    it('should calculate total unaccompanied time', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        unaccompaniedTime: [
+          {
+            startTime: '10:00',
+            endTime: '10:30',
+            reason: 'Break 1',
+            replacementPerson: 'Sister',
+            durationMinutes: 30,
+            notes: '',
+          },
+          {
+            startTime: '15:00',
+            endTime: '15:45',
+            reason: 'Break 2',
+            replacementPerson: 'Nephew',
+            durationMinutes: 45,
+            notes: '',
+          },
+        ],
+        unaccompaniedIncidents: '',
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
 
       expect(res.status).toBe(201);
       const data = await res.json();
-      expect(data.unaccompaniedTime).toHaveLength(1);
-      expect(data.unaccompaniedTime[0].duration).toBe(30);
+      expect(data.totalUnaccompaniedMinutes).toBe(75);  // 30 + 45
+    });
+
+    it('should accept incidents report', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-06',
+        unaccompaniedTime: [
+          {
+            startTime: '14:00',
+            endTime: '14:30',
+            reason: 'Emergency leave',
+            replacementPerson: 'Neighbor',
+            durationMinutes: 30,
+            notes: 'Called replacement immediately',
+          },
+        ],
+        unaccompaniedIncidents: 'Care recipient tried to get up alone but replacement person assisted',
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.unaccompaniedIncidents).toBe(careLogData.unaccompaniedIncidents);
     });
 
     it('should accept safety checks and emergency prep data', async () => {
@@ -835,7 +1045,7 @@ describe('Care Logs API', () => {
           Authorization: `Bearer ${caregiverToken}`,
         },
         body: JSON.stringify(careLogData),
-      });
+      }, mockEnv);
 
       expect(res.status).toBe(201);
       const data = await res.json();
