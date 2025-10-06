@@ -259,6 +259,7 @@ export const careLogs = sqliteTable('care_logs', {
       incidents?: string;
     }>>(),
   totalUnaccompaniedMinutes: integer('total_unaccompanied_minutes').default(0),
+  unaccompaniedIncidents: text('unaccompanied_incidents'),
 
   // Sprint 1: Safety Checks & Emergency Prep
   safetyChecks: text('safety_checks', { mode: 'json' })

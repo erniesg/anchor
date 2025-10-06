@@ -20,11 +20,10 @@ describe('Care Logs API', () => {
   let caregiverId: string;
 
   beforeEach(async () => {
-    // Clear test data store for isolation
-    const { clearTestData } = await import('../test-setup');
-    clearTestData();
+    // Note: Database is already set up in test-setup.ts with fresh data per test
+    // No need to clearTestData() - beforeEach in test-setup.ts handles it
 
-    // Mock D1 database
+    // Mock D1 database (for compatibility with Env interface)
     mockD1 = {
       prepare: vi.fn(),
       batch: vi.fn(),
@@ -40,9 +39,9 @@ describe('Care Logs API', () => {
       LOGTO_APP_SECRET: 'test-logto-secret',
     };
 
-    db = createDbClient(mockD1);
+    db = createDbClient(mockD1); // Returns testDb from test-setup.ts
 
-    // Setup test data with valid UUIDs
+    // Setup test data references (actual data seeded in test-setup.ts)
     familyAdminToken = 'mock-token-family-admin';
     familyMemberToken = 'mock-token-family-member';
     caregiverToken = 'mock-token-caregiver';
