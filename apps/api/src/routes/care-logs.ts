@@ -494,11 +494,16 @@ careLogsRoute.post('/:id/invalidate', ...familyAdminOnly, requireLogInvalidation
       return c.json({ error: 'Only submitted logs can be invalidated' }, 400);
     }
 
-    // Mark as invalidated
+    // Validate reason is provided
+    if (!reason || reason.trim() === '') {
+      return c.json({ error: 'Invalidation reason is required' }, 400);
+    }
+
+    // Mark as invalidated and revert to draft for re-editing
     await db
       .update(careLogs)
       .set({
-        status: 'invalidated',
+        status: 'draft', // Revert to draft so caregiver can fix
         invalidatedAt: new Date(),
         invalidatedBy: userId,
         invalidationReason: reason,

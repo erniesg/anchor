@@ -90,8 +90,14 @@ vi.mock('./lib/access-control', () => ({
   isActiveCaregiver: vi.fn(async () => true),
   caregiverHasAccess: vi.fn(async () => true),
   familyMemberHasAccess: vi.fn(async () => true),
-  caregiverOwnsCareLog: vi.fn(async () => true),
-  canAccessCareRecipient: vi.fn(async () => true),
+  // Context-aware: reject if different caregiver (caregiver-999)
+  caregiverOwnsCareLog: vi.fn(async (db: any, caregiverId: string, logId: string) => {
+    return caregiverId !== 'caregiver-999';
+  }),
+  // Context-aware: reject if recipientId is 'other-recipient-123'
+  canAccessCareRecipient: vi.fn(async (db: any, userId: string, recipientId: string) => {
+    return recipientId !== 'other-recipient-123';
+  }),
   canInvalidateCareLog: vi.fn(async () => true),
 }));
 
@@ -132,21 +138,47 @@ vi.mock('@anchor/database', () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn((condition: any) => {
           // Return records from store
-          // Since we can't parse SQL conditions, return most recent record for .get()
-          // and all records for .all() (tests will filter if needed)
+          // Simple heuristic: if WHERE contains status check, filter by status
           const records = Array.from(dataStore.values());
-          const mostRecent = records[records.length - 1] || null; // Last inserted
+
+          // Try to detect if this is filtering by status='submitted'
+          // Drizzle's and/eq creates nested objects, check for status field
+          let filteredRecords = records;
+
+          // Check if condition is filtering by status (crude but works)
+          const hasStatusFilter = (obj: any): boolean => {
+            if (!obj) return false;
+            // Check if this is an eq() with status column
+            if (obj.column && obj.column.name === 'status' && obj.value === 'submitted') return true;
+            // Check nested (for and())
+            if (obj.left) return hasStatusFilter(obj.left) || hasStatusFilter(obj.right);
+            return false;
+          };
+
+          if (hasStatusFilter(condition)) {
+            filteredRecords = records.filter((r: any) => r.status === 'submitted');
+          }
+
+          const mostRecent = filteredRecords[filteredRecords.length - 1] || null;
 
           return {
             get: vi.fn(async () => mostRecent),
-            all: vi.fn(async () => records),
+            all: vi.fn(async () => filteredRecords),
             orderBy: vi.fn(() => ({
-              all: vi.fn(async () => records),
+              all: vi.fn(async () => filteredRecords),
+              limit: vi.fn(() => ({
+                get: vi.fn(async () => mostRecent),
+                all: vi.fn(async () => filteredRecords.slice(0, 1)),
+              })),
             })),
           };
         }),
         orderBy: vi.fn(() => ({
           all: vi.fn(async () => Array.from(dataStore.values())),
+          limit: vi.fn(() => ({
+            get: vi.fn(async () => Array.from(dataStore.values())[0] || null),
+            all: vi.fn(async () => Array.from(dataStore.values()).slice(0, 1)),
+          })),
         })),
       }),
     }),
