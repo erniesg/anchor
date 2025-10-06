@@ -18,6 +18,8 @@ describe('Caregivers API', () => {
   let careRecipientId: string;
 
   beforeEach(async () => {
+    // Note: Database is already set up in test-setup.ts with fresh data per test
+
     mockD1 = {
       prepare: vi.fn(),
       batch: vi.fn(),
@@ -33,11 +35,11 @@ describe('Caregivers API', () => {
       LOGTO_APP_SECRET: 'test-logto-secret',
     };
 
-    db = createDbClient(mockD1);
+    db = createDbClient(mockD1); // Returns testDb from test-setup.ts
 
     familyAdminToken = 'mock-token-family-admin';
     familyMemberToken = 'mock-token-family-member';
-    careRecipientId = 'recipient-123';
+    careRecipientId = '550e8400-e29b-41d4-a716-446655440000'; // Match seeded data
   });
 
   describe('POST /caregivers - Create Caregiver', () => {

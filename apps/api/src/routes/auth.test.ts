@@ -54,7 +54,7 @@ describe('Authentication API', () => {
       expect(data.user).toBeDefined();
       expect(data.user.email).toBe(signupData.email);
       expect(data.user.name).toBe(signupData.name);
-      expect(data.user.role).toBe('family');
+      expect(data.user.role).toBe('family_admin'); // Schema uses family_admin, not family
       expect(data.token).toBeDefined();
     }, mockEnv);
 
@@ -271,7 +271,7 @@ describe('Authentication API', () => {
   });
 
   describe('POST /auth/caregiver/login - Caregiver PIN Login', () => {
-    const caregiverId = 'caregiver-123';
+    const caregiverId = '550e8400-e29b-41d4-a716-446655440001'; // Use seeded caregiver ID
     const validPin = '123456';
 
     it('should login with valid caregiver ID and PIN', async () => {

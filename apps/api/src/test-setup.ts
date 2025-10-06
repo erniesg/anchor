@@ -126,7 +126,6 @@ vi.mock('./lib/access-control', () => ({
   isActiveUser: vi.fn(async () => true),
   isActiveCaregiver: vi.fn(async () => true),
   caregiverHasAccess: vi.fn(async () => true),
-  familyMemberHasAccess: vi.fn(async () => true),
   // Context-aware: reject if different caregiver (caregiver-999)
   caregiverOwnsCareLog: vi.fn(async (db: any, caregiverId: string, logId: string) => {
     return caregiverId !== 'caregiver-999';
@@ -136,6 +135,12 @@ vi.mock('./lib/access-control', () => ({
     return recipientId !== 'other-recipient-123';
   }),
   canInvalidateCareLog: vi.fn(async () => true),
+  canManageCaregivers: vi.fn(async () => true),
+  getAccessibleCareRecipients: vi.fn(async (db: any, userId: string) => [
+    { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Test Recipient' }
+  ]),
+  canGrantAccess: vi.fn(async () => true),
+  canRevokeAccess: vi.fn(async () => true),
 }));
 
 // Mock @anchor/database to return real in-memory SQLite database
