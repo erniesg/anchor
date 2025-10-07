@@ -175,6 +175,14 @@ function CareLogFormComponent() {
   const [bloodSugar, setBloodSugar] = useState('');
   const [vitalsTime, setVitalsTime] = useState('');
 
+  // Sprint 2 Day 2: Fluid Intake
+  const [fluids, setFluids] = useState<Array<{
+    name: string;
+    time: string;
+    amountMl: number;
+    swallowingIssues: string[];
+  }>>([]);
+
   // Toileting
   const [bowelFreq, setBowelFreq] = useState(0);
   const [urineFreq, setUrineFreq] = useState(0);
@@ -276,6 +284,8 @@ function CareLogFormComponent() {
           amountEaten: breakfastAmount,
         },
       } : undefined,
+      // Sprint 2 Day 2: Fluid Intake
+      fluids: fluids.length > 0 ? fluids : undefined,
       bloodPressure: omitEmpty(bloodPressure),
       pulseRate: pulseRate ? parseInt(pulseRate) : undefined,
       oxygenLevel: oxygenLevel ? parseInt(oxygenLevel) : undefined,
@@ -304,7 +314,7 @@ function CareLogFormComponent() {
       notes: omitEmpty(notes),
     };
   }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite,
-      breakfastAmount, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime,
+      breakfastAmount, fluids, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime,
       bowelFreq, urineFreq, diaperChanges, balanceIssues, nearFalls, actualFalls,
       walkingPattern, freezingEpisodes, unaccompaniedTime, unaccompaniedIncidents, safetyChecks, emergencyPrep,
       emergencyFlag, emergencyNote, notes, careRecipient]);
