@@ -262,10 +262,13 @@ function CareLogFormComponent() {
       mood: omitEmpty(mood),
       showerTime: omitEmpty(showerTime),
       hairWash: hairWash || undefined,
-      medications: medications.length > 0 ? medications.map(med => ({
-        ...med,
-        time: omitEmpty(med.time) // Convert null to undefined
-      })).filter(med => med.given) : undefined, // Only send medications that were given
+      medications: (() => {
+        const given = medications.filter(med => med.given).map(med => ({
+          ...med,
+          time: omitEmpty(med.time) // Convert null to undefined
+        }));
+        return given.length > 0 ? given : undefined;
+      })(),
       meals: breakfastTime ? {
         breakfast: {
           time: breakfastTime,
