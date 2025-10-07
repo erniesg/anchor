@@ -779,15 +779,222 @@ function CareLogFormComponent() {
                   ← Back
                 </Button>
                 <Button onClick={() => setCurrentSection(4)} variant="primary" className="flex-1">
-                  Next →
+                  Next: Fluid Intake →
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Section 4: Vitals */}
+        {/* Section 4: Fluid Intake - Sprint 2 Day 2 */}
         {currentSection === 4 && (
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold">💧 Fluid Intake Monitoring</h2>
+              <p className="text-sm text-gray-600 mt-1">Track all fluids consumed today</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Total Fluid Intake Display */}
+              <div
+                data-testid="total-fluid-intake"
+                className={`rounded-lg p-4 ${
+                  fluids.reduce((sum, f) => sum + f.amountMl, 0) < 1000
+                    ? 'bg-yellow-50 border-2 border-yellow-200'
+                    : 'bg-green-50 border-2 border-green-200'
+                }`}
+              >
+                <p className="text-lg font-bold text-gray-900">
+                  Total daily fluid intake: {fluids.reduce((sum, f) => sum + f.amountMl, 0)} ml
+                </p>
+                {fluids.reduce((sum, f) => sum + f.amountMl, 0) < 1000 && (
+                  <div data-testid="low-fluid-warning" className="mt-2">
+                    <p className="text-sm text-yellow-800 font-semibold">
+                      ⚠️ Low fluid intake (<1000ml) - Dehydration risk
+                    </p>
+                    <p className="text-xs text-yellow-700 mt-1">
+                      Recommended: 1500-2000ml per day
+                    </p>
+                  </div>
+                )}
+                {fluids.reduce((sum, f) => sum + f.amountMl, 0) >= 1000 && (
+                  <div data-testid="fluid-status" className="mt-2">
+                    <p className="text-sm text-green-800 font-semibold">
+                      ✅ Adequate hydration
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Fluid Entries */}
+              {fluids.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No fluid entries yet</p>
+                  <p className="text-sm mt-1">Click "Add Fluid Entry" to start tracking</p>
+                </div>
+              )}
+
+              {fluids.map((fluid, idx) => (
+                <div
+                  key={idx}
+                  data-testid={`fluid-entry-${idx}`}
+                  className="border-2 border-gray-200 rounded-lg p-4 bg-white"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-gray-700">Fluid Entry {idx + 1}</h4>
+                    <button
+                      type="button"
+                      data-testid={`remove-fluid-${idx}`}
+                      onClick={() => {
+                        setFluids(fluids.filter((_, i) => i !== idx));
+                      }}
+                      className="text-red-600 hover:text-red-800 text-sm font-medium"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                    {/* Beverage Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Beverage *
+                      </label>
+                      <select
+                        name={`fluids.${idx}.name`}
+                        value={fluid.name}
+                        onChange={(e) => {
+                          const newFluids = [...fluids];
+                          newFluids[idx].name = e.target.value;
+                          setFluids(newFluids);
+                        }}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select beverage</option>
+                        <option value="Glucerna Milk">Glucerna Milk</option>
+                        <option value="Moringa Water">Moringa Water</option>
+                        <option value="Fenugreek Water">Fenugreek Water</option>
+                        <option value="Orange Juice">Orange Juice</option>
+                        <option value="Cucumber Juice">Cucumber Juice</option>
+                        <option value="Plain Water">Plain Water</option>
+                        <option value="Tea">Tea</option>
+                        <option value="Coffee">Coffee</option>
+                        <option value="Soup">Soup</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+
+                    {/* Time */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Time *
+                      </label>
+                      <input
+                        type="time"
+                        name={`fluids.${idx}.time`}
+                        value={fluid.time}
+                        onChange={(e) => {
+                          const newFluids = [...fluids];
+                          newFluids[idx].time = e.target.value;
+                          setFluids(newFluids);
+                        }}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
+                    {/* Amount (ml) */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Amount (ml) *
+                      </label>
+                      <input
+                        type="number"
+                        name={`fluids.${idx}.amountMl`}
+                        value={fluid.amountMl || ''}
+                        onChange={(e) => {
+                          const newFluids = [...fluids];
+                          newFluids[idx].amountMl = parseInt(e.target.value) || 0;
+                          setFluids(newFluids);
+                        }}
+                        min="0"
+                        required
+                        placeholder="e.g., 250"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Swallowing Issues */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Swallowing Issues (optional)
+                    </label>
+                    <div className="flex flex-wrap gap-4">
+                      {['Coughing', 'Choking', 'Slow', 'None'].map((issue) => (
+                        <label key={issue} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            name={`fluids.${idx}.swallowingIssues.${issue.toLowerCase()}`}
+                            checked={fluid.swallowingIssues.includes(issue.toLowerCase())}
+                            onChange={(e) => {
+                              const newFluids = [...fluids];
+                              if (e.target.checked) {
+                                newFluids[idx].swallowingIssues = [
+                                  ...newFluids[idx].swallowingIssues,
+                                  issue.toLowerCase(),
+                                ];
+                              } else {
+                                newFluids[idx].swallowingIssues = newFluids[
+                                  idx
+                                ].swallowingIssues.filter((i) => i !== issue.toLowerCase());
+                              }
+                              setFluids(newFluids);
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-sm text-gray-700">{issue}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Add Fluid Entry Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setFluids([
+                    ...fluids,
+                    {
+                      name: '',
+                      time: '',
+                      amountMl: 0,
+                      swallowingIssues: [],
+                    },
+                  ]);
+                }}
+                className="w-full py-3 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+              >
+                + Add Fluid Entry
+              </button>
+
+              {/* Navigation */}
+              <div className="flex gap-3">
+                <Button onClick={() => setCurrentSection(3)} variant="outline" className="flex-1">
+                  ← Back
+                </Button>
+                <Button onClick={() => setCurrentSection(5)} variant="primary" className="flex-1">
+                  Next: Vital Signs →
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Section 5: Vitals (was Section 4) */}
+        {currentSection === 5 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">❤️ Vital Signs</h2>
