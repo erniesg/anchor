@@ -809,7 +809,7 @@ function CareLogFormComponent() {
                 {fluids.reduce((sum, f) => sum + f.amountMl, 0) < 1000 && (
                   <div data-testid="low-fluid-warning" className="mt-2">
                     <p className="text-sm text-yellow-800 font-semibold">
-                      ⚠️ Low fluid intake (<1000ml) - Dehydration risk
+                      ⚠️ Low fluid intake (&lt;1000ml) - Dehydration risk
                     </p>
                     <p className="text-xs text-yellow-700 mt-1">
                       Recommended: 1500-2000ml per day

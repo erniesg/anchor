@@ -17,6 +17,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Cell,
 } from 'recharts';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks } from 'date-fns';
 
@@ -128,7 +129,11 @@ function DashboardComponent() {
       nearFalls: log.nearFalls === 'none' ? 0 : log.nearFalls === 'once_or_twice' ? 1 : log.nearFalls === 'multiple' ? 2 : null,
       actualFalls: log.actualFalls === 'none' ? 0 : log.actualFalls === 'minor' ? 1 : log.actualFalls === 'major' ? 2 : null,
       unaccompaniedMinutes: log.totalUnaccompaniedMinutes || 0,
+      fluidIntake: log.totalFluidIntake || 0, // Sprint 2 Day 2: Fluid intake
     })) || [];
+
+  // Sprint 2 Day 2: Fluid breakdown details toggle
+  const [showFluidDetails, setShowFluidDetails] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -299,6 +304,54 @@ function DashboardComponent() {
               </Card>
             )}
 
+            {/* Sprint 2 Day 2: Low Fluid Warning Banner */}
+            {viewMode === 'today' && todayLog && todayLog.totalFluidIntake < 1000 && (
+              <Card data-testid="low-fluid-warning" className="border-2 border-yellow-300 bg-yellow-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">💧</span>
+                    <div className="flex-1">
+                      <p className="font-medium text-yellow-800">Low fluid intake today</p>
+                      <p className="text-sm text-yellow-700">
+                        Current: {todayLog.totalFluidIntake || 0}ml / Recommended: 1500-2000ml per day
+                      </p>
+                      <p className="text-xs text-yellow-600 mt-1">
+                        Dehydration risk - encourage more fluids
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sprint 2 Day 2: Swallowing Issues Alert */}
+            {viewMode === 'today' && todayLog?.fluids?.some((f: any) => f.swallowingIssues && f.swallowingIssues.length > 0) && (
+              <Card data-testid="swallowing-issues-alert" className="border-2 border-red-300 bg-red-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div className="flex-1">
+                      <p className="font-medium text-red-800">Swallowing issues reported</p>
+                      <p className="text-sm text-red-700 mt-2">Observed during fluid intake:</p>
+                      <ul className="text-xs text-red-700 mt-2 space-y-1">
+                        {todayLog.fluids
+                          .filter((f: any) => f.swallowingIssues && f.swallowingIssues.length > 0)
+                          .map((f: any, idx: number) => (
+                            <li key={idx} className="bg-white p-2 rounded border border-red-200">
+                              <strong>{f.time} - {f.name}:</strong>{' '}
+                              <span className="capitalize">{f.swallowingIssues.join(', ')}</span>
+                            </li>
+                          ))}
+                      </ul>
+                      <p className="text-xs text-red-600 mt-2">
+                        Consider consulting with healthcare provider
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Week View - Trend Charts */}
             {viewMode === 'week' && (
               <div className="space-y-6">
@@ -459,6 +512,41 @@ function DashboardComponent() {
                         </ResponsiveContainer>
                       </CardContent>
                     </Card>
+
+                    {/* Sprint 2 Day 2: Fluid Intake Weekly Trend */}
+                    <Card data-testid="fluid-intake-chart">
+                      <CardHeader>
+                        <h3 className="font-semibold">💧 Fluid Intake Trend</h3>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={250}>
+                          <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" />
+                            <YAxis domain={[0, 2500]} ticks={[0, 500, 1000, 1500, 2000, 2500]} />
+                            <Tooltip formatter={(value: number) => `${value} ml`} />
+                            <Bar dataKey="fluidIntake" fill="#3b82f6" name="Fluid Intake (ml)">
+                              {chartData.map((entry, index) => (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={entry.fluidIntake < 1000 ? '#fbbf24' : '#3b82f6'}
+                                />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                        <div className="mt-3 text-xs text-gray-600 flex items-center justify-center gap-4">
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                            <span>≥1000ml (adequate)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-yellow-400 rounded"></div>
+                            <span>&lt;1000ml (low)</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </>
                 )}
               </div>
@@ -586,6 +674,80 @@ function DashboardComponent() {
                     ) : (
                       <p className="text-sm text-gray-500">No meal data recorded</p>
                     )}
+                  </CardContent>
+                </Card>
+
+                {/* Sprint 2 Day 2: Fluid Intake Summary Card */}
+                <Card data-testid="fluid-intake-card"
+                  className={todayLog.totalFluidIntake && todayLog.totalFluidIntake < 1000 ? 'border-2 border-yellow-300' : ''}>
+                  <CardHeader>
+                    <h3 className="font-semibold">💧 Fluid Intake</h3>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-gray-600 text-sm">Today's total:</span>
+                        <span
+                          data-testid="fluid-intake-total"
+                          className="text-3xl font-bold text-gray-900"
+                        >
+                          {todayLog.totalFluidIntake || 0} ml
+                        </span>
+                      </div>
+
+                      {/* Status indicator */}
+                      {todayLog.totalFluidIntake !== null && todayLog.totalFluidIntake !== undefined && (
+                        <div className={`text-xs p-2 rounded ${
+                          todayLog.totalFluidIntake < 1000
+                            ? 'bg-yellow-50 text-yellow-800'
+                            : 'bg-green-50 text-green-800'
+                        }`}>
+                          {todayLog.totalFluidIntake < 1000 ? (
+                            <span>⚠️ Below recommended (1500-2000ml/day)</span>
+                          ) : (
+                            <span>✅ Adequate hydration</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Expandable details */}
+                      {todayLog.fluids && todayLog.fluids.length > 0 && (
+                        <div>
+                          <button
+                            data-testid="fluid-details-toggle"
+                            onClick={() => setShowFluidDetails(!showFluidDetails)}
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          >
+                            {showFluidDetails ? '▼ Hide Details' : '▶ Show Details'}
+                          </button>
+
+                          {showFluidDetails && (
+                            <div className="mt-3 space-y-2">
+                              {todayLog.fluids.map((fluid: any, idx: number) => (
+                                <div
+                                  key={idx}
+                                  data-testid={`fluid-entry-${idx}`}
+                                  className="flex justify-between items-center text-xs border-b pb-2"
+                                >
+                                  <div className="flex-1">
+                                    <span className="font-medium text-gray-900">{fluid.name}</span>
+                                    {fluid.swallowingIssues && fluid.swallowingIssues.length > 0 && (
+                                      <span className="ml-2 text-red-600">⚠️</span>
+                                    )}
+                                  </div>
+                                  <span className="text-gray-600 mx-2">{fluid.time}</span>
+                                  <span className="font-bold text-gray-900">{fluid.amountMl} ml</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {(!todayLog.fluids || todayLog.fluids.length === 0) && (
+                        <p className="text-sm text-gray-500">No fluid intake recorded</p>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
 
