@@ -449,7 +449,8 @@ function CareLogFormComponent() {
     { id: 5, title: 'Toileting', emoji: '🚽' },
     { id: 6, title: 'Fall Risk & Safety', emoji: '⚠️' },
     { id: 7, title: 'Unaccompanied Time', emoji: '⏱️' },
-    { id: 8, title: 'Notes & Submit', emoji: '📝' },
+    { id: 8, title: 'Safety Checks', emoji: '🔒' },
+    { id: 9, title: 'Notes & Submit', emoji: '📝' },
   ];
 
   return (
@@ -1223,8 +1224,152 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 8: Notes & Submit */}
+        {/* Section 8: Safety Checks */}
         {currentSection === 8 && (
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                Daily Safety Checks
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Complete daily safety checklist and emergency preparedness
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Safety Checks */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Safety Checklist</h3>
+                <div className="space-y-4">
+                  {Object.entries(safetyChecks).map(([key, value]) => {
+                    const labels: Record<string, string> = {
+                      tripHazards: 'Trip Hazards (mats, clutter)',
+                      cables: 'Cables & Cords',
+                      sandals: 'Proper Footwear (no sandals/slippers)',
+                      slipHazards: 'Slip Hazards (wet floors, spills)',
+                      mobilityAids: 'Mobility Aids (walker, cane within reach)',
+                      emergencyEquipment: 'Emergency Equipment Accessible',
+                    };
+
+                    return (
+                      <div key={key} className="border rounded-lg p-4 bg-gray-50">
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            data-testid={key.replace(/([A-Z])/g, '-$1').toLowerCase()}
+                            checked={value.checked}
+                            onChange={(e) => {
+                              setSafetyChecks({
+                                ...safetyChecks,
+                                [key]: { ...value, checked: e.target.checked },
+                              });
+                            }}
+                            className="w-5 h-5 mt-0.5"
+                          />
+                          <div className="flex-1">
+                            <label className="font-medium text-gray-900">
+                              {labels[key]}
+                            </label>
+                            {value.checked && (
+                              <input
+                                type="text"
+                                data-testid={`${key.replace(/([A-Z])/g, '-$1').toLowerCase()}-action`}
+                                placeholder="What action was taken?"
+                                value={value.action}
+                                onChange={(e) => {
+                                  setSafetyChecks({
+                                    ...safetyChecks,
+                                    [key]: { ...value, action: e.target.value },
+                                  });
+                                }}
+                                className="w-full mt-2 px-3 py-2 border rounded-lg text-sm"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Progress Indicator */}
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-blue-900">
+                      Safety Checks Progress:
+                    </span>
+                    <span className="text-sm font-bold text-blue-900">
+                      {Object.values(safetyChecks).filter((v) => v.checked).length}/6
+                      ({Math.round((Object.values(safetyChecks).filter((v) => v.checked).length / 6) * 100)}%)
+                    </span>
+                  </div>
+                  {Object.values(safetyChecks).filter((v) => v.checked).length === 6 && (
+                    <p className="text-sm text-green-700 mt-2">
+                      ✅ All safety checks complete!
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Emergency Preparedness */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Emergency Preparedness</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  Check which emergency equipment is available and accessible:
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {Object.entries(emergencyPrep).map(([key, checked]) => {
+                    const labels: Record<string, string> = {
+                      icePack: 'Ice Pack',
+                      wheelchair: 'Wheelchair',
+                      commode: 'Commode',
+                      walkingStick: 'Walking Stick',
+                      walker: 'Walker',
+                      bruiseOintment: 'Bruise Ointment',
+                      firstAidKit: 'First Aid Kit',
+                    };
+
+                    return (
+                      <div key={key} className="border rounded-lg p-3 bg-gray-50">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            data-testid={key.replace(/([A-Z])/g, '-$1').toLowerCase()}
+                            checked={checked}
+                            onChange={(e) => {
+                              setEmergencyPrep({
+                                ...emergencyPrep,
+                                [key]: e.target.checked,
+                              });
+                            }}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm font-medium">{labels[key]}</span>
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Emergency Prep Progress */}
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-green-900">
+                      Emergency Equipment Available:
+                    </span>
+                    <span className="text-sm font-bold text-green-900">
+                      {Object.values(emergencyPrep).filter((v) => v).length}/7
+                      ({Math.round((Object.values(emergencyPrep).filter((v) => v).length / 7) * 100)}%)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Section 9: Notes & Submit */}
+        {currentSection === 9 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">📝 Notes & Submit</h2>

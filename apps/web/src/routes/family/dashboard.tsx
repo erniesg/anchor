@@ -697,6 +697,109 @@ function DashboardComponent() {
               </Card>
             )}
 
+            {/* Sprint 1 Day 3: Safety Status */}
+            {todayLog?.safetyChecks && (
+              <Card className={
+                Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length === 6
+                  ? 'border-2 border-green-300'
+                  : 'border border-yellow-400'
+              }>
+                <CardHeader className={
+                  Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length === 6
+                    ? 'bg-green-50'
+                    : 'bg-yellow-50'
+                }>
+                  <h3 className={`font-semibold ${
+                    Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length === 6
+                      ? 'text-green-800'
+                      : 'text-yellow-800'
+                  }`}>
+                    🔒 Safety Status
+                  </h3>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="mb-3">
+                    <p className="text-sm font-medium text-gray-700">
+                      Safety Checks: {Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length}/6 Complete
+                      ({Math.round((Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length / 6) * 100)}%)
+                    </p>
+                    {Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length < 6 && (
+                      <p className="text-xs text-yellow-700 mt-1">
+                        ⚠️ Not all safety checks completed today
+                      </p>
+                    )}
+                  </div>
+
+                  {/* List completed checks */}
+                  <div className="space-y-2">
+                    {Object.entries(todayLog.safetyChecks).map(([key, value]: [string, any]) => {
+                      if (!value.checked) return null;
+
+                      const labels: Record<string, string> = {
+                        tripHazards: 'Trip Hazards',
+                        cables: 'Cables & Cords',
+                        sandals: 'Proper Footwear',
+                        slipHazards: 'Slip Hazards',
+                        mobilityAids: 'Mobility Aids',
+                        emergencyEquipment: 'Emergency Equipment',
+                      };
+
+                      return (
+                        <div key={key} className="text-xs bg-white p-2 rounded border">
+                          <span className="font-medium text-gray-900">✓ {labels[key]}</span>
+                          {value.action && (
+                            <span className="text-gray-600 ml-2">- {value.action}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sprint 1 Day 3: Emergency Preparedness */}
+            {todayLog?.emergencyPrep && (
+              <Card>
+                <CardHeader>
+                  <h3 className="font-semibold">🚑 Emergency Preparedness</h3>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm font-medium text-gray-700 mb-3">
+                    Equipment Available: {Object.values(todayLog.emergencyPrep).filter((v) => v).length}/7
+                    ({Math.round((Object.values(todayLog.emergencyPrep).filter((v) => v).length / 7) * 100)}%)
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(todayLog.emergencyPrep).map(([key, available]: [string, any]) => {
+                      const labels: Record<string, string> = {
+                        icePack: 'Ice Pack',
+                        wheelchair: 'Wheelchair',
+                        commode: 'Commode',
+                        walkingStick: 'Walking Stick',
+                        walker: 'Walker',
+                        bruiseOintment: 'Bruise Ointment',
+                        firstAidKit: 'First Aid Kit',
+                      };
+
+                      return (
+                        <div
+                          key={key}
+                          className={`text-xs p-2 rounded border ${
+                            available
+                              ? 'bg-green-50 border-green-200 text-green-800'
+                              : 'bg-gray-50 border-gray-200 text-gray-500'
+                          }`}
+                        >
+                          <span>{available ? '✓' : '○'}</span> {labels[key]}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {todayLog?.notes && (
               <Card>
                 <CardHeader>
