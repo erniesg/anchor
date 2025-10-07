@@ -1247,6 +1247,16 @@ function CareLogFormComponent() {
                   </p>
                 </div>
               )}
+
+              {/* Navigation Buttons */}
+              <div className="flex gap-3">
+                <Button onClick={() => setCurrentSection(6)} variant="outline" className="flex-1">
+                  ← Back
+                </Button>
+                <Button onClick={() => setCurrentSection(8)} variant="primary" className="flex-1">
+                  Next: Safety Checks →
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -1390,6 +1400,16 @@ function CareLogFormComponent() {
                     </span>
                   </div>
                 </div>
+              </div>
+
+              {/* Navigation Buttons */}
+              <div className="flex gap-3">
+                <Button onClick={() => setCurrentSection(7)} variant="outline" className="flex-1">
+                  ← Back
+                </Button>
+                <Button onClick={() => setCurrentSection(9)} variant="primary" className="flex-1">
+                  Next: Notes & Submit →
+                </Button>
               </div>
             </CardContent>
           </Card>
