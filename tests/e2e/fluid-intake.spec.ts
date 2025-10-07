@@ -8,9 +8,9 @@ import { test, expect } from '@playwright/test';
 test.describe('Caregiver Form - Fluid Intake Monitoring', () => {
 
   test.beforeEach(async ({ page }) => {
-    // Login as caregiver
-    await page.goto('/auth/caregiver/login');
-    await page.fill('input[name="caregiverId"]', '550e8400-e29b-41d4-a716-446655440001');
+    // Login as caregiver (using seeded E2E test data)
+    await page.goto('/caregiver/login');
+    await page.fill('input[name="caregiverId"]', 'e80c2b2a-4688-4a29-9579-51b3219f20fc');
     await page.fill('input[name="pin"]', '123456');
     await page.click('button:has-text("Login")');
 
