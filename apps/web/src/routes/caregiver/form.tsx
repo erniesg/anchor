@@ -262,7 +262,10 @@ function CareLogFormComponent() {
       mood: omitEmpty(mood),
       showerTime: omitEmpty(showerTime),
       hairWash: hairWash || undefined,
-      medications: medications.length > 0 ? medications : undefined,
+      medications: medications.length > 0 ? medications.map(med => ({
+        ...med,
+        time: omitEmpty(med.time) // Convert null to undefined
+      })).filter(med => med.given) : undefined, // Only send medications that were given
       meals: breakfastTime ? {
         breakfast: {
           time: breakfastTime,
@@ -311,7 +314,7 @@ function CareLogFormComponent() {
 
       return authenticatedApiCall(url, caregiverToken, {
         method,
-        body: JSON.stringify({ ...data, status: 'draft' }),
+        body: JSON.stringify(data),
       });
     },
     onSuccess: (data) => {
