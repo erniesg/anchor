@@ -524,7 +524,7 @@ function DashboardComponent() {
                 </Card>
 
                 {/* Sprint 1: Fall Risk Assessment */}
-                {(todayLog.balanceIssues || todayLog.nearFalls || todayLog.actualFalls || todayLog.freezingEpisodes) && (
+                {(todayLog.balanceIssues || todayLog.nearFalls || todayLog.actualFalls || todayLog.freezingEpisodes || todayLog.totalUnaccompaniedMinutes > 0) && (
                   <Card className={todayLog.actualFalls === 'major' ? 'border-2 border-red-400' : ''}>
                     <CardHeader>
                       <h3 className="font-semibold">⚠️ Fall Risk & Movement</h3>
@@ -568,6 +568,15 @@ function DashboardComponent() {
                             <span className="text-gray-600">Freezing:</span>
                             <span className={`font-medium capitalize ${todayLog.freezingEpisodes === 'severe' ? 'text-red-600' : 'text-yellow-600'}`}>
                               {todayLog.freezingEpisodes}
+                            </span>
+                          </div>
+                        )}
+                        {todayLog.totalUnaccompaniedMinutes > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Time Alone:</span>
+                            <span className={`font-medium ${todayLog.totalUnaccompaniedMinutes > 60 ? 'text-yellow-600' : 'text-gray-900'}`}>
+                              {todayLog.totalUnaccompaniedMinutes} min
+                              {todayLog.totalUnaccompaniedMinutes > 60 && ' ⚠️'}
                             </span>
                           </div>
                         )}
@@ -647,6 +656,43 @@ function DashboardComponent() {
                   <p className="text-sm text-yellow-800">
                     Multiple near falls reported today. Increased monitoring recommended.
                   </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sprint 1 Day 2: Unaccompanied Time Warning */}
+            {todayLog?.totalUnaccompaniedMinutes > 60 && (
+              <Card className="border-2 border-yellow-300">
+                <CardHeader className="bg-yellow-50">
+                  <h3 className="font-semibold text-yellow-800">⏱️ Extended Unaccompanied Time</h3>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <p className="text-sm text-yellow-800 font-medium">
+                    {todayLog.totalUnaccompaniedMinutes} minutes unaccompanied today
+                    ({Math.floor(todayLog.totalUnaccompaniedMinutes / 60)} hour{todayLog.totalUnaccompaniedMinutes >= 120 ? 's' : ''} {todayLog.totalUnaccompaniedMinutes % 60} min)
+                  </p>
+                  {todayLog.unaccompaniedIncidents && (
+                    <div className="mt-3 p-3 bg-white border border-yellow-200 rounded">
+                      <p className="text-xs font-semibold text-gray-700 mb-1">Incidents reported:</p>
+                      <p className="text-sm text-gray-800">{todayLog.unaccompaniedIncidents}</p>
+                    </div>
+                  )}
+                  {todayLog.unaccompaniedTime && todayLog.unaccompaniedTime.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-semibold text-gray-700">Time periods:</p>
+                      {todayLog.unaccompaniedTime.map((period: any, index: number) => (
+                        <div key={index} className="text-xs text-gray-700 bg-white p-2 rounded border border-yellow-200">
+                          <span className="font-medium">{period.startTime} - {period.endTime}</span>
+                          {period.reason && <span className="ml-2">({period.reason})</span>}
+                          {period.replacementPerson && (
+                            <span className="block text-gray-600 mt-1">
+                              Replacement: {period.replacementPerson}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

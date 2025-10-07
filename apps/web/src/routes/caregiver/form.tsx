@@ -131,6 +131,19 @@ const validateVitals = (
   return alerts;
 };
 
+// Helper function to calculate duration in minutes
+const calculateDuration = (startTime: string, endTime: string): number => {
+  if (!startTime || !endTime) return 0;
+
+  const [startHour, startMin] = startTime.split(':').map(Number);
+  const [endHour, endMin] = endTime.split(':').map(Number);
+
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+
+  return endMinutes - startMinutes;
+};
+
 function CareLogFormComponent() {
   const navigate = useNavigate();
   const [currentSection, setCurrentSection] = useState(1);
@@ -186,8 +199,8 @@ function CareLogFormComponent() {
     reason: string;
     replacementPerson: string;
     duration: number;
-    incidents?: string;
   }>>([]);
+  const [unaccompaniedIncidents, setUnaccompaniedIncidents] = useState('');
 
   // Sprint 1: Safety Checks
   const [safetyChecks, setSafetyChecks] = useState({
@@ -268,6 +281,11 @@ function CareLogFormComponent() {
       walkingPattern,
       freezingEpisodes,
       unaccompaniedTime,
+      unaccompaniedIncidents,
+      totalUnaccompaniedMinutes: unaccompaniedTime.reduce((sum, p) => {
+        const duration = calculateDuration(p.startTime, p.endTime);
+        return sum + (duration > 0 ? duration : 0);
+      }, 0),
       safetyChecks,
       emergencyPrep,
       emergencyFlag,
@@ -277,7 +295,7 @@ function CareLogFormComponent() {
   }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite,
       breakfastAmount, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime,
       bowelFreq, urineFreq, diaperChanges, balanceIssues, nearFalls, actualFalls,
-      walkingPattern, freezingEpisodes, unaccompaniedTime, safetyChecks, emergencyPrep,
+      walkingPattern, freezingEpisodes, unaccompaniedTime, unaccompaniedIncidents, safetyChecks, emergencyPrep,
       emergencyFlag, emergencyNote, notes]);
 
   // Create/Update mutation (for auto-save)
@@ -430,7 +448,8 @@ function CareLogFormComponent() {
     { id: 4, title: 'Vital Signs', emoji: '❤️' },
     { id: 5, title: 'Toileting', emoji: '🚽' },
     { id: 6, title: 'Fall Risk & Safety', emoji: '⚠️' },
-    { id: 7, title: 'Notes & Submit', emoji: '📝' },
+    { id: 7, title: 'Unaccompanied Time', emoji: '⏱️' },
+    { id: 8, title: 'Notes & Submit', emoji: '📝' },
   ];
 
   return (
@@ -989,8 +1008,223 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 7: Notes & Submit */}
+        {/* Section 7: Unaccompanied Time */}
         {currentSection === 7 && (
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Clock className="h-5 w-5 text-blue-500" />
+                Unaccompanied Time Tracking
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Record any periods when the care recipient was left alone
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Time Periods List */}
+              {unaccompaniedTime.length > 0 && (
+                <div className="space-y-4">
+                  {unaccompaniedTime.map((period, index) => {
+                    const duration = calculateDuration(period.startTime, period.endTime);
+                    const isLong = duration > 60;
+                    const isInvalid = duration < 0;
+
+                    return (
+                      <div
+                        key={index}
+                        data-testid="time-period"
+                        className={`border-2 rounded-lg p-4 ${
+                          isInvalid
+                            ? 'border-red-300 bg-red-50'
+                            : isLong
+                            ? 'border-orange-300 bg-orange-50'
+                            : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <h4 className="font-semibold text-gray-900">
+                            Period {index + 1}
+                          </h4>
+                          <button
+                            type="button"
+                            data-testid="remove-period"
+                            onClick={() => {
+                              const newPeriods = unaccompaniedTime.filter((_, i) => i !== index);
+                              setUnaccompaniedTime(newPeriods);
+                            }}
+                            className="text-red-600 hover:text-red-800 text-sm font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Start Time
+                            </label>
+                            <input
+                              type="time"
+                              name="startTime"
+                              value={period.startTime}
+                              onChange={(e) => {
+                                const newPeriods = [...unaccompaniedTime];
+                                newPeriods[index].startTime = e.target.value;
+                                setUnaccompaniedTime(newPeriods);
+                              }}
+                              className="w-full px-3 py-2 border rounded-lg"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              End Time
+                            </label>
+                            <input
+                              type="time"
+                              name="endTime"
+                              value={period.endTime}
+                              onChange={(e) => {
+                                const newPeriods = [...unaccompaniedTime];
+                                newPeriods[index].endTime = e.target.value;
+                                setUnaccompaniedTime(newPeriods);
+                              }}
+                              className="w-full px-3 py-2 border rounded-lg"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Duration Display */}
+                        <div className="mb-3">
+                          {isInvalid ? (
+                            <p className="text-sm text-red-700 font-medium">
+                              ⚠️ End time must be after start time
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-700">
+                              Duration: <span className="font-semibold">{duration} minutes</span>
+                              {isLong && (
+                                <span className="ml-2 text-orange-700">
+                                  ⚠️ Long period ({Math.floor(duration / 60)} hour{duration >= 120 ? 's' : ''})
+                                </span>
+                              )}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Reason for absence
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g., Emergency bathroom break, scheduled break"
+                              value={period.reason}
+                              onChange={(e) => {
+                                const newPeriods = [...unaccompaniedTime];
+                                newPeriods[index].reason = e.target.value;
+                                setUnaccompaniedTime(newPeriods);
+                              }}
+                              className="w-full px-3 py-2 border rounded-lg"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Replacement person (if any)
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g., Nurse Mary, Family member"
+                              value={period.replacementPerson}
+                              onChange={(e) => {
+                                const newPeriods = [...unaccompaniedTime];
+                                newPeriods[index].replacementPerson = e.target.value;
+                                setUnaccompaniedTime(newPeriods);
+                              }}
+                              className="w-full px-3 py-2 border rounded-lg"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Total Duration */}
+                  <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-blue-900">
+                      <span className="font-semibold">Total unaccompanied time today:</span>{' '}
+                      {unaccompaniedTime.reduce((sum, p) => {
+                        const duration = calculateDuration(p.startTime, p.endTime);
+                        return sum + (duration > 0 ? duration : 0);
+                      }, 0)}{' '}
+                      minutes
+                      {unaccompaniedTime.reduce((sum, p) => {
+                        const duration = calculateDuration(p.startTime, p.endTime);
+                        return sum + (duration > 0 ? duration : 0);
+                      }, 0) > 60 && (
+                        <span className="ml-2 text-orange-700 font-medium">
+                          ⚠️ Exceeds 1 hour - family will be notified
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Add Period Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setUnaccompaniedTime([
+                    ...unaccompaniedTime,
+                    {
+                      startTime: '',
+                      endTime: '',
+                      reason: '',
+                      replacementPerson: '',
+                      duration: 0,
+                    },
+                  ]);
+                }}
+                className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-primary-500 hover:text-primary-700 font-medium transition-colors"
+              >
+                + Add Time Period
+              </button>
+
+              {/* Incidents Textarea */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Any incidents during unaccompanied time? (optional)
+                </label>
+                <textarea
+                  placeholder="e.g., Care recipient tried to get up alone but replacement person assisted. No injuries."
+                  value={unaccompaniedIncidents}
+                  onChange={(e) => setUnaccompaniedIncidents(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  rows={3}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Record any concerning behaviors or incidents that occurred while the care recipient was alone
+                </p>
+              </div>
+
+              {/* Info Box */}
+              {unaccompaniedTime.length === 0 && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm text-gray-700">
+                    ℹ️ If the care recipient was never left alone today, you can skip this section.
+                    Click "Add Time Period" above to record any unaccompanied time.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Section 8: Notes & Submit */}
+        {currentSection === 8 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">📝 Notes & Submit</h2>
