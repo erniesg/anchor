@@ -5,6 +5,7 @@ import { careLogs } from '@anchor/database/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { caregiverOnly, familyAdminOnly, familyMemberAccess } from '../middleware/rbac';
 import { requireCareLogOwnership, requireLogInvalidation, requireCareRecipientAccess } from '../middleware/permissions';
+import { caregiverHasAccess } from '../lib/access-control';
 
 const careLogsRoute = new Hono<AppContext>();
 
@@ -141,7 +142,6 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
     const caregiverId = c.get('caregiverId')!; // From caregiverOnly middleware
 
     // Verify caregiver has access to this care recipient
-    const { caregiverHasAccess } = await import('../lib/access-control');
     const hasAccess = await caregiverHasAccess(db, caregiverId, data.careRecipientId);
 
     if (!hasAccess) {
