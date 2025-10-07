@@ -9,11 +9,12 @@ test.describe('Caregiver Form - Fluid Intake Monitoring', () => {
 
   test.beforeEach(async ({ page }) => {
     // Login as caregiver
-    await page.goto('/caregiver/login');
-    await page.fill('input[name="caregiverId"]', 'test-caregiver-id');
+    await page.goto('/auth/caregiver/login');
+    await page.fill('input[name="caregiverId"]', '550e8400-e29b-41d4-a716-446655440001');
     await page.fill('input[name="pin"]', '123456');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/caregiver/form');
+    await page.click('button:has-text("Login")');
+
+    await expect(page).toHaveURL(/\/caregiver\/form/);
   });
 
   test('should display fluid intake section with empty state', async ({ page }) => {
