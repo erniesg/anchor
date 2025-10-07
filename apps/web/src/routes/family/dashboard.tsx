@@ -124,6 +124,10 @@ function DashboardComponent() {
       bloodSugar: log.bloodSugar,
       appetite: log.meals?.breakfast?.appetite || 0,
       amountEaten: log.meals?.breakfast?.amountEaten || 0,
+      balanceIssues: log.balanceIssues,
+      nearFalls: log.nearFalls === 'none' ? 0 : log.nearFalls === 'once_or_twice' ? 1 : log.nearFalls === 'multiple' ? 2 : null,
+      actualFalls: log.actualFalls === 'none' ? 0 : log.actualFalls === 'minor' ? 1 : log.actualFalls === 'major' ? 2 : null,
+      unaccompaniedMinutes: log.totalUnaccompaniedMinutes || 0,
     })) || [];
 
   const handleLogout = () => {
@@ -389,6 +393,68 @@ function DashboardComponent() {
                             <Legend />
                             <Bar yAxisId="left" dataKey="appetite" fill="#f59e0b" name="Appetite (1-5)" />
                             <Bar yAxisId="right" dataKey="amountEaten" fill="#84cc16" name="Eaten %" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+
+                    {/* Sprint 1: Fall Risk Assessment */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <h3 className="font-semibold">⚖️ Balance Issues</h3>
+                        </CardHeader>
+                        <CardContent>
+                          <ResponsiveContainer width="100%" height={200}>
+                            <LineChart data={chartData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="date" />
+                              <YAxis domain={[0, 5]} />
+                              <Tooltip />
+                              <Line type="monotone" dataKey="balanceIssues" stroke="#f59e0b" name="Balance (1-5)" strokeWidth={2} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <h3 className="font-semibold">⚠️ Falls Tracking</h3>
+                        </CardHeader>
+                        <CardContent>
+                          <ResponsiveContainer width="100%" height={200}>
+                            <LineChart data={chartData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="date" />
+                              <YAxis domain={[0, 2]} ticks={[0, 1, 2]} />
+                              <Tooltip formatter={(value: number) => {
+                                if (value === 0) return 'None';
+                                if (value === 1) return 'Once or twice / Minor';
+                                if (value === 2) return 'Multiple / Major';
+                                return value;
+                              }} />
+                              <Legend />
+                              <Line type="monotone" dataKey="nearFalls" stroke="#facc15" name="Near Falls" strokeWidth={2} />
+                              <Line type="monotone" dataKey="actualFalls" stroke="#ef4444" name="Actual Falls" strokeWidth={2} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Unaccompanied Time */}
+                    <Card>
+                      <CardHeader>
+                        <h3 className="font-semibold">🕐 Unaccompanied Time</h3>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" />
+                            <YAxis />
+                            <Tooltip formatter={(value: number) => `${value} minutes`} />
+                            <Bar dataKey="unaccompaniedMinutes" fill="#06b6d4" name="Minutes Alone" />
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
