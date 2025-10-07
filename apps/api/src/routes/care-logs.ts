@@ -132,6 +132,19 @@ function calculateTotalUnaccompaniedTime(periods: any[]): number {
   return periods.reduce((total, period) => total + (period.durationMinutes || 0), 0);
 }
 
+// Helper function to parse JSON fields in care log responses
+function parseJsonFields(log: any): any {
+  if (!log) return log;
+  return {
+    ...log,
+    medications: log.medications ? JSON.parse(log.medications) : null,
+    walkingPattern: log.walkingPattern ? JSON.parse(log.walkingPattern) : null,
+    unaccompaniedTime: log.unaccompaniedTime ? JSON.parse(log.unaccompaniedTime) : null,
+    safetyChecks: log.safetyChecks ? JSON.parse(log.safetyChecks) : null,
+    emergencyPrep: log.emergencyPrep ? JSON.parse(log.emergencyPrep) : null,
+  };
+}
+
 // Create care log (caregivers only) - creates as draft
 careLogsRoute.post('/', ...caregiverOnly, async (c) => {
   try {
@@ -199,7 +212,13 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
     // Calculate total unaccompanied time
     const totalUnaccompaniedMinutes = calculateTotalUnaccompaniedTime(data.unaccompaniedTime || []);
 
-    return c.json({ ...newLog, totalUnaccompaniedMinutes }, 201);
+    // Parse JSON fields for response
+    const response = {
+      ...parseJsonFields(newLog),
+      totalUnaccompaniedMinutes,
+    };
+
+    return c.json(response, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error('Zod validation error:', JSON.stringify(error.errors));
@@ -295,7 +314,7 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
       console.log('🚨 MAJOR FALL ALERT for care recipient:', data.careRecipientId);
     }
 
-    return c.json(updatedLog);
+    return c.json(parseJsonFields(updatedLog));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return c.json({ error: 'Validation failed', details: error.errors }, 400);
@@ -323,7 +342,15 @@ careLogsRoute.get('/recipient/:recipientId', ...familyMemberAccess, requireCareR
       .orderBy(desc(careLogs.logDate))
       .all();
 
-    return c.json(logs);
+    // Parse JSON fields in all logs
+    const parsedLogs = logs.map(log => ({
+      ...parseJsonFields(log),
+      totalUnaccompaniedMinutes: log.unaccompaniedTime
+        ? calculateTotalUnaccompaniedTime(JSON.parse(log.unaccompaniedTime as any))
+        : 0,
+    }));
+
+    return c.json(parsedLogs);
   } catch (error) {
     console.error('Get care logs error:', error);
     return c.json({ error: 'Internal server error' }, 500);
@@ -385,10 +412,13 @@ careLogsRoute.get('/recipient/:recipientId/today', ...familyMemberAccess, requir
       return c.json(null);
     }
 
-    // Normalize meals data
+    // Normalize meals data and parse JSON fields
     return c.json({
-      ...log,
+      ...parseJsonFields(log),
       meals: normalizeMealsData(log.meals as any),
+      totalUnaccompaniedMinutes: log.unaccompaniedTime
+        ? calculateTotalUnaccompaniedTime(JSON.parse(log.unaccompaniedTime as any))
+        : 0,
     });
   } catch (error) {
     console.error('Get today log error:', error);
@@ -434,10 +464,13 @@ careLogsRoute.get('/recipient/:recipientId/date/:date', ...familyMemberAccess, r
     }
     console.log(`[GET /date/:date] Found log ${matchingLog.id} for ${targetDate}`);
 
-    // Normalize meals data
+    // Normalize meals data and parse JSON fields
     return c.json({
-      ...matchingLog,
+      ...parseJsonFields(matchingLog),
       meals: normalizeMealsData(matchingLog.meals as any),
+      totalUnaccompaniedMinutes: matchingLog.unaccompaniedTime
+        ? calculateTotalUnaccompaniedTime(JSON.parse(matchingLog.unaccompaniedTime as any))
+        : 0,
     });
   } catch (error) {
     console.error('Get date log error:', error);
