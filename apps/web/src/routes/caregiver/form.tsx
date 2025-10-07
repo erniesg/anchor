@@ -220,7 +220,7 @@ function CareLogFormComponent() {
     walkingStick: false,
     walker: false,
     bruiseOintment: false,
-    antiseptic: false,
+    firstAidKit: false,
   });
 
   // Get care recipient ID (mock for now - should come from caregiver session)
@@ -249,54 +249,59 @@ function CareLogFormComponent() {
       console.error('careRecipient:', careRecipient);
     }
 
+    // Helper to omit empty strings and null/undefined values
+    const omitEmpty = (value: any) => {
+      if (value === '' || value === null || value === undefined) return undefined;
+      return value;
+    };
+
     return {
       careRecipientId: recipientId,
       logDate: new Date().toISOString().split('T')[0],
-      wakeTime,
-      mood,
-      showerTime,
-      hairWash,
-      medications,
-      meals: {
-        breakfast: breakfastTime ? {
+      wakeTime: omitEmpty(wakeTime),
+      mood: omitEmpty(mood),
+      showerTime: omitEmpty(showerTime),
+      hairWash: hairWash || undefined,
+      medications: medications.length > 0 ? medications : undefined,
+      meals: breakfastTime ? {
+        breakfast: {
           time: breakfastTime,
           appetite: breakfastAppetite,
           amountEaten: breakfastAmount,
-        } : undefined,
-      },
-      bloodPressure,
+        },
+      } : undefined,
+      bloodPressure: omitEmpty(bloodPressure),
       pulseRate: pulseRate ? parseInt(pulseRate) : undefined,
       oxygenLevel: oxygenLevel ? parseInt(oxygenLevel) : undefined,
       bloodSugar: bloodSugar ? parseFloat(bloodSugar) : undefined,
-      vitalsTime,
-      toileting: {
+      vitalsTime: omitEmpty(vitalsTime),
+      toileting: (bowelFreq > 0 || urineFreq > 0 || diaperChanges > 0) ? {
         bowelFrequency: bowelFreq,
         urineFrequency: urineFreq,
         diaperChanges,
-      },
+      } : undefined,
       // Sprint 1: Fall Risk & Safety
-      balanceIssues,
-      nearFalls,
-      actualFalls,
-      walkingPattern,
-      freezingEpisodes,
-      unaccompaniedTime,
-      unaccompaniedIncidents,
-      totalUnaccompaniedMinutes: unaccompaniedTime.reduce((sum, p) => {
-        const duration = calculateDuration(p.startTime, p.endTime);
-        return sum + (duration > 0 ? duration : 0);
-      }, 0),
-      safetyChecks,
-      emergencyPrep,
+      balanceIssues: balanceIssues !== null ? balanceIssues : undefined,
+      nearFalls: nearFalls !== 'none' ? nearFalls : undefined,
+      actualFalls: actualFalls !== 'none' ? actualFalls : undefined,
+      walkingPattern: walkingPattern.length > 0 ? walkingPattern : undefined,
+      freezingEpisodes: freezingEpisodes !== 'none' ? freezingEpisodes : undefined,
+      unaccompaniedTime: unaccompaniedTime.length > 0 ? unaccompaniedTime.map(p => ({
+        ...p,
+        durationMinutes: calculateDuration(p.startTime, p.endTime),
+      })) : undefined,
+      unaccompaniedIncidents: omitEmpty(unaccompaniedIncidents),
+      safetyChecks: Object.values(safetyChecks).some(v => v.checked) ? safetyChecks : undefined,
+      emergencyPrep: Object.values(emergencyPrep).some(v => v) ? emergencyPrep : undefined,
       emergencyFlag,
-      emergencyNote,
-      notes,
+      emergencyNote: omitEmpty(emergencyNote),
+      notes: omitEmpty(notes),
     };
   }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite,
       breakfastAmount, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime,
       bowelFreq, urineFreq, diaperChanges, balanceIssues, nearFalls, actualFalls,
       walkingPattern, freezingEpisodes, unaccompaniedTime, unaccompaniedIncidents, safetyChecks, emergencyPrep,
-      emergencyFlag, emergencyNote, notes]);
+      emergencyFlag, emergencyNote, notes, careRecipient]);
 
   // Create/Update mutation (for auto-save)
   const saveDraftMutation = useMutation({
@@ -391,11 +396,15 @@ function CareLogFormComponent() {
     const mealsData = breakfastTime || breakfastAppetite > 0 || breakfastAmount > 0;
     const vitalsData = bloodPressure || pulseRate || oxygenLevel || bloodSugar || vitalsTime;
     const toiletingData = bowelFreq > 0 || urineFreq > 0 || diaperChanges > 0;
+    const fallRiskData = balanceIssues !== null || nearFalls !== 'none' || actualFalls !== 'none' ||
+                         walkingPattern.length > 0 || freezingEpisodes !== 'none';
+    const unaccompaniedData = unaccompaniedTime.length > 0 || unaccompaniedIncidents;
+    const safetyChecksData = Object.values(safetyChecks).some(v => v.checked);
     const notesData = notes || emergencyFlag;
 
     return {
-      1: { // Morning Routine - optional but track if started
-        complete: !morningRoutineData || (morningRoutineData && true), // Always complete if touched
+      1: { // Morning Routine - optional
+        complete: true,
         hasData: morningRoutineData,
         missing: [],
       },
@@ -419,18 +428,36 @@ function CareLogFormComponent() {
         hasData: vitalsData,
         missing: [],
       },
-      5: { // Toileting - required fields, at least one must be > 0
-        complete: toiletingData,
+      5: { // Toileting - optional (at least one recommended)
+        complete: true,
         hasData: toiletingData,
-        missing: !toiletingData ? ['At least one toileting record (bowel, urine, or diaper change)'] : [],
+        missing: [],
       },
-      6: { // Notes & Submit
+      6: { // Fall Risk & Safety - optional
+        complete: true,
+        hasData: fallRiskData,
+        missing: [],
+      },
+      7: { // Unaccompanied Time - optional
+        complete: true,
+        hasData: unaccompaniedData,
+        missing: [],
+      },
+      8: { // Safety Checks - optional
+        complete: true,
+        hasData: safetyChecksData,
+        missing: [],
+      },
+      9: { // Notes & Submit - optional
         complete: true,
         hasData: notesData,
         missing: [],
       },
     };
-  }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite, breakfastAmount, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime, bowelFreq, urineFreq, diaperChanges, notes, emergencyFlag]);
+  }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite, breakfastAmount,
+      bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime, bowelFreq, urineFreq, diaperChanges,
+      balanceIssues, nearFalls, actualFalls, walkingPattern, freezingEpisodes,
+      unaccompaniedTime, unaccompaniedIncidents, safetyChecks, notes, emergencyFlag]);
 
   const allSectionsComplete = Object.values(sectionValidation).every(s => s.complete);
   const sectionsWithData = Object.values(sectionValidation).filter(s => s.hasData).length;
@@ -1468,8 +1495,12 @@ function CareLogFormComponent() {
                         Review Your Report
                       </h4>
                       <div className="space-y-2 text-sm text-blue-800">
+                        {/* Morning Routine */}
                         {wakeTime && <p>🌅 Wake time: {wakeTime}</p>}
                         {mood && <p>😊 Mood: {mood}</p>}
+                        {showerTime && <p>🚿 Shower: {showerTime}{hairWash ? ' (hair washed)' : ''}</p>}
+
+                        {/* Medications */}
                         {medications.filter(m => m.given).length > 0 && (
                           <div>
                             <p className="font-semibold">💊 Medications given:</p>
@@ -1480,9 +1511,13 @@ function CareLogFormComponent() {
                             </ul>
                           </div>
                         )}
+
+                        {/* Meals */}
                         {breakfastTime && (
                           <p>🍽️ Breakfast: {breakfastTime} - Appetite: {breakfastAppetite}/5, Eaten: {breakfastAmount}%</p>
                         )}
+
+                        {/* Vitals */}
                         {(bloodPressure || pulseRate || oxygenLevel || bloodSugar) && (
                           <div>
                             <p className="font-semibold">❤️ Vital Signs {vitalsTime && `at ${vitalsTime}`}:</p>
@@ -1494,7 +1529,57 @@ function CareLogFormComponent() {
                             </ul>
                           </div>
                         )}
-                        <p>🚽 Toileting: {bowelFreq} bowel, {urineFreq} urine, {diaperChanges} diaper changes</p>
+
+                        {/* Toileting */}
+                        {(bowelFreq > 0 || urineFreq > 0 || diaperChanges > 0) && (
+                          <p>🚽 Toileting: {bowelFreq} bowel, {urineFreq} urine, {diaperChanges} diaper changes</p>
+                        )}
+
+                        {/* Fall Risk */}
+                        {balanceIssues !== null && (
+                          <p>⚠️ Balance Issues: Level {balanceIssues}/5</p>
+                        )}
+                        {nearFalls !== 'none' && (
+                          <p>⚠️ Near Falls: {nearFalls.replace('_', ' ')}</p>
+                        )}
+                        {actualFalls !== 'none' && (
+                          <p className="font-semibold text-red-700">🚨 Actual Falls: {actualFalls}</p>
+                        )}
+                        {walkingPattern.length > 0 && (
+                          <p>🚶 Walking Pattern: {walkingPattern.map(p => p.replace(/_/g, ' ')).join(', ')}</p>
+                        )}
+                        {freezingEpisodes !== 'none' && (
+                          <p>❄️ Freezing Episodes: {freezingEpisodes}</p>
+                        )}
+
+                        {/* Unaccompanied Time */}
+                        {unaccompaniedTime.length > 0 && (
+                          <div>
+                            <p className="font-semibold">⏱️ Unaccompanied Time:</p>
+                            <ul className="ml-4 space-y-1">
+                              {unaccompaniedTime.map((period, idx) => (
+                                <li key={idx}>
+                                  • {period.startTime} - {period.endTime} ({calculateDuration(period.startTime, period.endTime)} min): {period.reason}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Safety Checks */}
+                        {Object.values(safetyChecks).some(v => v.checked) && (
+                          <p>🔒 Safety Checks: {Object.values(safetyChecks).filter(v => v.checked).length}/6 completed</p>
+                        )}
+
+                        {/* Emergency Prep */}
+                        {Object.values(emergencyPrep).some(v => v) && (
+                          <p>🚑 Emergency Equipment: {Object.values(emergencyPrep).filter(v => v).length}/7 available</p>
+                        )}
+
+                        {/* Notes */}
+                        {emergencyFlag && (
+                          <p className="font-semibold text-red-700">🚨 EMERGENCY ALERT: {emergencyNote}</p>
+                        )}
                         {notes && <p>📝 Notes: {notes.substring(0, 100)}{notes.length > 100 ? '...' : ''}</p>}
                       </div>
                     </div>

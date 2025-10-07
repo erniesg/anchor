@@ -407,9 +407,10 @@ careLogsRoute.get('/recipient/:recipientId/date/:date', ...familyMemberAccess, r
       .all();
 
     // Filter by date (compare YYYY-MM-DD portion)
+    // Note: log.logDate is stored as Unix timestamp (seconds), need to convert to milliseconds
     const targetDate = new Date(date).toISOString().split('T')[0];
     const matchingLog = logs.find(log => {
-      const logDate = new Date(log.logDate).toISOString().split('T')[0];
+      const logDate = new Date(log.logDate * 1000).toISOString().split('T')[0];
       return logDate === targetDate;
     });
 
