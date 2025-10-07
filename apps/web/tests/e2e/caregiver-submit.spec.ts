@@ -48,52 +48,61 @@ test.describe('Caregiver Form Submission', () => {
 
     // Section 1: Morning Routine
     console.log('Filling Section 1: Morning Routine');
-    await page.locator('input[type="time"]').first().fill('09:00');
-    await page.locator('button:has-text("sleepy")').click();
+    await page.locator('input[type="time"]').first().fill('08:30');
+    await page.locator('button:has-text("alert")').click();
+    await page.locator('input[type="time"]').nth(1).fill('09:00');
+    await page.locator('input#hairWash').check(); // Hair wash checkbox
     await page.locator('button:has-text("Next")').first().click();
 
-    // Section 2: Medications (skip)
+    // Section 2: Medications (skip - no meds configured)
     console.log('Skipping Section 2: Medications');
     await page.locator('button:has-text("Next")').first().click();
 
     // Section 3: Meals
     console.log('Filling Section 3: Meals');
-    await page.locator('input[type="time"]').first().fill('09:00');
-    const sliders = await page.locator('input[type="range"]').all();
+    await page.locator('input[type="time"]').first().fill('09:30');
+    let sliders = await page.locator('input[type="range"]').all();
     if (sliders.length >= 2) {
-      await sliders[0].fill('3'); // appetite
-      await sliders[1].fill('50'); // amount eaten
+      await sliders[0].fill('4'); // appetite
+      await sliders[1].fill('75'); // amount eaten
     }
     await page.locator('button:has-text("Next")').first().click();
 
-    // Section 4: Vitals (skip)
-    console.log('Skipping Section 4: Vitals');
+    // Section 4: Vitals
+    console.log('Filling Section 4: Vitals');
+    const vitalsInputs = await page.locator('input[type="number"]').all();
+    if (vitalsInputs.length >= 5) {
+      await vitalsInputs[0].fill('125'); // systolic
+      await vitalsInputs[1].fill('82');  // diastolic
+      await vitalsInputs[2].fill('72');  // pulse
+      await vitalsInputs[3].fill('97');  // oxygen
+      await vitalsInputs[4].fill('5.8'); // blood sugar
+    }
+    const timeInputs = await page.locator('input[type="time"]').all();
+    if (timeInputs.length > 0) {
+      await timeInputs[0].fill('10:00');
+    }
     await page.locator('button:has-text("Next")').first().click();
 
     // Section 5: Toileting
     console.log('Filling Section 5: Toileting');
-    await page.locator('input[type="number"]').first().fill('1');
+    await page.locator('input[type="number"]').first().fill('1'); // bowel
+    await page.locator('input[type="number"]').nth(1).fill('4'); // urine
+    await page.locator('input[type="number"]').nth(2).fill('2'); // diaper changes
     await page.locator('button:has-text("Next")').first().click();
 
-    // Navigate through remaining sections by scrolling down and finding Next buttons
+    // Skip remaining sections - just click Next until we reach Submit
     console.log('Navigating through remaining sections...');
-
-    // Keep clicking Next until we reach the submit section
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       await page.waitForTimeout(500);
-
-      // Try to find Next button
       const nextButtons = await page.locator('button').filter({ hasText: /Next/i }).all();
-
       if (nextButtons.length > 0) {
-        console.log(`Found ${nextButtons.length} Next button(s), clicking first one`);
+        console.log(`Section ${6 + i}: Clicking Next`);
         await nextButtons[0].click();
       } else {
-        // No Next button, might be on final section
-        console.log('No Next button found, checking for Submit button');
         const submitExists = await page.locator('button:has-text("Submit Report")').count();
         if (submitExists > 0) {
-          console.log('Found Submit button, ready to submit');
+          console.log('Found Submit button');
           break;
         }
       }

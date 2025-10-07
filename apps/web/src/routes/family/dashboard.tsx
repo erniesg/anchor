@@ -109,7 +109,7 @@ function DashboardComponent() {
       const results = await Promise.all(promises);
       return results.filter(Boolean);
     },
-    enabled: !!careRecipient?.id && viewMode === 'week',
+    enabled: !!careRecipient?.id && !!token && viewMode === 'week',
     refetchInterval: 60000,
   });
 
@@ -304,7 +304,7 @@ function DashboardComponent() {
                       <p className="text-gray-600">Loading week data...</p>
                     </CardContent>
                   </Card>
-                ) : chartData.length === 0 ? (
+                ) : !weekLogs || weekLogs.length === 0 ? (
                   <Card>
                     <CardContent className="p-6 text-center">
                       <p className="text-gray-600">No data for this week</p>

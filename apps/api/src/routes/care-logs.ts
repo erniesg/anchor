@@ -418,14 +418,21 @@ careLogsRoute.get('/recipient/:recipientId/date/:date', ...familyMemberAccess, r
     // Filter by date (compare YYYY-MM-DD portion)
     // Note: log.logDate is stored as Unix timestamp (seconds), need to convert to milliseconds
     const targetDate = new Date(date).toISOString().split('T')[0];
+    console.log(`[GET /date/:date] Searching for date ${targetDate}, found ${logs.length} submitted logs`);
+
     const matchingLog = logs.find(log => {
-      const logDate = new Date(log.logDate * 1000).toISOString().split('T')[0];
+      // log.logDate might be a Date object or Unix timestamp
+      const logDateMs = typeof log.logDate === 'number' ? log.logDate * 1000 : new Date(log.logDate).getTime();
+      const logDate = new Date(logDateMs).toISOString().split('T')[0];
+      console.log(`  Comparing: ${logDate} === ${targetDate} ? ${logDate === targetDate} (logDate type: ${typeof log.logDate}, value: ${log.logDate})`);
       return logDate === targetDate;
     });
 
     if (!matchingLog) {
+      console.log(`[GET /date/:date] No log found for ${targetDate}`);
       return c.json(null);
     }
+    console.log(`[GET /date/:date] Found log ${matchingLog.id} for ${targetDate}`);
 
     // Normalize meals data
     return c.json({
