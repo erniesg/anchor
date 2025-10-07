@@ -202,10 +202,16 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
     return c.json({ ...newLog, totalUnaccompaniedMinutes }, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error('Zod validation error:', JSON.stringify(error.errors));
       return c.json({ error: 'Validation failed', details: error.errors }, 400);
     }
     console.error('Create care log error:', error);
-    return c.json({ error: 'Internal server error' }, 500);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
+    return c.json({
+      error: 'Internal server error',
+      message: c.env.ENVIRONMENT === 'dev' ? (error instanceof Error ? error.message : String(error)) : undefined
+    }, 500);
   }
 });
 
