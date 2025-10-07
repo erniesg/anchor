@@ -151,6 +151,7 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
       }, 403);
     }
 
+    const now = new Date();
     const newLog = await db
       .insert(careLogs)
       .values({
@@ -183,6 +184,8 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         emergencyFlag: data.emergencyFlag,
         emergencyNote: data.emergencyNote,
         notes: data.notes,
+        createdAt: now,
+        updatedAt: now,
       } as any)
       .returning()
       .get();
