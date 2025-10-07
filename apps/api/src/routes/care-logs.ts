@@ -24,6 +24,14 @@ const mealLogSchema = z.object({
   swallowingIssues: z.array(z.string()).optional(),
 });
 
+// Sprint 2 Day 1: Fluid Intake schema
+const fluidEntrySchema = z.object({
+  name: z.string().min(1, 'Fluid name is required'),
+  time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+  amountMl: z.number().int().positive('Amount must be positive'),
+  swallowingIssues: z.array(z.string()).optional().default([]),
+});
+
 // Sprint 1 Day 2: Unaccompanied Time schema
 const unaccompaniedTimePeriodSchema = z.object({
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
@@ -86,6 +94,10 @@ const createCareLogSchema = z.object({
     dinner: mealLogSchema.optional(),
   }).optional(),
 
+  // Sprint 2 Day 1: Fluid Intake
+  fluids: z.array(fluidEntrySchema).optional().default([]),
+  totalFluidIntake: z.number().int().nonnegative().optional(),
+
   // Vitals
   bloodPressure: z.string().optional(),
   pulseRate: z.number().optional(),
@@ -126,6 +138,12 @@ const createCareLogSchema = z.object({
   notes: z.string().optional(),
 });
 
+// Sprint 2 Day 1: Helper function to calculate total fluid intake
+function calculateTotalFluidIntake(fluids: any[]): number {
+  if (!fluids || fluids.length === 0) return 0;
+  return fluids.reduce((total, fluid) => total + (fluid.amountMl || 0), 0);
+}
+
 // Helper function to calculate total unaccompanied time
 function calculateTotalUnaccompaniedTime(periods: any[]): number {
   if (!periods || periods.length === 0) return 0;
@@ -138,6 +156,7 @@ function parseJsonFields(log: any): any {
   return {
     ...log,
     medications: log.medications ? JSON.parse(log.medications) : null,
+    fluids: log.fluids ? JSON.parse(log.fluids) : [], // Sprint 2 Day 1: Parse fluids
     walkingPattern: log.walkingPattern ? JSON.parse(log.walkingPattern) : null,
     unaccompaniedTime: log.unaccompaniedTime ? JSON.parse(log.unaccompaniedTime) : null,
     safetyChecks: log.safetyChecks ? JSON.parse(log.safetyChecks) : null,
@@ -164,6 +183,12 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
       }, 403);
     }
 
+    // Sprint 2 Day 1: Auto-calculate total fluid intake if not provided
+    const fluids = data.fluids || [];
+    const totalFluidIntake = data.totalFluidIntake !== undefined
+      ? data.totalFluidIntake
+      : calculateTotalFluidIntake(fluids);
+
     const now = new Date();
     const newLog = await db
       .insert(careLogs)
@@ -178,6 +203,9 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         hairWash: data.hairWash,
         medications: data.medications ? JSON.stringify(data.medications) as any : null,
         meals: data.meals ? JSON.stringify(data.meals) as any : null,
+        // Sprint 2 Day 1: Fluid Intake
+        fluids: fluids.length > 0 ? JSON.stringify(fluids) as any : null,
+        totalFluidIntake,
         bloodPressure: data.bloodPressure,
         pulseRate: data.pulseRate,
         oxygenLevel: data.oxygenLevel,
@@ -212,10 +240,14 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
     // Calculate total unaccompanied time
     const totalUnaccompaniedMinutes = calculateTotalUnaccompaniedTime(data.unaccompaniedTime || []);
 
+    // Sprint 2 Day 1: Add low fluid warning flag
+    const lowFluidWarning = totalFluidIntake < 1000;
+
     // Parse JSON fields for response
     const response = {
       ...parseJsonFields(newLog),
       totalUnaccompaniedMinutes,
+      lowFluidWarning,
     };
 
     return c.json(response, 201);

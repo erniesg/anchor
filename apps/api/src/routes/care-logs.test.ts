@@ -1056,4 +1056,224 @@ describe('Care Logs API', () => {
       expect(data.emergencyPrep.wheelchair).toBe(true);
     });
   });
+
+  describe('Sprint 2 Day 1: Fluid Intake Monitoring', () => {
+    it('should accept valid fluid entries', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-07',
+        fluids: [
+          {
+            name: 'Glucerna Milk',
+            time: '08:30',
+            amountMl: 250,
+            swallowingIssues: [],
+          },
+          {
+            name: 'Plain Water',
+            time: '10:00',
+            amountMl: 150,
+            swallowingIssues: [],
+          },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.fluids).toHaveLength(2);
+      expect(data.fluids[0].name).toBe('Glucerna Milk');
+      expect(data.fluids[0].amountMl).toBe(250);
+    });
+
+    it('should auto-calculate total fluid intake', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-07',
+        fluids: [
+          { name: 'Moringa Water', time: '08:00', amountMl: 200, swallowingIssues: [] },
+          { name: 'Orange Juice', time: '10:00', amountMl: 150, swallowingIssues: [] },
+          { name: 'Plain Water', time: '14:00', amountMl: 100, swallowingIssues: [] },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.totalFluidIntake).toBe(450); // Auto-calculated: 200 + 150 + 100
+    });
+
+    it('should validate fluid amount is positive', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-07',
+        fluids: [
+          { name: 'Water', time: '10:00', amountMl: -100, swallowingIssues: [] },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+      const error = await res.json();
+      expect(error.error).toBe('Validation failed');
+      expect(JSON.stringify(error.details)).toContain('positive');
+    });
+
+    it('should require fluid name when entry added', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-07',
+        fluids: [
+          { name: '', time: '10:00', amountMl: 100, swallowingIssues: [] },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+      const error = await res.json();
+      expect(error.error).toBe('Validation failed');
+      expect(JSON.stringify(error.details)).toContain('required');
+    });
+
+    it('should accept empty fluids array', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-07',
+        fluids: [],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.fluids).toEqual([]);
+      expect(data.totalFluidIntake).toBe(0);
+    });
+
+    it('should track swallowing issues per fluid', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-07',
+        fluids: [
+          {
+            name: 'Glucerna Milk',
+            time: '08:30',
+            amountMl: 250,
+            swallowingIssues: ['coughing', 'slow'],
+          },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.fluids[0].swallowingIssues).toEqual(['coughing', 'slow']);
+    });
+
+    it('should add low fluid warning flag when intake <1000ml', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-07',
+        fluids: [
+          { name: 'Water', time: '08:00', amountMl: 300, swallowingIssues: [] },
+          { name: 'Juice', time: '12:00', amountMl: 200, swallowingIssues: [] },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.totalFluidIntake).toBe(500);
+      expect(data.lowFluidWarning).toBe(true); // Dehydration risk
+    });
+
+    it('should not add warning flag when intake >=1000ml', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-07',
+        fluids: [
+          { name: 'Water', time: '08:00', amountMl: 500, swallowingIssues: [] },
+          { name: 'Juice', time: '12:00', amountMl: 300, swallowingIssues: [] },
+          { name: 'Milk', time: '16:00', amountMl: 250, swallowingIssues: [] },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.totalFluidIntake).toBe(1050);
+      expect(data.lowFluidWarning).toBe(false);
+    });
+  });
 });
