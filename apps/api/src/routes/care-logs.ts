@@ -519,7 +519,7 @@ careLogsRoute.get('/recipient/:recipientId/today', ...familyMemberAccess, requir
           eq(careLogs.status, 'submitted') // Only show submitted logs
         )
       )
-      .orderBy(desc(careLogs.logDate))
+      .orderBy(desc(careLogs.logDate), desc(careLogs.updatedAt))
       .limit(1)
       .get();
 
@@ -528,12 +528,16 @@ careLogsRoute.get('/recipient/:recipientId/today', ...familyMemberAccess, requir
     }
 
     // Normalize meals data and parse JSON fields
+    const parsedLog = parseJsonFields(log);
+    const medications = parsedLog.medications || [];
+
     return c.json({
-      ...parseJsonFields(log),
+      ...parsedLog,
       meals: normalizeMealsData(log.meals as any),
       totalUnaccompaniedMinutes: log.unaccompaniedTime
         ? calculateTotalUnaccompaniedTime(JSON.parse(log.unaccompaniedTime as any))
         : 0,
+      medicationAdherence: calculateMedicationAdherence(medications), // Sprint 2 Day 4
     });
   } catch (error) {
     console.error('Get today log error:', error);
@@ -580,12 +584,16 @@ careLogsRoute.get('/recipient/:recipientId/date/:date', ...familyMemberAccess, r
     console.log(`[GET /date/:date] Found log ${matchingLog.id} for ${targetDate}`);
 
     // Normalize meals data and parse JSON fields
+    const parsedLog = parseJsonFields(matchingLog);
+    const medications = parsedLog.medications || [];
+
     return c.json({
-      ...parseJsonFields(matchingLog),
+      ...parsedLog,
       meals: normalizeMealsData(matchingLog.meals as any),
       totalUnaccompaniedMinutes: matchingLog.unaccompaniedTime
         ? calculateTotalUnaccompaniedTime(JSON.parse(matchingLog.unaccompaniedTime as any))
         : 0,
+      medicationAdherence: calculateMedicationAdherence(medications), // Sprint 2 Day 4
     });
   } catch (error) {
     console.error('Get date log error:', error);

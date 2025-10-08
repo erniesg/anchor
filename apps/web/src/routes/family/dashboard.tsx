@@ -130,6 +130,9 @@ function DashboardComponent() {
       actualFalls: log.actualFalls === 'none' ? 0 : log.actualFalls === 'minor' ? 1 : log.actualFalls === 'major' ? 2 : null,
       unaccompaniedMinutes: log.totalUnaccompaniedMinutes || 0,
       fluidIntake: log.totalFluidIntake || 0, // Sprint 2 Day 2: Fluid intake
+      medicationAdherence: log.medicationAdherence?.percentage || 0, // Sprint 2 Day 4: Medication adherence
+      medicationsGiven: log.medicationAdherence?.given || 0,
+      medicationsMissed: log.medicationAdherence?.missed || 0,
     })) || [];
 
   // Sprint 2 Day 2: Fluid breakdown details toggle
@@ -602,6 +605,53 @@ function DashboardComponent() {
                       </CardContent>
                     </Card>
 
+                    {/* Sprint 2 Day 4: Medication Adherence Weekly Trend */}
+                    <Card data-testid="medication-adherence-chart">
+                      <CardHeader>
+                        <h3 className="font-semibold">💊 Medication Adherence</h3>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={250}>
+                          <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" />
+                            <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} />
+                            <Tooltip formatter={(value: number) => `${value}%`} />
+                            <Bar dataKey="medicationAdherence" fill="#8b5cf6" name="Adherence %">
+                              {chartData.map((entry, index) => (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={
+                                    entry.medicationAdherence === 100 ? '#22c55e' :
+                                    entry.medicationAdherence >= 80 ? '#fbbf24' :
+                                    entry.medicationAdherence > 0 ? '#ef4444' : '#d1d5db'
+                                  }
+                                />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                        <div className="mt-3 text-xs text-gray-600 flex items-center justify-center gap-4">
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-green-500 rounded"></div>
+                            <span>100% (all given)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-yellow-400 rounded"></div>
+                            <span>80-99% (mostly given)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-red-500 rounded"></div>
+                            <span>&lt;80% (poor adherence)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-gray-300 rounded"></div>
+                            <span>No data</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
                     {/* Sprint 2 Day 3: Sleep Quality Weekly Trend */}
                     <Card data-testid="sleep-quality-chart">
                       <CardHeader>
@@ -734,21 +784,50 @@ function DashboardComponent() {
                   </CardContent>
                 </Card>
 
-                {/* Medications */}
-                <Card>
+                {/* Sprint 2 Day 4: Medications with Adherence */}
+                <Card data-testid="medication-card">
                   <CardHeader>
                     <h3 className="font-semibold">💊 Medications</h3>
                   </CardHeader>
                   <CardContent>
+                    {/* Adherence Summary */}
+                    {todayLog.medicationAdherence && todayLog.medicationAdherence.total > 0 && (
+                      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700">Adherence</span>
+                          <span className={`text-2xl font-bold ${
+                            todayLog.medicationAdherence.percentage === 100 ? 'text-green-600' :
+                            todayLog.medicationAdherence.percentage >= 80 ? 'text-yellow-600' :
+                            'text-red-600'
+                          }`}>
+                            {todayLog.medicationAdherence.percentage}%
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-gray-600">
+                          <span>✅ Given: {todayLog.medicationAdherence.given}</span>
+                          <span>❌ Missed: {todayLog.medicationAdherence.missed}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Medication List */}
                     {todayLog.medications && todayLog.medications.length > 0 ? (
                       <div className="space-y-2">
                         {todayLog.medications.map((med: any, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between text-sm">
-                            <span className="text-gray-700">{med.name}</span>
-                            {med.given ? (
-                              <span className="text-success">✅ {med.time}</span>
-                            ) : (
-                              <span className="text-gray-400">⏺ Not given</span>
+                          <div key={idx} className="border-b pb-2 last:border-b-0">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-700 font-medium">{med.name}</span>
+                              {med.given ? (
+                                <span className="text-success">✅ {med.time}</span>
+                              ) : (
+                                <span className="text-gray-400">⏺ Not given</span>
+                              )}
+                            </div>
+                            {med.purpose && (
+                              <p className="text-xs text-gray-600 mt-1">Purpose: {med.purpose}</p>
+                            )}
+                            {med.notes && (
+                              <p className="text-xs text-orange-600 mt-1 italic">Note: {med.notes}</p>
                             )}
                           </div>
                         ))}
