@@ -314,6 +314,16 @@ export const careLogs = sqliteTable('care_logs', {
       antiseptic?: boolean;
     }>(),
 
+  // Sprint 3 Day 1: Spiritual & Emotional Well-Being (Template page 12)
+  spiritualEmotional: text('spiritual_emotional', { mode: 'json' })
+    .$type<{
+      prayerTime?: { start: string; end: string }; // Time range (HH:MM format)
+      prayerExpression?: 'speaking_out_loud' | 'whispering' | 'mumbling' | 'silent_worship';
+      overallMood?: number; // 1-5 scale
+      communicationScale?: number; // 1-5 scale
+      socialInteraction?: 'engaged' | 'responsive' | 'withdrawn' | 'aggressive_hostile';
+    }>(),
+
   // Notes
   notes: text('notes'),
 

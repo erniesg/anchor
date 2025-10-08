@@ -188,6 +188,18 @@ const createCareLogSchema = z.object({
   emergencyFlag: z.boolean().default(false),
   emergencyNote: z.string().optional(),
 
+  // Sprint 3 Day 1: Spiritual & Emotional Well-Being (Template page 12)
+  spiritualEmotional: z.object({
+    prayerTime: z.object({
+      start: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+      end: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+    }).optional(),
+    prayerExpression: z.enum(['speaking_out_loud', 'whispering', 'mumbling', 'silent_worship']).optional(),
+    overallMood: z.number().int().min(1).max(5).optional(),
+    communicationScale: z.number().int().min(1).max(5).optional(),
+    socialInteraction: z.enum(['engaged', 'responsive', 'withdrawn', 'aggressive_hostile']).optional(),
+  }).optional(),
+
   // Notes
   notes: z.string().optional(),
 });
@@ -256,6 +268,8 @@ function parseJsonFields(log: any): any {
     unaccompaniedTime: safeJsonParse(log.unaccompaniedTime),
     safetyChecks: safeJsonParse(log.safetyChecks),
     emergencyPrep: safeJsonParse(log.emergencyPrep),
+    // Sprint 3 Day 1: Parse spiritual & emotional (handle both snake_case from DB and camelCase from client)
+    spiritualEmotional: safeJsonParse(log.spiritualEmotional || log.spiritual_emotional),
   };
 }
 
@@ -324,6 +338,8 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         emergencyPrep: data.emergencyPrep ? JSON.stringify(data.emergencyPrep) as any : null,
         emergencyFlag: data.emergencyFlag,
         emergencyNote: data.emergencyNote,
+        // Sprint 3 Day 1: Spiritual & Emotional Well-Being
+        spiritualEmotional: data.spiritualEmotional ? JSON.stringify(data.spiritualEmotional) as any : null,
         notes: data.notes,
         createdAt: now,
         updatedAt: now,
@@ -439,6 +455,8 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
         emergencyPrep: data.emergencyPrep as any,
         emergencyFlag: data.emergencyFlag,
         emergencyNote: data.emergencyNote,
+        // Sprint 3 Day 1: Spiritual & Emotional Well-Being
+        spiritualEmotional: data.spiritualEmotional as any,
         notes: data.notes,
         updatedAt: new Date(),
       } as any)

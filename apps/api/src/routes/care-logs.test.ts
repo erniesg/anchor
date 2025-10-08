@@ -2028,4 +2028,207 @@ describe('Care Logs API', () => {
       expect(data.urination.concerns).toContain('dehydration');
     });
   });
+
+  // Sprint 3 Day 1: Spiritual & Emotional Well-Being
+  describe('Sprint 3 Day 1: Spiritual & Emotional Well-Being', () => {
+    it('should accept complete spiritual & emotional data', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        mood: 'alert' as const,
+        spiritualEmotional: {
+          prayerTime: { start: '09:00', end: '09:30' },
+          prayerExpression: 'speaking_out_loud' as const,
+          overallMood: 4,
+          communicationScale: 3,
+          socialInteraction: 'engaged' as const,
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.spiritualEmotional).toBeDefined();
+      expect(data.spiritualEmotional.prayerTime).toEqual({ start: '09:00', end: '09:30' });
+      expect(data.spiritualEmotional.prayerExpression).toBe('speaking_out_loud');
+      expect(data.spiritualEmotional.overallMood).toBe(4);
+      expect(data.spiritualEmotional.communicationScale).toBe(3);
+      expect(data.spiritualEmotional.socialInteraction).toBe('engaged');
+    });
+
+    it('should validate prayer expression enum values', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        spiritualEmotional: {
+          prayerExpression: 'invalid_expression' as any,
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+    });
+
+    it('should validate overall mood scale (1-5)', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        spiritualEmotional: {
+          overallMood: 6, // Out of range
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+    });
+
+    it('should validate communication scale (1-5)', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        spiritualEmotional: {
+          communicationScale: 0, // Out of range
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+    });
+
+    it('should validate social interaction enum values', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        spiritualEmotional: {
+          socialInteraction: 'invalid_interaction' as any,
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+    });
+
+    it('should accept all prayer expression types', async () => {
+      const expressions = ['speaking_out_loud', 'whispering', 'mumbling', 'silent_worship'] as const;
+
+      for (const expression of expressions) {
+        const careLogData = {
+          careRecipientId,
+          caregiverId,
+          logDate: new Date().toISOString(),
+          spiritualEmotional: {
+            prayerExpression: expression,
+          },
+        };
+
+        const res = await app.request('/care-logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify(careLogData),
+        }, mockEnv);
+
+        expect(res.status).toBe(201);
+        const data = await res.json();
+        expect(data.spiritualEmotional.prayerExpression).toBe(expression);
+      }
+    });
+
+    it('should accept all social interaction types', async () => {
+      const interactions = ['engaged', 'responsive', 'withdrawn', 'aggressive_hostile'] as const;
+
+      for (const interaction of interactions) {
+        const careLogData = {
+          careRecipientId,
+          caregiverId,
+          logDate: new Date().toISOString(),
+          spiritualEmotional: {
+            socialInteraction: interaction,
+          },
+        };
+
+        const res = await app.request('/care-logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify(careLogData),
+        }, mockEnv);
+
+        expect(res.status).toBe(201);
+        const data = await res.json();
+        expect(data.spiritualEmotional.socialInteraction).toBe(interaction);
+      }
+    });
+
+    it('should allow all spiritual & emotional fields to be optional', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        mood: 'calm' as const,
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+    });
+  });
 });
