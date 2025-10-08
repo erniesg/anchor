@@ -15,5 +15,8 @@ migrations_dir = "../../packages/database/drizzle/migrations"
 binding = "STORAGE"
 bucket_name = "anchor-dev-storage"
 
+[dev]
+port = 8787
+
 [miniflare]
 d1_persist = true

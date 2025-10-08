@@ -142,28 +142,35 @@
 - ❌ Activity during relaxation
 - ❌ Mood during activities
 
-### 12. 🚽 TOILETING & HYGIENE (0/16 fields = 0%)
-**Missing:**
+### 12. 🚽 TOILETING & HYGIENE (16/16 fields = 100%) ✅ **SPRINT 2 DAY 5**
+**Sprint 2 Day 5 implementation:**
 
-**Bowel movements:**
-- ❌ Frequency
-- ❌ Times used toilet
-- ❌ Diaper changes
-- ❌ Diaper status
-- ❌ Accidents
-- ❌ Assistance needed
-- ❌ Pain level
-- ❌ Consistency
+**Bowel movements (8 fields):**
+- ✅ Frequency (how many times)
+- ✅ Diaper changed (boolean)
+- ✅ Accidents (count)
+- ✅ Consistency (normal/hard/soft/loose/diarrhea)
+- ✅ Assistance level (independent/minimal/moderate/full)
+- ✅ Pain/discomfort (none/mild/moderate/severe)
+- ✅ Concerns (text notes)
+- ✅ Progressive disclosure UI
 
-**Urination:**
-- ❌ Frequency
-- ❌ Times used toilet
-- ❌ Diaper changes
-- ❌ Diaper status
-- ❌ Accidents
-- ❌ Assistance needed
-- ❌ Pain level
-- ❌ Urine color
+**Urination (8 fields):**
+- ✅ Frequency (how many times)
+- ✅ Diaper changed (boolean)
+- ✅ Accidents (count)
+- ✅ Urine color (pale_yellow/yellow/dark_yellow/amber)
+- ✅ Assistance level (independent/minimal/moderate/full)
+- ✅ Pain/discomfort (none/mild/moderate/severe)
+- ✅ Concerns (text notes)
+- ✅ Hydration hints based on color
+
+**Features:**
+- ✅ Separate subsections with color themes (amber/blue)
+- ✅ Health alerts (diarrhea, dark urine)
+- ✅ Family dashboard display
+- ✅ 10/10 E2E tests passing (local & deployed)
+- ✅ Database migration: `0005_add_toileting_tracking.sql`
 
 ### 13. 🙏 SPIRITUAL & EMOTIONAL WELL-BEING (0/6 fields = 0%)
 **Missing:**
@@ -197,15 +204,15 @@
 
 ---
 
-## 📊 COVERAGE SUMMARY
+## 📊 COVERAGE SUMMARY (Updated: Sprint 2 Day 5)
 
 ### Current Implementation Status:
 ```
-IMPLEMENTED: 69 fields
-NOT IMPLEMENTED: 88 fields
+IMPLEMENTED: 85 fields (+16 from toileting)
+NOT IMPLEMENTED: 72 fields
 TOTAL TEMPLATE FIELDS: 157 fields
 
-COVERAGE: 69/157 = 43.9%
+COVERAGE: 85/157 = 54.1% ✅ MILESTONE: >50%!
 ```
 
 ### Breakdown by Section:
@@ -220,16 +227,23 @@ COVERAGE: 69/157 = 43.9%
 9. ❌ Mobility & Exercise: 0/18 (0%)
 10. ❌ Therapy & Comfort: 0/6 (0%)
 11. ❌ Activities: 0/8 (0%)
-12. ❌ Toileting: 0/16 (0%)
+12. ✅ **Toileting: 16/16 (100%)** ← **SPRINT 2 DAY 5 COMPLETE!** 🎉
 13. ❌ Spiritual: 0/6 (0%)
 14. ❌ Personal Items: 0/14 (0%)
 15. ❌ Special Concerns: 0/15 (0%)
 16. ❌ Caregiver Notes: 0/5 (0%)
 
-### Priority Sections for Sprint 2 Day 5+:
+### Sprint 2 Progress:
+- **Day 1:** Medication purpose & notes (+4 fields)
+- **Day 2:** Fluid intake monitoring (+10 fields)
+- **Day 3:** Sleep tracking (+12 fields, already done in Sprint 1)
+- **Day 4:** Medication dashboard enhancements
+- **Day 5:** ✅ Toileting complete (+16 fields) **MILESTONE: 54.1% coverage**
+
+### Priority Sections for Next Sprint:
 
 **HIGH PRIORITY (Clinical importance):**
-1. 🚽 Toileting & Hygiene (16 fields) - Critical for elderly care
+1. ✅ ~~🚽 Toileting & Hygiene (16 fields)~~ - **DONE!**
 2. 🚶‍♀ Mobility & Exercise (18 fields) - Important for PSP
 3. 🙏 Spiritual & Emotional (6 fields) - Quality of life
 

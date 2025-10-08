@@ -556,10 +556,11 @@ function CareLogFormComponent() {
     { id: 3, title: 'Meals & Nutrition', emoji: '🍽️' },
     { id: 4, title: 'Vital Signs', emoji: '❤️' },
     { id: 5, title: 'Toileting', emoji: '🚽' },
-    { id: 6, title: 'Fall Risk & Safety', emoji: '⚠️' },
-    { id: 7, title: 'Unaccompanied Time', emoji: '⏱️' },
-    { id: 8, title: 'Safety Checks', emoji: '🔒' },
-    { id: 9, title: 'Notes & Submit', emoji: '📝' },
+    { id: 6, title: 'Rest & Sleep', emoji: '😴' },
+    { id: 7, title: 'Fall Risk & Safety', emoji: '⚠️' },
+    { id: 8, title: 'Unaccompanied Time', emoji: '⏱️' },
+    { id: 9, title: 'Safety Checks', emoji: '🔒' },
+    { id: 10, title: 'Notes & Submit', emoji: '📝' },
   ];
 
   return (
@@ -1096,8 +1097,8 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 5: Sleep Tracking - Sprint 2 Day 3 */}
-        {currentSection === 5 && (
+        {/* Section 6: Sleep Tracking - Sprint 2 Day 3 */}
+        {currentSection === 6 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">😴 Rest & Sleep</h2>
@@ -1358,8 +1359,8 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 6: Vitals (was Section 5) */}
-        {currentSection === 6 && (
+        {/* Section 7: Fall Risk & Safety */}
+        {currentSection === 10 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">❤️ Vital Signs</h2>
@@ -1447,8 +1448,8 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 6: Complete Toileting & Hygiene (Sprint 2 Day 5) */}
-        {currentSection === 6 && (
+        {/* Section 5: Complete Toileting & Hygiene (Sprint 2 Day 5) */}
+        {currentSection === 5 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">🚽 Toileting & Hygiene</h2>
@@ -1786,11 +1787,11 @@ function CareLogFormComponent() {
               </div>
 
               <div className="flex gap-3">
-                <Button onClick={() => setCurrentSection(5)} variant="outline" className="flex-1">
-                  ← Back: Sleep
+                <Button onClick={() => setCurrentSection(4)} variant="outline" className="flex-1">
+                  ← Back: Vital Signs
                 </Button>
-                <Button onClick={() => setCurrentSection(7)} variant="primary" className="flex-1">
-                  Next: Fall Risk →
+                <Button onClick={() => setCurrentSection(6)} variant="primary" className="flex-1">
+                  Next: Sleep →
                 </Button>
               </div>
             </CardContent>
@@ -1798,7 +1799,7 @@ function CareLogFormComponent() {
         )}
 
         {/* Section 7: Fall Risk & Safety (was Section 6) */}
-        {currentSection === 7 && (
+        {currentSection === 10 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -1934,7 +1935,7 @@ function CareLogFormComponent() {
         )}
 
         {/* Section 8: Unaccompanied Time (was Section 7) */}
-        {currentSection === 8 && (
+        {currentSection === 10 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -2159,7 +2160,7 @@ function CareLogFormComponent() {
         )}
 
         {/* Section 9: Safety Checks (was Section 8) */}
-        {currentSection === 9 && (
+        {currentSection === 10 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold flex items-center gap-2">
