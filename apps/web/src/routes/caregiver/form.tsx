@@ -432,7 +432,8 @@ function CareLogFormComponent() {
     },
     onSuccess: () => {
       setLogStatus('submitted');
-      alert('Care log submitted successfully! ✅');
+      // Don't use alert() - let the visual success message show instead
+      console.log('✅ Care log submitted successfully');
     },
   });
 
@@ -476,9 +477,8 @@ function CareLogFormComponent() {
       // Then submit
       await submitMutation.mutateAsync();
 
-      // Success! Show message and reset form
-      setLogStatus('submitted');
-      alert('Care log submitted successfully! ✅');
+      // Success! Status will be set by mutation onSuccess
+      console.log('✅ Submit completed');
     } catch (error) {
       console.error('Submit error:', error);
       alert('Failed to submit. Please try again.');
