@@ -70,6 +70,15 @@ test.describe('Spiritual & Emotional Well-Being E2E', () => {
     // Submit the report
     await page.click('button:has-text("Submit Report")');
 
+    // Wait a bit for the submission to process
+    await page.waitForTimeout(3000);
+
+    // Debug: Take a screenshot
+    await page.screenshot({ path: 'test-results/after-submit.png', fullPage: true });
+
+    // Check console for errors
+    page.on('console', msg => console.log('Browser console:', msg.text()));
+
     // Wait for success message
     await expect(page.locator('text=Report Submitted Successfully')).toBeVisible({ timeout: 10000 });
 

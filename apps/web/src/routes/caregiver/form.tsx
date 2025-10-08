@@ -423,10 +423,10 @@ function CareLogFormComponent() {
 
   // Submit mutation (final submission)
   const submitMutation = useMutation({
-    mutationFn: async () => {
-      if (!careLogId) throw new Error('No draft to submit');
+    mutationFn: async (logId: string) => {
+      if (!logId) throw new Error('No draft to submit');
 
-      return authenticatedApiCall(`/care-logs/${careLogId}/submit`, caregiverToken, {
+      return authenticatedApiCall(`/care-logs/${logId}/submit`, caregiverToken, {
         method: 'POST',
       });
     },
@@ -474,8 +474,13 @@ function CareLogFormComponent() {
         throw new Error('Failed to create draft log');
       }
 
-      // Then submit
-      await submitMutation.mutateAsync();
+      // Update state with the log ID if it wasn't set
+      if (!careLogId && logIdToSubmit) {
+        setCareLogId(logIdToSubmit);
+      }
+
+      // Then submit with the log ID
+      await submitMutation.mutateAsync(logIdToSubmit);
 
       // Success! Status will be set by mutation onSuccess
       console.log('✅ Submit completed');
