@@ -122,6 +122,10 @@ export function runMigrations(sqlite: Database.Database) {
       fluids TEXT,
       total_fluid_intake INTEGER,
 
+      -- Sleep Tracking (JSON) - Sprint 2 Day 3
+      afternoon_rest TEXT,
+      night_sleep TEXT,
+
       -- Vitals
       blood_pressure TEXT,
       pulse_rate INTEGER,

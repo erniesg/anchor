@@ -1276,4 +1276,237 @@ describe('Care Logs API', () => {
       expect(data.lowFluidWarning).toBe(false);
     });
   });
+
+  describe('Sprint 2 Day 3: Sleep Tracking', () => {
+    it('should accept valid afternoon rest data', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        mood: 'alert' as const,
+        afternoonRest: {
+          startTime: '14:00',
+          endTime: '15:30',
+          quality: 'deep' as const,
+          notes: 'Slept peacefully',
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.afternoonRest).toEqual({
+        startTime: '14:00',
+        endTime: '15:30',
+        quality: 'deep',
+        notes: 'Slept peacefully',
+      });
+    });
+
+    it('should accept valid night sleep data', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        mood: 'alert' as const,
+        nightSleep: {
+          bedtime: '21:00',
+          quality: 'light' as const,
+          wakings: 2,
+          wakingReasons: ['toilet', 'pain'],
+          behaviors: ['snoring', 'restless'],
+          notes: 'Woke up twice during the night',
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.nightSleep).toEqual({
+        bedtime: '21:00',
+        quality: 'light',
+        wakings: 2,
+        wakingReasons: ['toilet', 'pain'],
+        behaviors: ['snoring', 'restless'],
+        notes: 'Woke up twice during the night',
+      });
+    });
+
+    it('should validate afternoon rest quality enum', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        mood: 'alert' as const,
+        afternoonRest: {
+          startTime: '14:00',
+          endTime: '15:30',
+          quality: 'invalid' as any,
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(JSON.stringify(data)).toContain('quality');
+    });
+
+    it('should validate night sleep wakings is non-negative', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        mood: 'alert' as const,
+        nightSleep: {
+          bedtime: '21:00',
+          quality: 'light' as const,
+          wakings: -1,
+          wakingReasons: [],
+          behaviors: [],
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(JSON.stringify(data)).toContain('wakings');
+    });
+
+    it('should accept both afternoon rest and night sleep', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        mood: 'alert' as const,
+        afternoonRest: {
+          startTime: '14:00',
+          endTime: '15:30',
+          quality: 'deep' as const,
+        },
+        nightSleep: {
+          bedtime: '21:00',
+          quality: 'restless' as const,
+          wakings: 3,
+          wakingReasons: ['toilet', 'confusion', 'unknown'],
+          behaviors: ['talking', 'mumbling', 'restless'],
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.afternoonRest).toBeDefined();
+      expect(data.nightSleep).toBeDefined();
+      expect(data.nightSleep.wakings).toBe(3);
+      expect(data.nightSleep.wakingReasons).toHaveLength(3);
+      expect(data.nightSleep.behaviors).toHaveLength(3);
+    });
+
+    it('should allow optional afternoon rest and night sleep', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        mood: 'alert' as const,
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.afternoonRest).toBeNull();
+      expect(data.nightSleep).toBeNull();
+    });
+
+    it('should accept no_sleep quality for poor sleep', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        mood: 'alert' as const,
+        afternoonRest: {
+          startTime: '14:00',
+          endTime: '15:00',
+          quality: 'no_sleep' as const,
+          notes: 'Tried to rest but could not sleep',
+        },
+        nightSleep: {
+          bedtime: '21:00',
+          quality: 'no_sleep' as const,
+          wakings: 0,
+          wakingReasons: [],
+          behaviors: ['restless', 'mumbling'],
+          notes: 'Very restless, no actual sleep',
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.afternoonRest.quality).toBe('no_sleep');
+      expect(data.nightSleep.quality).toBe('no_sleep');
+    });
+  });
 });

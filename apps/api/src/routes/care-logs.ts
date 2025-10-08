@@ -32,6 +32,37 @@ const fluidEntrySchema = z.object({
   swallowingIssues: z.array(z.string()).optional().default([]),
 });
 
+// Sprint 2 Day 3: Sleep Tracking schemas
+const afternoonRestSchema = z.object({
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+  quality: z.enum(['deep', 'light', 'restless', 'no_sleep'], {
+    errorMap: () => ({ message: 'Quality must be one of: deep, light, restless, no_sleep' }),
+  }),
+  notes: z.string().optional(),
+}).refine((data) => {
+  // Validate start < end
+  const [startHour, startMin] = data.startTime.split(':').map(Number);
+  const [endHour, endMin] = data.endTime.split(':').map(Number);
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+  return startMinutes < endMinutes;
+}, {
+  message: 'Start time must be before end time',
+  path: ['startTime'],
+});
+
+const nightSleepSchema = z.object({
+  bedtime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+  quality: z.enum(['deep', 'light', 'restless', 'no_sleep'], {
+    errorMap: () => ({ message: 'Quality must be one of: deep, light, restless, no_sleep' }),
+  }),
+  wakings: z.number().int().nonnegative({ message: 'Wakings must be non-negative' }),
+  wakingReasons: z.array(z.string()).default([]), // toilet, pain, confusion, dreams, unknown
+  behaviors: z.array(z.string()).default([]), // quiet, snoring, talking, mumbling, restless, dreaming, nightmares
+  notes: z.string().optional(),
+});
+
 // Sprint 1 Day 2: Unaccompanied Time schema
 const unaccompaniedTimePeriodSchema = z.object({
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
@@ -98,6 +129,10 @@ const createCareLogSchema = z.object({
   fluids: z.array(fluidEntrySchema).optional().default([]),
   totalFluidIntake: z.number().int().nonnegative().optional(),
 
+  // Sprint 2 Day 3: Sleep Tracking
+  afternoonRest: afternoonRestSchema.optional(),
+  nightSleep: nightSleepSchema.optional(),
+
   // Vitals
   bloodPressure: z.string().optional(),
   pulseRate: z.number().optional(),
@@ -157,6 +192,8 @@ function parseJsonFields(log: any): any {
     ...log,
     medications: log.medications ? JSON.parse(log.medications) : null,
     fluids: log.fluids ? JSON.parse(log.fluids) : [], // Sprint 2 Day 1: Parse fluids
+    afternoonRest: log.afternoonRest ? JSON.parse(log.afternoonRest) : null, // Sprint 2 Day 3: Parse sleep
+    nightSleep: log.nightSleep ? JSON.parse(log.nightSleep) : null, // Sprint 2 Day 3: Parse sleep
     walkingPattern: log.walkingPattern ? JSON.parse(log.walkingPattern) : null,
     unaccompaniedTime: log.unaccompaniedTime ? JSON.parse(log.unaccompaniedTime) : null,
     safetyChecks: log.safetyChecks ? JSON.parse(log.safetyChecks) : null,
@@ -206,6 +243,9 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         // Sprint 2 Day 1: Fluid Intake
         fluids: fluids.length > 0 ? JSON.stringify(fluids) as any : null,
         totalFluidIntake,
+        // Sprint 2 Day 3: Sleep Tracking
+        afternoonRest: data.afternoonRest ? JSON.stringify(data.afternoonRest) as any : null,
+        nightSleep: data.nightSleep ? JSON.stringify(data.nightSleep) as any : null,
         bloodPressure: data.bloodPressure,
         pulseRate: data.pulseRate,
         oxygenLevel: data.oxygenLevel,

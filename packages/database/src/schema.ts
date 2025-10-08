@@ -240,6 +240,24 @@ export const careLogs = sqliteTable('care_logs', {
   emergencyFlag: integer('emergency_flag', { mode: 'boolean' }).default(false).notNull(),
   emergencyNote: text('emergency_note'),
 
+  // Sprint 2: Sleep Tracking
+  afternoonRest: text('afternoon_rest', { mode: 'json' })
+    .$type<{
+      startTime: string;
+      endTime: string;
+      quality: 'deep' | 'light' | 'restless' | 'no_sleep';
+      notes?: string;
+    }>(),
+  nightSleep: text('night_sleep', { mode: 'json' })
+    .$type<{
+      bedtime: string;
+      quality: 'deep' | 'light' | 'restless' | 'no_sleep';
+      wakings: number;
+      wakingReasons: string[]; // toilet, pain, confusion, dreams, unknown
+      behaviors: string[]; // quiet, snoring, talking, mumbling, restless, dreaming, nightmares
+      notes?: string;
+    }>(),
+
   // Sprint 1: Unaccompanied Time Tracking
   unaccompaniedPeriods: text('unaccompanied_periods', { mode: 'json' })
     .$type<Array<{
