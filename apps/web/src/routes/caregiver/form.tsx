@@ -902,15 +902,15 @@ function CareLogFormComponent() {
                   ← Back
                 </Button>
                 <Button onClick={() => setCurrentSection(4)} variant="primary" className="flex-1">
-                  Next: Fluid Intake →
+                  Next: Vital Signs →
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Section 4: Fluid Intake - Sprint 2 Day 2 */}
-        {currentSection === 4 && (
+        {/* Fluid Intake - Sprint 2 Day 2 (Hidden from main flow) */}
+        {currentSection === 30 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">💧 Fluid Intake Monitoring</h2>
@@ -1367,19 +1367,19 @@ function CareLogFormComponent() {
 
               {/* Navigation */}
               <div className="flex gap-4 pt-4 border-t">
-                <Button onClick={() => setCurrentSection(4)} variant="outline" className="flex-1">
-                  ← Back
+                <Button onClick={() => setCurrentSection(5)} variant="outline" className="flex-1">
+                  ← Back: Toileting
                 </Button>
-                <Button onClick={() => setCurrentSection(6)} variant="primary" className="flex-1">
-                  Next: Vital Signs →
+                <Button onClick={() => setCurrentSection(7)} variant="primary" className="flex-1">
+                  Next: Fall Risk & Safety →
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Section 7: Fall Risk & Safety */}
-        {currentSection === 10 && (
+        {/* Section 4: Vital Signs */}
+        {currentSection === 4 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">❤️ Vital Signs</h2>
@@ -1456,11 +1456,11 @@ function CareLogFormComponent() {
               />
 
               <div className="flex gap-3">
-                <Button onClick={() => setCurrentSection(4)} variant="outline" className="flex-1">
+                <Button onClick={() => setCurrentSection(3)} variant="outline" className="flex-1">
                   ← Back
                 </Button>
-                <Button onClick={() => setCurrentSection(6)} variant="primary" className="flex-1">
-                  Next →
+                <Button onClick={() => setCurrentSection(5)} variant="primary" className="flex-1">
+                  Next: Toileting →
                 </Button>
               </div>
             </CardContent>
@@ -1817,8 +1817,8 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 7: Fall Risk & Safety (was Section 6) */}
-        {currentSection === 10 && (
+        {/* Section 7: Fall Risk & Safety */}
+        {currentSection === 7 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -1953,8 +1953,8 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 8: Unaccompanied Time (was Section 7) */}
-        {currentSection === 10 && (
+        {/* Section 8: Unaccompanied Time */}
+        {currentSection === 8 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -2179,7 +2179,7 @@ function CareLogFormComponent() {
         )}
 
         {/* Section 9: Safety Checks (was Section 8) */}
-        {currentSection === 10 && (
+        {currentSection === 9 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold flex items-center gap-2">

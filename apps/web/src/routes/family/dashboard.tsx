@@ -1265,6 +1265,93 @@ function DashboardComponent() {
                   </Card>
                 )}
 
+                {/* Sprint 3 Day 1: Spiritual & Emotional Well-Being */}
+                {todayLog.spiritualEmotional && (
+                  <Card data-testid="spiritual-emotional-card">
+                    <CardHeader>
+                      <h3 className="font-semibold">🙏 Spiritual & Emotional Well-Being</h3>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3 text-sm">
+                        {/* Prayer Time */}
+                        {todayLog.spiritualEmotional.prayerTime && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Prayer Time:</span>
+                            <span className="font-medium">
+                              {todayLog.spiritualEmotional.prayerTime.start} - {todayLog.spiritualEmotional.prayerTime.end}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Prayer Expression */}
+                        {todayLog.spiritualEmotional.prayerExpression && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Prayer Expression:</span>
+                            <span className="font-medium capitalize">
+                              {todayLog.spiritualEmotional.prayerExpression.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Overall Mood */}
+                        {todayLog.spiritualEmotional.overallMood && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Overall Mood:</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">{todayLog.spiritualEmotional.overallMood}/5</span>
+                              <span className={`px-2 py-0.5 rounded text-xs ${
+                                todayLog.spiritualEmotional.overallMood >= 4 ? 'bg-green-100 text-green-800' :
+                                todayLog.spiritualEmotional.overallMood >= 3 ? 'bg-blue-100 text-blue-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {todayLog.spiritualEmotional.overallMood >= 4 ? '😊 Happy' :
+                                 todayLog.spiritualEmotional.overallMood >= 3 ? '😐 Neutral' :
+                                 '😔 Low'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Communication Scale */}
+                        {todayLog.spiritualEmotional.communicationScale && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Communication:</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">{todayLog.spiritualEmotional.communicationScale}/5</span>
+                              <span className={`px-2 py-0.5 rounded text-xs ${
+                                todayLog.spiritualEmotional.communicationScale >= 4 ? 'bg-green-100 text-green-800' :
+                                todayLog.spiritualEmotional.communicationScale >= 3 ? 'bg-blue-100 text-blue-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {todayLog.spiritualEmotional.communicationScale >= 4 ? '✅ Clear' :
+                                 todayLog.spiritualEmotional.communicationScale >= 3 ? '➡️ Moderate' :
+                                 '⚠️ Difficult'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Social Interaction */}
+                        {todayLog.spiritualEmotional.socialInteraction && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Social Interaction:</span>
+                            <span className={`font-medium px-2 py-0.5 rounded capitalize ${
+                              todayLog.spiritualEmotional.socialInteraction === 'engaged' ? 'bg-green-100 text-green-800' :
+                              todayLog.spiritualEmotional.socialInteraction === 'responsive' ? 'bg-blue-100 text-blue-800' :
+                              todayLog.spiritualEmotional.socialInteraction === 'withdrawn' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {todayLog.spiritualEmotional.socialInteraction === 'aggressive_hostile'
+                                ? '⚠️ Aggressive/Hostile'
+                                : todayLog.spiritualEmotional.socialInteraction}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Sprint 1: Fall Risk Assessment */}
                 {(todayLog.balanceIssues || todayLog.nearFalls || todayLog.actualFalls || todayLog.freezingEpisodes || todayLog.totalUnaccompaniedMinutes > 0) && (
                   <Card className={todayLog.actualFalls === 'major' ? 'border-2 border-red-400' : ''}>
