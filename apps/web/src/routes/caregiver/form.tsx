@@ -200,9 +200,30 @@ function CareLogFormComponent() {
     notes?: string;
   } | null>(null);
 
-  // Toileting
+  // Sprint 2 Day 5: Complete Toileting & Hygiene Tracking
+  // Bowel Movements
   const [bowelFreq, setBowelFreq] = useState(0);
+  const [bowelTimesUsedToilet, setBowelTimesUsedToilet] = useState<number | null>(null);
+  const [bowelDiaperChanges, setBowelDiaperChanges] = useState<number | null>(null);
+  const [bowelDiaperStatus, setBowelDiaperStatus] = useState<'dry' | 'wet' | 'soiled' | null>(null);
+  const [bowelAccidents, setBowelAccidents] = useState<'none' | 'minor' | 'major'>('none');
+  const [bowelAssistance, setBowelAssistance] = useState<'none' | 'partial' | 'full'>('none');
+  const [bowelPain, setBowelPain] = useState<'no_pain' | 'some_pain' | 'very_painful'>('no_pain');
+  const [bowelConsistency, setBowelConsistency] = useState<'normal' | 'hard' | 'soft' | 'loose' | 'diarrhea' | null>(null);
+  const [bowelConcerns, setBowelConcerns] = useState('');
+
+  // Urination
   const [urineFreq, setUrineFreq] = useState(0);
+  const [urineTimesUsedToilet, setUrineTimesUsedToilet] = useState<number | null>(null);
+  const [urineDiaperChanges, setUrineDiaperChanges] = useState<number | null>(null);
+  const [urineDiaperStatus, setUrineDiaperStatus] = useState<'dry' | 'wet' | 'soiled' | null>(null);
+  const [urineAccidents, setUrineAccidents] = useState<'none' | 'minor' | 'major'>('none');
+  const [urineAssistance, setUrineAssistance] = useState<'none' | 'partial' | 'full'>('none');
+  const [urinePain, setUrinePain] = useState<'no_pain' | 'some_pain' | 'very_painful'>('no_pain');
+  const [urineColor, setUrineColor] = useState<'light_clear' | 'yellow' | 'dark_yellow' | 'brown' | 'dark' | null>(null);
+  const [urineConcerns, setUrineConcerns] = useState('');
+
+  // Legacy (to be removed after migration)
   const [diaperChanges, setDiaperChanges] = useState(0);
 
   // Safety
@@ -313,10 +334,28 @@ function CareLogFormComponent() {
       oxygenLevel: oxygenLevel ? parseInt(oxygenLevel) : undefined,
       bloodSugar: bloodSugar ? parseFloat(bloodSugar) : undefined,
       vitalsTime: omitEmpty(vitalsTime),
-      toileting: (bowelFreq > 0 || urineFreq > 0 || diaperChanges > 0) ? {
-        bowelFrequency: bowelFreq,
-        urineFrequency: urineFreq,
-        diaperChanges,
+      // Sprint 2 Day 5: Complete Toileting & Hygiene Tracking
+      bowelMovements: bowelFreq > 0 ? {
+        frequency: bowelFreq,
+        timesUsedToilet: bowelTimesUsedToilet !== null ? bowelTimesUsedToilet : undefined,
+        diaperChanges: bowelDiaperChanges !== null ? bowelDiaperChanges : undefined,
+        diaperStatus: bowelDiaperStatus || undefined,
+        accidents: bowelAccidents !== 'none' ? bowelAccidents : undefined,
+        assistance: bowelAssistance !== 'none' ? bowelAssistance : undefined,
+        pain: bowelPain !== 'no_pain' ? bowelPain : undefined,
+        consistency: bowelConsistency || undefined,
+        concerns: omitEmpty(bowelConcerns),
+      } : undefined,
+      urination: urineFreq > 0 ? {
+        frequency: urineFreq,
+        timesUsedToilet: urineTimesUsedToilet !== null ? urineTimesUsedToilet : undefined,
+        diaperChanges: urineDiaperChanges !== null ? urineDiaperChanges : undefined,
+        diaperStatus: urineDiaperStatus || undefined,
+        accidents: urineAccidents !== 'none' ? urineAccidents : undefined,
+        assistance: urineAssistance !== 'none' ? urineAssistance : undefined,
+        pain: urinePain !== 'no_pain' ? urinePain : undefined,
+        urineColor: urineColor || undefined,
+        concerns: omitEmpty(urineConcerns),
       } : undefined,
       // Sprint 1: Fall Risk & Safety
       balanceIssues: balanceIssues !== null ? balanceIssues : undefined,
@@ -337,7 +376,12 @@ function CareLogFormComponent() {
     };
   }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite,
       breakfastAmount, fluids, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime,
-      bowelFreq, urineFreq, diaperChanges, balanceIssues, nearFalls, actualFalls,
+      // Sprint 2 Day 5: All toileting state variables
+      bowelFreq, bowelTimesUsedToilet, bowelDiaperChanges, bowelDiaperStatus, bowelAccidents,
+      bowelAssistance, bowelPain, bowelConsistency, bowelConcerns,
+      urineFreq, urineTimesUsedToilet, urineDiaperChanges, urineDiaperStatus, urineAccidents,
+      urineAssistance, urinePain, urineColor, urineConcerns,
+      balanceIssues, nearFalls, actualFalls,
       walkingPattern, freezingEpisodes, unaccompaniedTime, unaccompaniedIncidents, safetyChecks, emergencyPrep,
       emergencyFlag, emergencyNote, notes, careRecipient]);
 
@@ -433,7 +477,7 @@ function CareLogFormComponent() {
     const medicationsData = medications.some(med => med.given || med.time);
     const mealsData = breakfastTime || breakfastAppetite > 0 || breakfastAmount > 0;
     const vitalsData = bloodPressure || pulseRate || oxygenLevel || bloodSugar || vitalsTime;
-    const toiletingData = bowelFreq > 0 || urineFreq > 0 || diaperChanges > 0;
+    const toiletingData = bowelFreq > 0 || urineFreq > 0;
     const fallRiskData = balanceIssues !== null || nearFalls !== 'none' || actualFalls !== 'none' ||
                          walkingPattern.length > 0 || freezingEpisodes !== 'none';
     const unaccompaniedData = unaccompaniedTime.length > 0 || unaccompaniedIncidents;
@@ -1403,34 +1447,343 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 6: Toileting (was Section 5) */}
+        {/* Section 6: Complete Toileting & Hygiene (Sprint 2 Day 5) */}
         {currentSection === 6 && (
           <Card>
             <CardHeader>
-              <h2 className="text-xl font-semibold">🚽 Toileting</h2>
+              <h2 className="text-xl font-semibold">🚽 Toileting & Hygiene</h2>
+              <p className="text-sm text-gray-600 mt-1">Track bowel movements and urination separately</p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <Input
-                label="Bowel Movements (count)"
-                type="number"
-                min="0"
-                value={bowelFreq}
-                onChange={(e) => setBowelFreq(parseInt(e.target.value))}
-              />
-              <Input
-                label="Urination Frequency (count)"
-                type="number"
-                min="0"
-                value={urineFreq}
-                onChange={(e) => setUrineFreq(parseInt(e.target.value))}
-              />
-              <Input
-                label="Diaper Changes (count)"
-                type="number"
-                min="0"
-                value={diaperChanges}
-                onChange={(e) => setDiaperChanges(parseInt(e.target.value))}
-              />
+            <CardContent className="space-y-6">
+              {/* Bowel Movements Section */}
+              <div className="bg-amber-50 p-4 rounded-lg space-y-4">
+                <h3 className="font-semibold text-lg">💩 Bowel Movements</h3>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Frequency (times today) *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={bowelFreq}
+                    onChange={(e) => setBowelFreq(parseInt(e.target.value) || 0)}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                </div>
+
+                {bowelFreq > 0 && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Times Used Toilet</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={bowelTimesUsedToilet || ''}
+                        onChange={(e) => setBowelTimesUsedToilet(e.target.value ? parseInt(e.target.value) : null)}
+                        className="w-full p-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Diaper Changes</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={bowelDiaperChanges || ''}
+                        onChange={(e) => setBowelDiaperChanges(e.target.value ? parseInt(e.target.value) : null)}
+                        className="w-full p-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Diaper Status</label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: 'dry', label: 'Dry', emoji: '✨' },
+                          { value: 'wet', label: 'Wet', emoji: '💧' },
+                          { value: 'soiled', label: 'Soiled', emoji: '💩' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setBowelDiaperStatus(option.value as any)}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                              bowelDiaperStatus === option.value
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-white border hover:bg-gray-50'
+                            }`}
+                          >
+                            {option.emoji} {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Consistency</label>
+                      <select
+                        value={bowelConsistency || ''}
+                        onChange={(e) => setBowelConsistency(e.target.value as any || null)}
+                        className="w-full p-2 border rounded-lg"
+                      >
+                        <option value="">Select...</option>
+                        <option value="normal">Normal</option>
+                        <option value="hard">Hard</option>
+                        <option value="soft">Soft</option>
+                        <option value="loose">Loose</option>
+                        <option value="diarrhea">Diarrhea 🚨</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Accidents</label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: 'none', label: 'None' },
+                          { value: 'minor', label: 'Minor' },
+                          { value: 'major', label: 'Major' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setBowelAccidents(option.value as any)}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                              bowelAccidents === option.value
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-white border hover:bg-gray-50'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Assistance Needed</label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: 'none', label: 'None', emoji: '✅' },
+                          { value: 'partial', label: 'Partial', emoji: '🤝' },
+                          { value: 'full', label: 'Full', emoji: '👐' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setBowelAssistance(option.value as any)}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                              bowelAssistance === option.value
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-white border hover:bg-gray-50'
+                            }`}
+                          >
+                            {option.emoji} {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Pain Level</label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: 'no_pain', label: 'No Pain', emoji: '😊' },
+                          { value: 'some_pain', label: 'Some Pain', emoji: '😣' },
+                          { value: 'very_painful', label: 'Very Painful', emoji: '😫' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setBowelPain(option.value as any)}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                              bowelPain === option.value
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-white border hover:bg-gray-50'
+                            }`}
+                          >
+                            {option.emoji} {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Concerns/Notes</label>
+                      <textarea
+                        value={bowelConcerns}
+                        onChange={(e) => setBowelConcerns(e.target.value)}
+                        className="w-full p-2 border rounded-lg text-sm"
+                        rows={2}
+                        placeholder="Any concerns about bowel movements?"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Urination Section */}
+              <div className="bg-blue-50 p-4 rounded-lg space-y-4">
+                <h3 className="font-semibold text-lg">💧 Urination</h3>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Frequency (times today) *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={urineFreq}
+                    onChange={(e) => setUrineFreq(parseInt(e.target.value) || 0)}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                </div>
+
+                {urineFreq > 0 && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Times Used Toilet</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={urineTimesUsedToilet || ''}
+                        onChange={(e) => setUrineTimesUsedToilet(e.target.value ? parseInt(e.target.value) : null)}
+                        className="w-full p-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Diaper Changes</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={urineDiaperChanges || ''}
+                        onChange={(e) => setUrineDiaperChanges(e.target.value ? parseInt(e.target.value) : null)}
+                        className="w-full p-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Diaper Status</label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: 'dry', label: 'Dry', emoji: '✨' },
+                          { value: 'wet', label: 'Wet', emoji: '💧' },
+                          { value: 'soiled', label: 'Soiled', emoji: '💩' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setUrineDiaperStatus(option.value as any)}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                              urineDiaperStatus === option.value
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-white border hover:bg-gray-50'
+                            }`}
+                          >
+                            {option.emoji} {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Urine Color</label>
+                      <select
+                        value={urineColor || ''}
+                        onChange={(e) => setUrineColor(e.target.value as any || null)}
+                        className="w-full p-2 border rounded-lg"
+                      >
+                        <option value="">Select...</option>
+                        <option value="light_clear">Light/Clear (good hydration)</option>
+                        <option value="yellow">Yellow (normal)</option>
+                        <option value="dark_yellow">Dark Yellow (check fluids)</option>
+                        <option value="brown">Brown 🚨</option>
+                        <option value="dark">Dark 🚨</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Accidents</label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: 'none', label: 'None' },
+                          { value: 'minor', label: 'Minor' },
+                          { value: 'major', label: 'Major' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setUrineAccidents(option.value as any)}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                              urineAccidents === option.value
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-white border hover:bg-gray-50'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Assistance Needed</label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: 'none', label: 'None', emoji: '✅' },
+                          { value: 'partial', label: 'Partial', emoji: '🤝' },
+                          { value: 'full', label: 'Full', emoji: '👐' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setUrineAssistance(option.value as any)}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                              urineAssistance === option.value
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-white border hover:bg-gray-50'
+                            }`}
+                          >
+                            {option.emoji} {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Pain Level</label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: 'no_pain', label: 'No Pain', emoji: '😊' },
+                          { value: 'some_pain', label: 'Some Pain', emoji: '😣' },
+                          { value: 'very_painful', label: 'Very Painful', emoji: '😫' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setUrinePain(option.value as any)}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                              urinePain === option.value
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-white border hover:bg-gray-50'
+                            }`}
+                          >
+                            {option.emoji} {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Concerns/Notes</label>
+                      <textarea
+                        value={urineConcerns}
+                        onChange={(e) => setUrineConcerns(e.target.value)}
+                        className="w-full p-2 border rounded-lg text-sm"
+                        rows={2}
+                        placeholder="Any concerns about urination?"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
 
               <div className="flex gap-3">
                 <Button onClick={() => setCurrentSection(5)} variant="outline" className="flex-1">
