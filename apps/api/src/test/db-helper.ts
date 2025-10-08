@@ -136,8 +136,10 @@ export function runMigrations(sqlite: Database.Database) {
       -- Mobility (JSON)
       mobility TEXT,
 
-      -- Toileting (JSON)
+      -- Toileting (JSON) - Sprint 2 Day 5: Separate tracking
       toileting TEXT,
+      bowel_movements TEXT,
+      urination TEXT,
 
       -- PSP-Specific & Fall Risk
       balance_scale INTEGER,

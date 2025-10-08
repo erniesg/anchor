@@ -1767,4 +1767,265 @@ describe('Care Logs API', () => {
       expect(data.medications[0].notes).toBeUndefined();
     });
   });
+
+  // Sprint 2 Day 5: Complete Toileting & Hygiene Tracking
+  describe('Sprint 2 Day 5: Complete Toileting & Hygiene Tracking', () => {
+    it('should accept complete bowel movement data with all fields', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        mood: 'alert' as const,
+        bowelMovements: {
+          frequency: 2,
+          timesUsedToilet: 1,
+          diaperChanges: 1,
+          diaperStatus: 'soiled' as const,
+          accidents: 'none' as const,
+          assistance: 'partial' as const,
+          pain: 'no_pain' as const,
+          consistency: 'normal' as const,
+          concerns: 'Regular bowel movement pattern',
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.bowelMovements).toBeDefined();
+      expect(data.bowelMovements.frequency).toBe(2);
+      expect(data.bowelMovements.consistency).toBe('normal');
+      expect(data.bowelMovements.diaperStatus).toBe('soiled');
+      expect(data.bowelMovements.concerns).toBe('Regular bowel movement pattern');
+    });
+
+    it('should accept complete urination data with all fields', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        mood: 'alert' as const,
+        urination: {
+          frequency: 6,
+          timesUsedToilet: 5,
+          diaperChanges: 2,
+          diaperStatus: 'wet' as const,
+          accidents: 'minor' as const,
+          assistance: 'full' as const,
+          pain: 'some_pain' as const,
+          urineColor: 'yellow' as const,
+          concerns: 'Slight discomfort during urination',
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.urination).toBeDefined();
+      expect(data.urination.frequency).toBe(6);
+      expect(data.urination.urineColor).toBe('yellow');
+      expect(data.urination.pain).toBe('some_pain');
+      expect(data.urination.concerns).toBe('Slight discomfort during urination');
+    });
+
+    it('should validate bowel movement consistency enum values', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        bowelMovements: {
+          frequency: 1,
+          consistency: 'invalid_value' as any,
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+    });
+
+    it('should validate urination color enum values', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        urination: {
+          frequency: 3,
+          urineColor: 'invalid_color' as any,
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+    });
+
+    it('should validate accidents enum values', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        bowelMovements: {
+          frequency: 1,
+          accidents: 'invalid' as any,
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(400);
+    });
+
+    it('should accept both bowel movements and urination together', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        bowelMovements: {
+          frequency: 1,
+          consistency: 'soft' as const,
+          diaperStatus: 'soiled' as const,
+        },
+        urination: {
+          frequency: 5,
+          urineColor: 'light_clear' as const,
+          diaperStatus: 'wet' as const,
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.bowelMovements).toBeDefined();
+      expect(data.urination).toBeDefined();
+      expect(data.bowelMovements.consistency).toBe('soft');
+      expect(data.urination.urineColor).toBe('light_clear');
+    });
+
+    it('should allow optional toileting fields', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        wakeTime: '07:00',
+        mood: 'alert' as const,
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.bowelMovements).toBeNull();
+      expect(data.urination).toBeNull();
+    });
+
+    it('should accept diarrhea consistency with concerns', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        bowelMovements: {
+          frequency: 4,
+          consistency: 'diarrhea' as const,
+          concerns: 'Frequent loose stools, possible dehydration risk',
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.bowelMovements.consistency).toBe('diarrhea');
+      expect(data.bowelMovements.frequency).toBe(4);
+    });
+
+    it('should accept dark urine color with concerns', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: new Date().toISOString(),
+        urination: {
+          frequency: 2,
+          urineColor: 'dark' as const,
+          concerns: 'Dark urine - possible dehydration, encourage fluids',
+        },
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.urination.urineColor).toBe('dark');
+      expect(data.urination.concerns).toContain('dehydration');
+    });
+  });
 });

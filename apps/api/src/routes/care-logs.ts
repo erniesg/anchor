@@ -144,13 +144,29 @@ const createCareLogSchema = z.object({
   vitalsTime: z.string().optional(),
 
   // Toileting
-  toileting: z.object({
-    bowelFrequency: z.number().min(0),
-    urineFrequency: z.number().min(0),
-    diaperChanges: z.number().min(0),
-    accidents: z.string().optional(),
-    assistance: z.string().optional(),
-    pain: z.string().optional(),
+  // Sprint 2 Day 5: Complete Toileting & Hygiene Tracking
+  bowelMovements: z.object({
+    frequency: z.number().int().min(0),
+    timesUsedToilet: z.number().int().min(0).optional(),
+    diaperChanges: z.number().int().min(0).optional(),
+    diaperStatus: z.enum(['dry', 'wet', 'soiled']).optional(),
+    accidents: z.enum(['none', 'minor', 'major']).optional(),
+    assistance: z.enum(['none', 'partial', 'full']).optional(),
+    pain: z.enum(['no_pain', 'some_pain', 'very_painful']).optional(),
+    consistency: z.enum(['normal', 'hard', 'soft', 'loose', 'diarrhea']).optional(),
+    concerns: z.string().optional(),
+  }).optional(),
+
+  urination: z.object({
+    frequency: z.number().int().min(0),
+    timesUsedToilet: z.number().int().min(0).optional(),
+    diaperChanges: z.number().int().min(0).optional(),
+    diaperStatus: z.enum(['dry', 'wet', 'soiled']).optional(),
+    accidents: z.enum(['none', 'minor', 'major']).optional(),
+    assistance: z.enum(['none', 'partial', 'full']).optional(),
+    pain: z.enum(['no_pain', 'some_pain', 'very_painful']).optional(),
+    urineColor: z.enum(['light_clear', 'yellow', 'dark_yellow', 'brown', 'dark']).optional(),
+    concerns: z.string().optional(),
   }).optional(),
 
   // Sprint 1: Fall Risk Assessment
@@ -233,6 +249,9 @@ function parseJsonFields(log: any): any {
     // Sprint 2 Day 3: Parse sleep (handle both snake_case from DB and camelCase from client)
     afternoonRest: safeJsonParse(log.afternoonRest || log.afternoon_rest),
     nightSleep: safeJsonParse(log.nightSleep || log.night_sleep),
+    // Sprint 2 Day 5: Parse toileting (handle both snake_case from DB and camelCase from client)
+    bowelMovements: safeJsonParse(log.bowelMovements || log.bowel_movements),
+    urination: safeJsonParse(log.urination),
     walkingPattern: safeJsonParse(log.walkingPattern),
     unaccompaniedTime: safeJsonParse(log.unaccompaniedTime),
     safetyChecks: safeJsonParse(log.safetyChecks),
@@ -290,7 +309,9 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         oxygenLevel: data.oxygenLevel,
         bloodSugar: data.bloodSugar,
         vitalsTime: data.vitalsTime,
-        toileting: data.toileting ? JSON.stringify(data.toileting) as any : null,
+        // Sprint 2 Day 5: Toileting & Hygiene
+        bowelMovements: data.bowelMovements ? JSON.stringify(data.bowelMovements) as any : null,
+        urination: data.urination ? JSON.stringify(data.urination) as any : null,
         // Sprint 1: Fall Risk & Safety fields
         balanceIssues: data.balanceIssues,
         nearFalls: data.nearFalls,
@@ -403,7 +424,9 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
         oxygenLevel: data.oxygenLevel,
         bloodSugar: data.bloodSugar,
         vitalsTime: data.vitalsTime,
-        toileting: data.toileting as any,
+        // Sprint 2 Day 5: Toileting & Hygiene
+        bowelMovements: data.bowelMovements as any,
+        urination: data.urination as any,
         // Sprint 1: Fall Risk & Safety fields
         balanceIssues: data.balanceIssues,
         nearFalls: data.nearFalls,

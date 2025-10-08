@@ -203,17 +203,31 @@ export const careLogs = sqliteTable('care_logs', {
       exercises?: Array<{ type: string; duration: number; participation: number }>;
     }>(),
 
-  // Toileting
-  toileting: text('toileting', { mode: 'json' })
+  // Sprint 2 Day 5: Complete Toileting & Hygiene Tracking
+  bowelMovements: text('bowel_movements', { mode: 'json' })
     .$type<{
-      bowelFrequency: number;
-      urineFrequency: number;
-      diaperChanges: number;
-      accidents: string;
-      assistance: string;
-      pain: string;
-      urineColor?: string;
-      bowelConsistency?: string;
+      frequency: number;
+      timesUsedToilet?: number;
+      diaperChanges?: number;
+      diaperStatus?: 'dry' | 'wet' | 'soiled';
+      accidents?: 'none' | 'minor' | 'major';
+      assistance?: 'none' | 'partial' | 'full';
+      pain?: 'no_pain' | 'some_pain' | 'very_painful';
+      consistency?: 'normal' | 'hard' | 'soft' | 'loose' | 'diarrhea';
+      concerns?: string;
+    }>(),
+
+  urination: text('urination', { mode: 'json' })
+    .$type<{
+      frequency: number;
+      timesUsedToilet?: number;
+      diaperChanges?: number;
+      diaperStatus?: 'dry' | 'wet' | 'soiled';
+      accidents?: 'none' | 'minor' | 'major';
+      assistance?: 'none' | 'partial' | 'full';
+      pain?: 'no_pain' | 'some_pain' | 'very_painful';
+      urineColor?: 'light_clear' | 'yellow' | 'dark_yellow' | 'brown' | 'dark';
+      concerns?: string;
     }>(),
 
   // PSP-Specific Tracking
