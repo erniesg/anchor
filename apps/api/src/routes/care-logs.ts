@@ -133,8 +133,8 @@ const createCareLogSchema = z.object({
   totalFluidIntake: z.number().int().nonnegative().optional(),
 
   // Sprint 2 Day 3: Sleep Tracking
-  afternoonRest: afternoonRestSchema.optional(),
-  nightSleep: nightSleepSchema.optional(),
+  afternoonRest: afternoonRestSchema.nullish(),
+  nightSleep: nightSleepSchema.nullish(),
 
   // Vitals
   bloodPressure: z.string().optional(),
