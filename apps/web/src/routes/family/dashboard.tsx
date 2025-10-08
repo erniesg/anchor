@@ -1082,6 +1082,189 @@ function DashboardComponent() {
                   </Card>
                 )}
 
+                {/* Sprint 2 Day 5: Complete Toileting & Hygiene */}
+                {(todayLog.bowelMovements || todayLog.urination) && (
+                  <Card data-testid="toileting-card">
+                    <CardHeader>
+                      <h3 className="font-semibold">🚽 Toileting & Hygiene</h3>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Bowel Movements */}
+                        {todayLog.bowelMovements && (
+                          <div className="border-b pb-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">💩 Bowel Movements</span>
+                              <span className="text-sm font-semibold">{todayLog.bowelMovements.frequency} times</span>
+                            </div>
+                            <div className="space-y-1 text-xs text-gray-600">
+                              {todayLog.bowelMovements.timesUsedToilet !== undefined && (
+                                <div className="flex justify-between">
+                                  <span>Used toilet:</span>
+                                  <span className="font-medium">{todayLog.bowelMovements.timesUsedToilet}</span>
+                                </div>
+                              )}
+                              {todayLog.bowelMovements.diaperChanges !== undefined && (
+                                <div className="flex justify-between">
+                                  <span>Diaper changes:</span>
+                                  <span className="font-medium">{todayLog.bowelMovements.diaperChanges}</span>
+                                </div>
+                              )}
+                              {todayLog.bowelMovements.diaperStatus && (
+                                <div className="flex justify-between">
+                                  <span>Diaper status:</span>
+                                  <span className={`font-medium px-2 py-0.5 rounded ${
+                                    todayLog.bowelMovements.diaperStatus === 'dry' ? 'bg-green-100 text-green-800' :
+                                    todayLog.bowelMovements.diaperStatus === 'wet' ? 'bg-blue-100 text-blue-800' :
+                                    'bg-yellow-100 text-yellow-800'
+                                  }`}>
+                                    {todayLog.bowelMovements.diaperStatus === 'dry' ? '✨ Dry' :
+                                     todayLog.bowelMovements.diaperStatus === 'wet' ? '💧 Wet' :
+                                     '💩 Soiled'}
+                                  </span>
+                                </div>
+                              )}
+                              {todayLog.bowelMovements.consistency && (
+                                <div className="flex justify-between">
+                                  <span>Consistency:</span>
+                                  <span className={`font-medium px-2 py-0.5 rounded ${
+                                    todayLog.bowelMovements.consistency === 'normal' ? 'bg-green-100 text-green-800' :
+                                    todayLog.bowelMovements.consistency === 'diarrhea' ? 'bg-red-100 text-red-800' :
+                                    'bg-yellow-100 text-yellow-800'
+                                  }`}>
+                                    {todayLog.bowelMovements.consistency.charAt(0).toUpperCase() + todayLog.bowelMovements.consistency.slice(1)}
+                                    {todayLog.bowelMovements.consistency === 'diarrhea' && ' 🚨'}
+                                  </span>
+                                </div>
+                              )}
+                              {todayLog.bowelMovements.accidents && todayLog.bowelMovements.accidents !== 'none' && (
+                                <div className="flex justify-between">
+                                  <span>Accidents:</span>
+                                  <span className={`font-medium px-2 py-0.5 rounded ${
+                                    todayLog.bowelMovements.accidents === 'minor' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {todayLog.bowelMovements.accidents.charAt(0).toUpperCase() + todayLog.bowelMovements.accidents.slice(1)}
+                                  </span>
+                                </div>
+                              )}
+                              {todayLog.bowelMovements.assistance && todayLog.bowelMovements.assistance !== 'none' && (
+                                <div className="flex justify-between">
+                                  <span>Assistance:</span>
+                                  <span className="font-medium">{todayLog.bowelMovements.assistance.charAt(0).toUpperCase() + todayLog.bowelMovements.assistance.slice(1)}</span>
+                                </div>
+                              )}
+                              {todayLog.bowelMovements.pain && todayLog.bowelMovements.pain !== 'no_pain' && (
+                                <div className="flex justify-between">
+                                  <span>Pain:</span>
+                                  <span className={`font-medium px-2 py-0.5 rounded ${
+                                    todayLog.bowelMovements.pain === 'some_pain' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {todayLog.bowelMovements.pain === 'some_pain' ? '😣 Some Pain' : '😫 Very Painful'}
+                                  </span>
+                                </div>
+                              )}
+                              {todayLog.bowelMovements.concerns && (
+                                <div className="mt-2 p-2 bg-gray-50 rounded">
+                                  <div className="font-medium text-gray-700 mb-1">Concerns:</div>
+                                  <p className="text-gray-600 italic">{todayLog.bowelMovements.concerns}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Urination */}
+                        {todayLog.urination && (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">💧 Urination</span>
+                              <span className="text-sm font-semibold">{todayLog.urination.frequency} times</span>
+                            </div>
+                            <div className="space-y-1 text-xs text-gray-600">
+                              {todayLog.urination.timesUsedToilet !== undefined && (
+                                <div className="flex justify-between">
+                                  <span>Used toilet:</span>
+                                  <span className="font-medium">{todayLog.urination.timesUsedToilet}</span>
+                                </div>
+                              )}
+                              {todayLog.urination.diaperChanges !== undefined && (
+                                <div className="flex justify-between">
+                                  <span>Diaper changes:</span>
+                                  <span className="font-medium">{todayLog.urination.diaperChanges}</span>
+                                </div>
+                              )}
+                              {todayLog.urination.diaperStatus && (
+                                <div className="flex justify-between">
+                                  <span>Diaper status:</span>
+                                  <span className={`font-medium px-2 py-0.5 rounded ${
+                                    todayLog.urination.diaperStatus === 'dry' ? 'bg-green-100 text-green-800' :
+                                    todayLog.urination.diaperStatus === 'wet' ? 'bg-blue-100 text-blue-800' :
+                                    'bg-yellow-100 text-yellow-800'
+                                  }`}>
+                                    {todayLog.urination.diaperStatus === 'dry' ? '✨ Dry' :
+                                     todayLog.urination.diaperStatus === 'wet' ? '💧 Wet' :
+                                     '💩 Soiled'}
+                                  </span>
+                                </div>
+                              )}
+                              {todayLog.urination.urineColor && (
+                                <div className="flex justify-between">
+                                  <span>Urine color:</span>
+                                  <span className={`font-medium px-2 py-0.5 rounded ${
+                                    todayLog.urination.urineColor === 'light_clear' ? 'bg-green-100 text-green-800' :
+                                    todayLog.urination.urineColor === 'yellow' ? 'bg-green-100 text-green-800' :
+                                    todayLog.urination.urineColor === 'dark_yellow' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {todayLog.urination.urineColor.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                    {(todayLog.urination.urineColor === 'brown' || todayLog.urination.urineColor === 'dark') && ' 🚨'}
+                                  </span>
+                                </div>
+                              )}
+                              {todayLog.urination.accidents && todayLog.urination.accidents !== 'none' && (
+                                <div className="flex justify-between">
+                                  <span>Accidents:</span>
+                                  <span className={`font-medium px-2 py-0.5 rounded ${
+                                    todayLog.urination.accidents === 'minor' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {todayLog.urination.accidents.charAt(0).toUpperCase() + todayLog.urination.accidents.slice(1)}
+                                  </span>
+                                </div>
+                              )}
+                              {todayLog.urination.assistance && todayLog.urination.assistance !== 'none' && (
+                                <div className="flex justify-between">
+                                  <span>Assistance:</span>
+                                  <span className="font-medium">{todayLog.urination.assistance.charAt(0).toUpperCase() + todayLog.urination.assistance.slice(1)}</span>
+                                </div>
+                              )}
+                              {todayLog.urination.pain && todayLog.urination.pain !== 'no_pain' && (
+                                <div className="flex justify-between">
+                                  <span>Pain:</span>
+                                  <span className={`font-medium px-2 py-0.5 rounded ${
+                                    todayLog.urination.pain === 'some_pain' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {todayLog.urination.pain === 'some_pain' ? '😣 Some Pain' : '😫 Very Painful'}
+                                  </span>
+                                </div>
+                              )}
+                              {todayLog.urination.concerns && (
+                                <div className="mt-2 p-2 bg-gray-50 rounded">
+                                  <div className="font-medium text-gray-700 mb-1">Concerns:</div>
+                                  <p className="text-gray-600 italic">{todayLog.urination.concerns}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Sprint 1: Fall Risk Assessment */}
                 {(todayLog.balanceIssues || todayLog.nearFalls || todayLog.actualFalls || todayLog.freezingEpisodes || todayLog.totalUnaccompaniedMinutes > 0) && (
                   <Card className={todayLog.actualFalls === 'major' ? 'border-2 border-red-400' : ''}>
