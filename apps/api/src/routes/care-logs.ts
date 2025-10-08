@@ -10,11 +10,14 @@ import { caregiverHasAccess } from '../lib/access-control';
 const careLogsRoute = new Hono<AppContext>();
 
 // Validation schemas
+// Sprint 2 Day 4: Enhanced medication schema with purpose and notes
 const medicationLogSchema = z.object({
   name: z.string(),
   given: z.boolean(),
   time: z.string().nullable(),
   timeSlot: z.enum(['before_breakfast', 'after_breakfast', 'afternoon', 'after_dinner', 'before_bedtime']),
+  purpose: z.string().optional(), // NEW: Why the medication is prescribed
+  notes: z.string().optional(),   // NEW: Per-medication notes
 });
 
 const mealLogSchema = z.object({
@@ -185,6 +188,25 @@ function calculateTotalUnaccompaniedTime(periods: any[]): number {
   return periods.reduce((total, period) => total + (period.durationMinutes || 0), 0);
 }
 
+// Sprint 2 Day 4: Helper function to calculate medication adherence
+function calculateMedicationAdherence(medications: any[]): {
+  total: number;
+  given: number;
+  missed: number;
+  percentage: number;
+} {
+  if (!medications || medications.length === 0) {
+    return { total: 0, given: 0, missed: 0, percentage: 0 };
+  }
+
+  const total = medications.length;
+  const given = medications.filter(med => med.given === true).length;
+  const missed = total - given;
+  const percentage = total > 0 ? Math.round((given / total) * 100) : 0;
+
+  return { total, given, missed, percentage };
+}
+
 // Helper function to safely parse JSON (handles double-stringified data)
 function safeJsonParse(value: any): any {
   if (!value) return null;
@@ -300,11 +322,15 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
     // Sprint 2 Day 1: Add low fluid warning flag
     const lowFluidWarning = totalFluidIntake < 1000;
 
+    // Sprint 2 Day 4: Calculate medication adherence
+    const medicationAdherence = calculateMedicationAdherence(data.medications || []);
+
     // Parse JSON fields for response
     const response = {
       ...parseJsonFields(newLog),
       totalUnaccompaniedMinutes,
       lowFluidWarning,
+      medicationAdherence,
     };
 
     return c.json(response, 201);

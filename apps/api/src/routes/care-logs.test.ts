@@ -1509,4 +1509,262 @@ describe('Care Logs API', () => {
       expect(data.nightSleep.quality).toBe('no_sleep');
     });
   });
+
+  describe('Sprint 2 Day 4: Enhanced Medication Tracking', () => {
+    it('should accept medications with purpose field', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-08',
+        mood: 'alert' as const,
+        medications: [
+          {
+            name: 'Metformin 500mg',
+            given: true,
+            time: '08:00',
+            timeSlot: 'before_breakfast' as const,
+            purpose: 'Diabetes control',
+          },
+          {
+            name: 'Atorvastatin 20mg',
+            given: true,
+            time: '20:00',
+            timeSlot: 'after_dinner' as const,
+            purpose: 'Cholesterol management',
+          },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.medications).toHaveLength(2);
+      expect(data.medications[0].purpose).toBe('Diabetes control');
+      expect(data.medications[1].purpose).toBe('Cholesterol management');
+    });
+
+    it('should accept medications with notes field', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-08',
+        mood: 'alert' as const,
+        medications: [
+          {
+            name: 'Metformin 500mg',
+            given: true,
+            time: '08:00',
+            timeSlot: 'before_breakfast' as const,
+            notes: 'Take with food to avoid stomach upset',
+          },
+          {
+            name: 'Simvastatin 40mg',
+            given: false,
+            time: null,
+            timeSlot: 'before_bedtime' as const,
+            notes: 'Patient refused - said too tired',
+          },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.medications[0].notes).toBe('Take with food to avoid stomach upset');
+      expect(data.medications[1].notes).toBe('Patient refused - said too tired');
+    });
+
+    it('should calculate medication adherence percentage', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-08',
+        mood: 'alert' as const,
+        medications: [
+          { name: 'Med1', given: true, time: '08:00', timeSlot: 'before_breakfast' as const },
+          { name: 'Med2', given: true, time: '09:00', timeSlot: 'after_breakfast' as const },
+          { name: 'Med3', given: false, time: null, timeSlot: 'afternoon' as const },
+          { name: 'Med4', given: true, time: '20:00', timeSlot: 'after_dinner' as const },
+          { name: 'Med5', given: false, time: null, timeSlot: 'before_bedtime' as const },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.medicationAdherence).toBeDefined();
+      expect(data.medicationAdherence.total).toBe(5);
+      expect(data.medicationAdherence.given).toBe(3);
+      expect(data.medicationAdherence.missed).toBe(2);
+      expect(data.medicationAdherence.percentage).toBe(60); // 3/5 = 60%
+    });
+
+    it('should handle 100% medication adherence', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-08',
+        mood: 'alert' as const,
+        medications: [
+          { name: 'Med1', given: true, time: '08:00', timeSlot: 'before_breakfast' as const },
+          { name: 'Med2', given: true, time: '09:00', timeSlot: 'after_breakfast' as const },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.medicationAdherence.percentage).toBe(100);
+      expect(data.medicationAdherence.missed).toBe(0);
+    });
+
+    it('should handle 0% medication adherence', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-08',
+        mood: 'alert' as const,
+        medications: [
+          { name: 'Med1', given: false, time: null, timeSlot: 'before_breakfast' as const },
+          { name: 'Med2', given: false, time: null, timeSlot: 'after_breakfast' as const },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.medicationAdherence.percentage).toBe(0);
+      expect(data.medicationAdherence.missed).toBe(2);
+    });
+
+    it('should accept medications with both purpose and notes', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-08',
+        mood: 'alert' as const,
+        medications: [
+          {
+            name: 'Metformin 500mg',
+            given: true,
+            time: '08:00',
+            timeSlot: 'before_breakfast' as const,
+            purpose: 'Type 2 Diabetes',
+            notes: 'Patient tolerated well, no side effects',
+          },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.medications[0].purpose).toBe('Type 2 Diabetes');
+      expect(data.medications[0].notes).toBe('Patient tolerated well, no side effects');
+    });
+
+    it('should allow empty medications array with 0% adherence', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-08',
+        mood: 'alert' as const,
+        medications: [],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.medicationAdherence).toBeDefined();
+      expect(data.medicationAdherence.total).toBe(0);
+      expect(data.medicationAdherence.percentage).toBe(0);
+    });
+
+    it('should allow medication without purpose or notes (backward compatibility)', async () => {
+      const careLogData = {
+        careRecipientId,
+        caregiverId,
+        logDate: '2025-10-08',
+        mood: 'alert' as const,
+        medications: [
+          {
+            name: 'Aspirin 100mg',
+            given: true,
+            time: '08:00',
+            timeSlot: 'before_breakfast' as const,
+          },
+        ],
+      };
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify(careLogData),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.medications[0].name).toBe('Aspirin 100mg');
+      expect(data.medications[0].purpose).toBeUndefined();
+      expect(data.medications[0].notes).toBeUndefined();
+    });
+  });
 });
