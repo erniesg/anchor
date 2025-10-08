@@ -135,6 +135,9 @@ function DashboardComponent() {
   // Sprint 2 Day 2: Fluid breakdown details toggle
   const [showFluidDetails, setShowFluidDetails] = useState(false);
 
+  // Sprint 2 Day 3: Sleep details toggle
+  const [showSleepDetails, setShowSleepDetails] = useState(false);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -352,6 +355,57 @@ function DashboardComponent() {
               </Card>
             )}
 
+            {/* Sprint 2 Day 3: Poor Sleep Quality Warning */}
+            {viewMode === 'today' && todayLog && (todayLog.nightSleep?.quality === 'no_sleep' || todayLog.nightSleep?.quality === 'restless') && (
+              <Card data-testid="poor-sleep-warning" className="border-2 border-orange-300 bg-orange-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">😔</span>
+                    <div className="flex-1">
+                      <p className="font-medium text-orange-800">
+                        {todayLog.nightSleep.quality === 'no_sleep' ? 'No sleep reported last night' : 'Restless sleep last night'}
+                      </p>
+                      <p className="text-sm text-orange-700">
+                        Bedtime: {todayLog.nightSleep.bedtime}
+                        {todayLog.nightSleep.wakings > 0 && ` • Woke ${todayLog.nightSleep.wakings} ${todayLog.nightSleep.wakings === 1 ? 'time' : 'times'}`}
+                      </p>
+                      {todayLog.nightSleep.wakingReasons && todayLog.nightSleep.wakingReasons.length > 0 && (
+                        <p className="text-xs text-orange-600 mt-1">
+                          Reasons: {todayLog.nightSleep.wakingReasons.join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sprint 2 Day 3: Multiple Night Wakings Alert */}
+            {viewMode === 'today' && todayLog?.nightSleep?.wakings >= 3 && (
+              <Card data-testid="multiple-wakings-alert" className="border-2 border-yellow-300 bg-yellow-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div className="flex-1">
+                      <p className="font-medium text-yellow-800">Frequent night wakings</p>
+                      <p className="text-sm text-yellow-700">
+                        Woke {todayLog.nightSleep.wakings} times during the night
+                      </p>
+                      {todayLog.nightSleep.wakingReasons && todayLog.nightSleep.wakingReasons.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {todayLog.nightSleep.wakingReasons.map((reason: string, idx: number) => (
+                            <span key={idx} className="text-xs bg-white px-2 py-1 rounded border border-yellow-300 text-yellow-800">
+                              {reason.charAt(0).toUpperCase() + reason.slice(1)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Week View - Trend Charts */}
             {viewMode === 'week' && (
               <div className="space-y-6">
@@ -543,6 +597,88 @@ function DashboardComponent() {
                           <div className="flex items-center gap-1">
                             <div className="w-3 h-3 bg-yellow-400 rounded"></div>
                             <span>&lt;1000ml (low)</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Sprint 2 Day 3: Sleep Quality Weekly Trend */}
+                    <Card data-testid="sleep-quality-chart">
+                      <CardHeader>
+                        <h3 className="font-semibold">😴 Sleep Quality Trend</h3>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={250}>
+                          <BarChart data={chartData.map((day: any) => {
+                            // Convert sleep quality to numeric score for visualization
+                            const afternoonScore = day.afternoonRest ? (
+                              day.afternoonRest.quality === 'deep' ? 4 :
+                              day.afternoonRest.quality === 'light' ? 3 :
+                              day.afternoonRest.quality === 'restless' ? 2 : 1
+                            ) : 0;
+                            const nightScore = day.nightSleep ? (
+                              day.nightSleep.quality === 'deep' ? 4 :
+                              day.nightSleep.quality === 'light' ? 3 :
+                              day.nightSleep.quality === 'restless' ? 2 : 1
+                            ) : 0;
+                            return {
+                              ...day,
+                              afternoonSleep: afternoonScore,
+                              nightSleep: nightScore,
+                              nightWakings: day.nightSleep?.wakings || 0,
+                            };
+                          })}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" />
+                            <YAxis domain={[0, 4]} ticks={[0, 1, 2, 3, 4]} />
+                            <Tooltip formatter={(value: number) => {
+                              if (value === 4) return 'Deep Sleep';
+                              if (value === 3) return 'Light Sleep';
+                              if (value === 2) return 'Restless';
+                              if (value === 1) return 'No Sleep';
+                              return 'Not Recorded';
+                            }} />
+                            <Legend />
+                            <Bar dataKey="afternoonSleep" fill="#60a5fa" name="Afternoon Rest">
+                              {chartData.map((entry: any, index: number) => {
+                                const quality = entry.afternoonRest?.quality;
+                                const color = quality === 'deep' ? '#22c55e' :
+                                             quality === 'light' ? '#60a5fa' :
+                                             quality === 'restless' ? '#fbbf24' : '#ef4444';
+                                return <Cell key={`afternoon-${index}`} fill={color} />;
+                              })}
+                            </Bar>
+                            <Bar dataKey="nightSleep" fill="#8b5cf6" name="Night Sleep">
+                              {chartData.map((entry: any, index: number) => {
+                                const quality = entry.nightSleep?.quality;
+                                const color = quality === 'deep' ? '#22c55e' :
+                                             quality === 'light' ? '#8b5cf6' :
+                                             quality === 'restless' ? '#fbbf24' : '#ef4444';
+                                return <Cell key={`night-${index}`} fill={color} />;
+                              })}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                        <div className="mt-3 text-xs text-gray-600 flex flex-wrap items-center justify-center gap-3">
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-green-500 rounded"></div>
+                            <span>Deep</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-blue-400 rounded"></div>
+                            <span>Light (Afternoon)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                            <span>Light (Night)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-yellow-400 rounded"></div>
+                            <span>Restless</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-red-500 rounded"></div>
+                            <span>No Sleep</span>
                           </div>
                         </div>
                       </CardContent>
@@ -750,6 +886,122 @@ function DashboardComponent() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Sprint 2 Day 3: Sleep Tracking Summary Card */}
+                {(todayLog.afternoonRest || todayLog.nightSleep) && (
+                  <Card data-testid="sleep-card">
+                    <CardHeader>
+                      <h3 className="font-semibold">😴 Rest & Sleep</h3>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Afternoon Rest */}
+                        {todayLog.afternoonRest && (
+                          <div className="border-b pb-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">Afternoon Rest</span>
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                todayLog.afternoonRest.quality === 'deep' ? 'bg-green-100 text-green-800' :
+                                todayLog.afternoonRest.quality === 'light' ? 'bg-blue-100 text-blue-800' :
+                                todayLog.afternoonRest.quality === 'restless' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {todayLog.afternoonRest.quality === 'deep' ? '💤 Deep Sleep' :
+                                 todayLog.afternoonRest.quality === 'light' ? '😌 Light Sleep' :
+                                 todayLog.afternoonRest.quality === 'restless' ? '😟 Restless' :
+                                 '😔 No Sleep'}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-600 flex items-center gap-2">
+                              <span>{todayLog.afternoonRest.startTime} - {todayLog.afternoonRest.endTime}</span>
+                              {todayLog.afternoonRest.notes && (
+                                <span className="text-blue-600">ℹ️</span>
+                              )}
+                            </div>
+                            {todayLog.afternoonRest.notes && showSleepDetails && (
+                              <p className="text-xs text-gray-600 mt-2 italic">{todayLog.afternoonRest.notes}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Night Sleep */}
+                        {todayLog.nightSleep && (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">Night Sleep</span>
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                todayLog.nightSleep.quality === 'deep' ? 'bg-green-100 text-green-800' :
+                                todayLog.nightSleep.quality === 'light' ? 'bg-blue-100 text-blue-800' :
+                                todayLog.nightSleep.quality === 'restless' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {todayLog.nightSleep.quality === 'deep' ? '💤 Deep Sleep' :
+                                 todayLog.nightSleep.quality === 'light' ? '😌 Light Sleep' :
+                                 todayLog.nightSleep.quality === 'restless' ? '😟 Restless' :
+                                 '😔 No Sleep'}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-600 space-y-1">
+                              <div>Bedtime: {todayLog.nightSleep.bedtime}</div>
+                              {todayLog.nightSleep.wakings > 0 && (
+                                <div className="text-yellow-700">
+                                  ⚠️ Woke {todayLog.nightSleep.wakings} {todayLog.nightSleep.wakings === 1 ? 'time' : 'times'}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Expandable details */}
+                            {(todayLog.nightSleep.wakingReasons?.length > 0 || todayLog.nightSleep.behaviors?.length > 0 || todayLog.nightSleep.notes) && (
+                              <div className="mt-2">
+                                <button
+                                  data-testid="sleep-details-toggle"
+                                  onClick={() => setShowSleepDetails(!showSleepDetails)}
+                                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                >
+                                  {showSleepDetails ? '▼ Hide Details' : '▶ Show Details'}
+                                </button>
+
+                                {showSleepDetails && (
+                                  <div className="mt-3 space-y-2 text-xs">
+                                    {todayLog.nightSleep.wakingReasons && todayLog.nightSleep.wakingReasons.length > 0 && (
+                                      <div>
+                                        <span className="font-medium">Waking reasons:</span>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {todayLog.nightSleep.wakingReasons.map((reason: string, idx: number) => (
+                                            <span key={idx} className="bg-yellow-50 text-yellow-800 px-2 py-1 rounded">
+                                              {reason.charAt(0).toUpperCase() + reason.slice(1)}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {todayLog.nightSleep.behaviors && todayLog.nightSleep.behaviors.length > 0 && (
+                                      <div>
+                                        <span className="font-medium">Behaviors:</span>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {todayLog.nightSleep.behaviors.map((behavior: string, idx: number) => (
+                                            <span key={idx} className="bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                              {behavior.charAt(0).toUpperCase() + behavior.slice(1)}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {todayLog.nightSleep.notes && (
+                                      <p className="text-gray-600 italic">{todayLog.nightSleep.notes}</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Sprint 1: Fall Risk Assessment */}
                 {(todayLog.balanceIssues || todayLog.nearFalls || todayLog.actualFalls || todayLog.freezingEpisodes || todayLog.totalUnaccompaniedMinutes > 0) && (
