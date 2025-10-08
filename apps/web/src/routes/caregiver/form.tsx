@@ -183,6 +183,23 @@ function CareLogFormComponent() {
     swallowingIssues: string[];
   }>>([]);
 
+  // Sprint 2 Day 3: Sleep Tracking
+  const [afternoonRest, setAfternoonRest] = useState<{
+    startTime: string;
+    endTime: string;
+    quality: 'deep' | 'light' | 'restless' | 'no_sleep';
+    notes?: string;
+  } | null>(null);
+
+  const [nightSleep, setNightSleep] = useState<{
+    bedtime: string;
+    quality: 'deep' | 'light' | 'restless' | 'no_sleep';
+    wakings: number;
+    wakingReasons: string[];
+    behaviors: string[];
+    notes?: string;
+  } | null>(null);
+
   // Toileting
   const [bowelFreq, setBowelFreq] = useState(0);
   const [urineFreq, setUrineFreq] = useState(0);
@@ -286,6 +303,9 @@ function CareLogFormComponent() {
       } : undefined,
       // Sprint 2 Day 2: Fluid Intake
       fluids: fluids.length > 0 ? fluids : undefined,
+      // Sprint 2 Day 3: Sleep Tracking
+      afternoonRest: afternoonRest,
+      nightSleep: nightSleep,
       bloodPressure: omitEmpty(bloodPressure),
       pulseRate: pulseRate ? parseInt(pulseRate) : undefined,
       oxygenLevel: oxygenLevel ? parseInt(oxygenLevel) : undefined,
@@ -986,6 +1006,268 @@ function CareLogFormComponent() {
                   ← Back
                 </Button>
                 <Button onClick={() => setCurrentSection(5)} variant="primary" className="flex-1">
+                  Next: Sleep Tracking →
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Section 5: Sleep Tracking - Sprint 2 Day 3 */}
+        {currentSection === 5 && (
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold">😴 Rest & Sleep</h2>
+              <p className="text-sm text-gray-600">Track afternoon rest and night sleep quality</p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Afternoon Rest */}
+              <div className="border-b pb-4">
+                <h3 className="font-semibold mb-3">Afternoon Rest</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <input
+                    type="checkbox"
+                    checked={afternoonRest !== null}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setAfternoonRest({
+                          startTime: '',
+                          endTime: '',
+                          quality: 'light',
+                          notes: '',
+                        });
+                      } else {
+                        setAfternoonRest(null);
+                      }
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <label className="text-sm font-medium">Had afternoon rest today</label>
+                </div>
+
+                {afternoonRest && (
+                  <div className="space-y-4 pl-6 border-l-2 border-blue-200">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Start Time</label>
+                        <Input
+                          type="time"
+                          value={afternoonRest.startTime}
+                          onChange={(e) => setAfternoonRest({ ...afternoonRest, startTime: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">End Time</label>
+                        <Input
+                          type="time"
+                          value={afternoonRest.endTime}
+                          onChange={(e) => setAfternoonRest({ ...afternoonRest, endTime: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {afternoonRest.startTime && afternoonRest.endTime && (
+                      <p className="text-sm text-gray-600">
+                        Duration: {calculateDuration(afternoonRest.startTime, afternoonRest.endTime)} minutes
+                      </p>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Sleep Quality</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { value: 'deep', label: '💤 Deep Sleep', color: 'bg-green-100 border-green-300' },
+                          { value: 'light', label: '😌 Light Sleep', color: 'bg-blue-100 border-blue-300' },
+                          { value: 'restless', label: '😟 Restless', color: 'bg-yellow-100 border-yellow-300' },
+                          { value: 'no_sleep', label: '😔 No Sleep', color: 'bg-red-100 border-red-300' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setAfternoonRest({ ...afternoonRest, quality: option.value as any })}
+                            className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                              afternoonRest.quality === option.value
+                                ? `${option.color} border-2`
+                                : 'bg-white border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Notes (optional)</label>
+                      <textarea
+                        value={afternoonRest.notes || ''}
+                        onChange={(e) => setAfternoonRest({ ...afternoonRest, notes: e.target.value })}
+                        className="w-full p-2 border rounded-lg text-sm"
+                        rows={2}
+                        placeholder="Any observations about afternoon rest..."
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Night Sleep */}
+              <div>
+                <h3 className="font-semibold mb-3">Night Sleep</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <input
+                    type="checkbox"
+                    checked={nightSleep !== null}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setNightSleep({
+                          bedtime: '',
+                          quality: 'light',
+                          wakings: 0,
+                          wakingReasons: [],
+                          behaviors: [],
+                          notes: '',
+                        });
+                      } else {
+                        setNightSleep(null);
+                      }
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <label className="text-sm font-medium">Record night sleep</label>
+                </div>
+
+                {nightSleep && (
+                  <div className="space-y-4 pl-6 border-l-2 border-purple-200">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Bedtime</label>
+                      <Input
+                        type="time"
+                        value={nightSleep.bedtime}
+                        onChange={(e) => setNightSleep({ ...nightSleep, bedtime: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Sleep Quality</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { value: 'deep', label: '💤 Deep Sleep', color: 'bg-green-100 border-green-300' },
+                          { value: 'light', label: '😌 Light Sleep', color: 'bg-blue-100 border-blue-300' },
+                          { value: 'restless', label: '😟 Restless', color: 'bg-yellow-100 border-yellow-300' },
+                          { value: 'no_sleep', label: '😔 No Sleep', color: 'bg-red-100 border-red-300' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setNightSleep({ ...nightSleep, quality: option.value as any })}
+                            className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                              nightSleep.quality === option.value
+                                ? `${option.color} border-2`
+                                : 'bg-white border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Number of Wakings</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={nightSleep.wakings}
+                        onChange={(e) => setNightSleep({ ...nightSleep, wakings: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+
+                    {nightSleep.wakings > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Reasons for Waking</label>
+                        <div className="space-y-2">
+                          {['Toilet', 'Pain', 'Confusion', 'Dreams', 'Unknown'].map((reason) => (
+                            <label key={reason} className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={nightSleep.wakingReasons.includes(reason.toLowerCase())}
+                                onChange={(e) => {
+                                  const reasonLower = reason.toLowerCase();
+                                  if (e.target.checked) {
+                                    setNightSleep({
+                                      ...nightSleep,
+                                      wakingReasons: [...nightSleep.wakingReasons, reasonLower],
+                                    });
+                                  } else {
+                                    setNightSleep({
+                                      ...nightSleep,
+                                      wakingReasons: nightSleep.wakingReasons.filter(r => r !== reasonLower),
+                                    });
+                                  }
+                                }}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-sm">{reason}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Sleep Behaviors</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {['Quiet', 'Snoring', 'Talking', 'Mumbling', 'Restless', 'Dreaming', 'Nightmares'].map((behavior) => (
+                          <label key={behavior} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={nightSleep.behaviors.includes(behavior.toLowerCase())}
+                              onChange={(e) => {
+                                const behaviorLower = behavior.toLowerCase();
+                                if (e.target.checked) {
+                                  setNightSleep({
+                                    ...nightSleep,
+                                    behaviors: [...nightSleep.behaviors, behaviorLower],
+                                  });
+                                } else {
+                                  setNightSleep({
+                                    ...nightSleep,
+                                    behaviors: nightSleep.behaviors.filter(b => b !== behaviorLower),
+                                  });
+                                }
+                              }}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">{behavior}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Notes (optional)</label>
+                      <textarea
+                        value={nightSleep.notes || ''}
+                        onChange={(e) => setNightSleep({ ...nightSleep, notes: e.target.value })}
+                        className="w-full p-2 border rounded-lg text-sm"
+                        rows={2}
+                        placeholder="Any observations about night sleep..."
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation */}
+              <div className="flex gap-4 pt-4 border-t">
+                <Button onClick={() => setCurrentSection(4)} variant="outline" className="flex-1">
+                  ← Back
+                </Button>
+                <Button onClick={() => setCurrentSection(6)} variant="primary" className="flex-1">
                   Next: Vital Signs →
                 </Button>
               </div>
@@ -993,8 +1275,8 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 5: Vitals (was Section 4) */}
-        {currentSection === 5 && (
+        {/* Section 6: Vitals (was Section 5) */}
+        {currentSection === 6 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">❤️ Vital Signs</h2>
@@ -1113,10 +1395,10 @@ function CareLogFormComponent() {
 
               <div className="flex gap-3">
                 <Button onClick={() => setCurrentSection(5)} variant="outline" className="flex-1">
-                  ← Back
+                  ← Back: Sleep
                 </Button>
                 <Button onClick={() => setCurrentSection(7)} variant="primary" className="flex-1">
-                  Next →
+                  Next: Fall Risk →
                 </Button>
               </div>
             </CardContent>
