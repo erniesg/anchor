@@ -226,6 +226,14 @@ function CareLogFormComponent() {
   // Legacy (to be removed after migration)
   const [diaperChanges, setDiaperChanges] = useState(0);
 
+  // Sprint 3 Day 1: Spiritual & Emotional Well-Being
+  const [prayerStartTime, setPrayerStartTime] = useState('');
+  const [prayerEndTime, setPrayerEndTime] = useState('');
+  const [prayerExpression, setPrayerExpression] = useState<'speaking_out_loud' | 'whispering' | 'mumbling' | 'silent_worship' | ''>('');
+  const [overallMood, setOverallMood] = useState<number | null>(null);
+  const [communicationScale, setCommunicationScale] = useState<number | null>(null);
+  const [socialInteraction, setSocialInteraction] = useState<'engaged' | 'responsive' | 'withdrawn' | 'aggressive_hostile' | ''>('');
+
   // Safety
   const [emergencyFlag, setEmergencyFlag] = useState(false);
   const [emergencyNote, setEmergencyNote] = useState('');
@@ -370,6 +378,14 @@ function CareLogFormComponent() {
       unaccompaniedIncidents: omitEmpty(unaccompaniedIncidents),
       safetyChecks: Object.values(safetyChecks).some(v => v.checked) ? safetyChecks : undefined,
       emergencyPrep: Object.values(emergencyPrep).some(v => v) ? emergencyPrep : undefined,
+      // Sprint 3 Day 1: Spiritual & Emotional Well-Being
+      spiritualEmotional: (prayerStartTime || prayerEndTime || prayerExpression || overallMood || communicationScale || socialInteraction) ? {
+        prayerTime: (prayerStartTime && prayerEndTime) ? { start: prayerStartTime, end: prayerEndTime } : undefined,
+        prayerExpression: prayerExpression || undefined,
+        overallMood: overallMood !== null ? overallMood : undefined,
+        communicationScale: communicationScale !== null ? communicationScale : undefined,
+        socialInteraction: socialInteraction || undefined,
+      } : undefined,
       emergencyFlag,
       emergencyNote: omitEmpty(emergencyNote),
       notes: omitEmpty(notes),
@@ -383,6 +399,8 @@ function CareLogFormComponent() {
       urineAssistance, urinePain, urineColor, urineConcerns,
       balanceIssues, nearFalls, actualFalls,
       walkingPattern, freezingEpisodes, unaccompaniedTime, unaccompaniedIncidents, safetyChecks, emergencyPrep,
+      // Sprint 3 Day 1: Spiritual & Emotional
+      prayerStartTime, prayerEndTime, prayerExpression, overallMood, communicationScale, socialInteraction,
       emergencyFlag, emergencyNote, notes, careRecipient]);
 
   // Create/Update mutation (for auto-save)
@@ -560,7 +578,8 @@ function CareLogFormComponent() {
     { id: 7, title: 'Fall Risk & Safety', emoji: '⚠️' },
     { id: 8, title: 'Unaccompanied Time', emoji: '⏱️' },
     { id: 9, title: 'Safety Checks', emoji: '🔒' },
-    { id: 10, title: 'Notes & Submit', emoji: '📝' },
+    { id: 10, title: 'Spiritual & Emotional', emoji: '🙏' },
+    { id: 11, title: 'Notes & Submit', emoji: '📝' },
   ];
 
   return (
@@ -2306,6 +2325,144 @@ function CareLogFormComponent() {
                   ← Back
                 </Button>
                 <Button onClick={() => setCurrentSection(10)} variant="primary" className="flex-1">
+                  Next: Spiritual & Emotional →
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Section 10: Spiritual & Emotional Well-Being */}
+        {currentSection === 10 && (
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold">🙏 Spiritual & Emotional Well-Being</h2>
+              <p className="text-sm text-gray-600">Track prayer, mood, and social interactions</p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Prayer Time */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Prayer Time (optional)</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-600">Start Time</label>
+                    <input
+                      type="time"
+                      value={prayerStartTime}
+                      onChange={(e) => setPrayerStartTime(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600">End Time</label>
+                    <input
+                      type="time"
+                      value={prayerEndTime}
+                      onChange={(e) => setPrayerEndTime(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Prayer Expression */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Prayer Expression (optional)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'speaking_out_loud', label: 'Speaking Out Loud' },
+                    { value: 'whispering', label: 'Whispering' },
+                    { value: 'mumbling', label: 'Mumbling' },
+                    { value: 'silent_worship', label: 'Silent Worship' },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setPrayerExpression(option.value as any)}
+                      className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                        prayerExpression === option.value
+                          ? 'bg-primary-100 border-primary-500 text-primary-900'
+                          : 'bg-white border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Overall Mood Scale */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Overall Mood (1-5 scale)</label>
+                <p className="text-xs text-gray-600">1 = Very sad/depressed, 5 = Very happy and joyful</p>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((mood) => (
+                    <button
+                      key={mood}
+                      onClick={() => setOverallMood(mood)}
+                      className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all text-center font-semibold ${
+                        overallMood === mood
+                          ? 'bg-primary-100 border-primary-500 text-primary-900'
+                          : 'bg-white border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {mood}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Communication Scale */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Communication (1-5 scale)</label>
+                <p className="text-xs text-gray-600">1 = Cannot communicate, 5 = Clear and easy</p>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((scale) => (
+                    <button
+                      key={scale}
+                      onClick={() => setCommunicationScale(scale)}
+                      className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all text-center font-semibold ${
+                        communicationScale === scale
+                          ? 'bg-primary-100 border-primary-500 text-primary-900'
+                          : 'bg-white border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {scale}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Social Interaction */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Social Interaction (optional)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'engaged', label: 'Engaged' },
+                    { value: 'responsive', label: 'Responsive' },
+                    { value: 'withdrawn', label: 'Withdrawn' },
+                    { value: 'aggressive_hostile', label: 'Aggressive/Hostile' },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setSocialInteraction(option.value as any)}
+                      className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                        socialInteraction === option.value
+                          ? 'bg-primary-100 border-primary-500 text-primary-900'
+                          : 'bg-white border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Navigation Buttons */}
+              <div className="flex gap-3">
+                <Button onClick={() => setCurrentSection(9)} variant="outline" className="flex-1">
+                  ← Back
+                </Button>
+                <Button onClick={() => setCurrentSection(11)} variant="primary" className="flex-1">
                   Next: Notes & Submit →
                 </Button>
               </div>
@@ -2313,8 +2470,8 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 10: Notes & Submit (was Section 9) */}
-        {currentSection === 10 && (
+        {/* Section 11: Notes & Submit */}
+        {currentSection === 11 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">📝 Notes & Submit</h2>
@@ -2541,7 +2698,7 @@ function CareLogFormComponent() {
                   )}
 
                   <div className="flex gap-3">
-                    <Button onClick={() => setCurrentSection(9)} variant="outline" className="flex-1">
+                    <Button onClick={() => setCurrentSection(10)} variant="outline" className="flex-1">
                       ← Back
                     </Button>
                     <Button
