@@ -30,31 +30,41 @@ pnpm dev
 
 ---
 
-## 📊 Current Status (2025-10-04)
+## 📊 Current Status (2025-10-08)
 
-### ✅ Complete (MVP Ready)
-- **Backend:** Auth (JWT + bcrypt), RBAC, care logs, caregiver management API
-- **Frontend:** Onboarding, dashboard, caregiver form, admin settings (partial)
-- **Features:** Draft/submit workflow, auto-save, status badges, 7-day trends
-- **Testing:** E2E infrastructure ready, authentication working
+### ✅ Sprint 2 Complete - Fluid Intake Monitoring
+**Delivered:** Oct 7, 2025 (12.5 hours)
+- **Caregiver Form:** Dynamic fluid entry tracking with 10 beverage types
+- **Auto-calculation:** Total fluid intake with <1000ml dehydration warnings
+- **Dashboard:** Fluid summary card, weekly trends, swallowing issues alerts
+- **Testing:** 113/113 tests passing (100%), including 8 E2E + 1 manual visual test
+- **Deployment:** Live in dev environment
 
-### ⏳ TODO Before Production
-- [x] Implement real JWT auth ✅ **DONE** (JWT with 30-day expiry)
-- [x] Hash passwords/PINs ✅ **DONE** (bcrypt with 10 rounds)
-- [x] Add `name` attributes to auth forms ✅ **DONE** (E2E test-ready)
-- [x] Fix E2E test infrastructure ✅ **DONE** (auth + migrations)
-- [ ] Complete caregiver management UI (CRUD operations)
-- [ ] Implement care recipient access permissions UI
-- [ ] Set up CI/CD (E2E tests)
-- [ ] Add error tracking (Sentry)
+### ✅ Sprint 1 Complete - Safety Foundation
+**Delivered:** Oct 1-7, 2025
+- **Fall Risk Assessment:** Balance issues, near falls, walking patterns
+- **Unaccompanied Time:** Dynamic tracking with >60min warnings
+- **Safety Checks:** 6 safety items + 7 emergency equipment checks
+- **Dashboard:** Weekly trend charts for all safety metrics
 
-**Time to Production:** 2-3 days (UI completion + testing + deployment)
+### ✅ Phase 1 Complete - MVP Core
+**Delivered:** Sept 30 - Oct 6, 2025
+- **Auth:** JWT + bcrypt password hashing
+- **RBAC:** family_admin, family_member, caregiver roles
+- **Care Logging:** Morning routine, meds, meals, vitals, toileting
+- **Dashboard:** Today/Week/Month views with trend charts
+- **Age/Gender-Aware:** Personalized vital signs validation
 
-### ⚠️ Known Issues
-- **TypeScript**: Drizzle ORM type inference issue with JSON fields in `apps/api/src/routes/care-logs.ts:85`. Code works at runtime, suppressed with `@ts-ignore`
-- **Migration System**: Wrangler doesn't auto-detect migrations dir. Applied migrations 0001 & 0002 manually. Migration tracking needs improvement.
-- **Test Data**: E2E tests need database seeding before running. Run `scripts/seed-test-users.sh` and `scripts/populate-test-data.sh` first.
-- **Frontend UI**: Caregiver management page exists but CRUD operations not implemented (tests fail on missing buttons/forms)
+**Template Coverage:** 65% (55/84 fields)
+**Test Coverage:** 113/113 passing (100%)
+**Live URLs:**
+- API: https://anchor-dev-api.erniesg.workers.dev
+- Web: https://anchor-dev.erniesg.workers.dev
+
+### 🎯 Next: Phase 2 - Clinical Enhancements
+**Timeline:** Oct 8-21, 2025 (2 weeks)
+**Target:** 80% template coverage (29 more fields)
+**Priorities:** Sleep tracking, enhanced medications, mobility & exercise
 
 ---
 
@@ -135,18 +145,22 @@ pnpm deploy:prod         # Deploy to production
 
 ## 📚 Documentation
 
+**Core Docs (Read These):**
 | File | Purpose |
 |------|---------|
+| **[README.md](./README.md)** | This file - quick start & current status |
+| **[IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)** | Detailed feature status & roadmap (65% coverage) |
 | **[TESTING.md](./TESTING.md)** | Testing strategy & execution |
 | **[DEVELOPMENT.md](./DEVELOPMENT.md)** | Daily workflows & git practices |
-| **[TDD_CHECKLIST.md](./TDD_CHECKLIST.md)** | 12-week development plan |
 
-**Design Docs:**
+**Reference Docs:**
 | File | Purpose |
 |------|---------|
-| **[INIT.md](./INIT.md)** | Original project spec |
+| **[INIT.md](./INIT.md)** | Original project specification |
+| **[TDD_CHECKLIST.md](./TDD_CHECKLIST.md)** | 12-week development plan |
 | **[RBAC_SCHEMA_DESIGN.md](./RBAC_SCHEMA_DESIGN.md)** | RBAC system design |
-| **[DASHBOARD_IMPLEMENTATION.md](./DASHBOARD_IMPLEMENTATION.md)** | Dashboard implementation |
+
+**Historical Docs:** Sprint summaries, session notes (see `SPRINT*.md`, `SESSION*.md` files)
 
 ---
 
