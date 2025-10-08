@@ -25,11 +25,16 @@ export const requireCareRecipientAccess = createMiddleware<AppContext>(async (c,
     return c.json({ error: 'Unauthorized', message: 'Authentication required' }, 401);
   }
 
-  // Try to get careRecipientId from params or body
-  const careRecipientId =
+  // Try to get careRecipientId from params or body (for POST/PUT requests only)
+  let careRecipientId =
     c.req.param('careRecipientId') ||
-    c.req.param('recipientId') ||
-    (await c.req.json().catch(() => ({})))?.careRecipientId;
+    c.req.param('recipientId');
+
+  // Only try to parse JSON body for non-GET requests
+  if (!careRecipientId && c.req.method !== 'GET') {
+    const body = await c.req.json().catch(() => ({}));
+    careRecipientId = body?.careRecipientId;
+  }
 
   if (!careRecipientId) {
     return c.json({ error: 'Bad Request', message: 'Missing care recipient ID' }, 400);
@@ -63,10 +68,14 @@ export const requireCaregiverManagement = createMiddleware<AppContext>(async (c,
     return c.json({ error: 'Unauthorized', message: 'Authentication required' }, 401);
   }
 
-  // Try to get careRecipientId from params or body
-  const careRecipientId =
-    c.req.param('careRecipientId') ||
-    (await c.req.json().catch(() => ({})))?.careRecipientId;
+  // Try to get careRecipientId from params or body (for POST/PUT requests only)
+  let careRecipientId = c.req.param('careRecipientId');
+
+  // Only try to parse JSON body for non-GET requests
+  if (!careRecipientId && c.req.method !== 'GET') {
+    const body = await c.req.json().catch(() => ({}));
+    careRecipientId = body?.careRecipientId;
+  }
 
   if (!careRecipientId) {
     return c.json({ error: 'Bad Request', message: 'Missing care recipient ID' }, 400);
@@ -157,11 +166,16 @@ export const requireCaregiverRecipientAccess = createMiddleware<AppContext>(asyn
     return c.json({ error: 'Unauthorized', message: 'Caregiver authentication required' }, 401);
   }
 
-  // Try to get careRecipientId from params or body
-  const careRecipientId =
+  // Try to get careRecipientId from params or body (for POST/PUT requests only)
+  let careRecipientId =
     c.req.param('careRecipientId') ||
-    c.req.param('recipientId') ||
-    (await c.req.json().catch(() => ({})))?.careRecipientId;
+    c.req.param('recipientId');
+
+  // Only try to parse JSON body for non-GET requests
+  if (!careRecipientId && c.req.method !== 'GET') {
+    const body = await c.req.json().catch(() => ({}));
+    careRecipientId = body?.careRecipientId;
+  }
 
   if (!careRecipientId) {
     return c.json({ error: 'Bad Request', message: 'Missing care recipient ID' }, 400);

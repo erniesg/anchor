@@ -185,19 +185,36 @@ function calculateTotalUnaccompaniedTime(periods: any[]): number {
   return periods.reduce((total, period) => total + (period.durationMinutes || 0), 0);
 }
 
+// Helper function to safely parse JSON (handles double-stringified data)
+function safeJsonParse(value: any): any {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    // If the result is still a string, try parsing again (double-stringified)
+    if (typeof parsed === 'string') {
+      return JSON.parse(parsed);
+    }
+    return parsed;
+  } catch (error) {
+    console.error('JSON parse error:', error, 'value:', value);
+    return null;
+  }
+}
+
 // Helper function to parse JSON fields in care log responses
 function parseJsonFields(log: any): any {
   if (!log) return log;
   return {
     ...log,
-    medications: log.medications ? JSON.parse(log.medications) : null,
-    fluids: log.fluids ? JSON.parse(log.fluids) : [], // Sprint 2 Day 1: Parse fluids
-    afternoonRest: log.afternoonRest ? JSON.parse(log.afternoonRest) : null, // Sprint 2 Day 3: Parse sleep
-    nightSleep: log.nightSleep ? JSON.parse(log.nightSleep) : null, // Sprint 2 Day 3: Parse sleep
-    walkingPattern: log.walkingPattern ? JSON.parse(log.walkingPattern) : null,
-    unaccompaniedTime: log.unaccompaniedTime ? JSON.parse(log.unaccompaniedTime) : null,
-    safetyChecks: log.safetyChecks ? JSON.parse(log.safetyChecks) : null,
-    emergencyPrep: log.emergencyPrep ? JSON.parse(log.emergencyPrep) : null,
+    medications: safeJsonParse(log.medications),
+    fluids: safeJsonParse(log.fluids) || [], // Sprint 2 Day 1: Parse fluids
+    // Sprint 2 Day 3: Parse sleep (handle both snake_case from DB and camelCase from client)
+    afternoonRest: safeJsonParse(log.afternoonRest || log.afternoon_rest),
+    nightSleep: safeJsonParse(log.nightSleep || log.night_sleep),
+    walkingPattern: safeJsonParse(log.walkingPattern),
+    unaccompaniedTime: safeJsonParse(log.unaccompaniedTime),
+    safetyChecks: safeJsonParse(log.safetyChecks),
+    emergencyPrep: safeJsonParse(log.emergencyPrep),
   };
 }
 
