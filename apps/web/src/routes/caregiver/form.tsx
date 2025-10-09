@@ -234,6 +234,17 @@ function CareLogFormComponent() {
   const [communicationScale, setCommunicationScale] = useState<number | null>(null);
   const [socialInteraction, setSocialInteraction] = useState<'engaged' | 'responsive' | 'withdrawn' | 'aggressive_hostile' | ''>('');
 
+  // Sprint 3 Day 2: Physical Activity & Exercise
+  const [exerciseDuration, setExerciseDuration] = useState<number | null>(null);
+  const [exerciseType, setExerciseType] = useState<string[]>([]);
+  const [walkingDistance, setWalkingDistance] = useState('');
+  const [assistanceLevel, setAssistanceLevel] = useState<'none' | 'minimal' | 'moderate' | 'full' | ''>('');
+  const [painDuringActivity, setPainDuringActivity] = useState<'none' | 'mild' | 'moderate' | 'severe' | ''>('');
+  const [energyAfterActivity, setEnergyAfterActivity] = useState<'energized' | 'tired' | 'exhausted' | 'same' | ''>('');
+  const [participationWillingness, setParticipationWillingness] = useState<'enthusiastic' | 'willing' | 'reluctant' | 'refused' | ''>('');
+  const [equipmentUsed, setEquipmentUsed] = useState<string[]>([]);
+  const [mobilityNotes, setMobilityNotes] = useState('');
+
   // Safety
   const [emergencyFlag, setEmergencyFlag] = useState(false);
   const [emergencyNote, setEmergencyNote] = useState('');
@@ -386,6 +397,18 @@ function CareLogFormComponent() {
         communicationScale: communicationScale !== null ? communicationScale : undefined,
         socialInteraction: socialInteraction || undefined,
       } : undefined,
+      // Sprint 3 Day 2: Physical Activity & Exercise
+      physicalActivity: (exerciseDuration || exerciseType.length > 0 || walkingDistance || assistanceLevel || painDuringActivity || energyAfterActivity || participationWillingness || equipmentUsed.length > 0 || mobilityNotes) ? {
+        exerciseDuration: exerciseDuration !== null ? exerciseDuration : undefined,
+        exerciseType: exerciseType.length > 0 ? exerciseType : undefined,
+        walkingDistance: omitEmpty(walkingDistance),
+        assistanceLevel: assistanceLevel || undefined,
+        painDuringActivity: painDuringActivity || undefined,
+        energyAfterActivity: energyAfterActivity || undefined,
+        participationWillingness: participationWillingness || undefined,
+        equipmentUsed: equipmentUsed.length > 0 ? equipmentUsed : undefined,
+        mobilityNotes: omitEmpty(mobilityNotes),
+      } : undefined,
       emergencyFlag,
       emergencyNote: omitEmpty(emergencyNote),
       notes: omitEmpty(notes),
@@ -401,6 +424,8 @@ function CareLogFormComponent() {
       walkingPattern, freezingEpisodes, unaccompaniedTime, unaccompaniedIncidents, safetyChecks, emergencyPrep,
       // Sprint 3 Day 1: Spiritual & Emotional
       prayerStartTime, prayerEndTime, prayerExpression, overallMood, communicationScale, socialInteraction,
+      // Sprint 3 Day 2: Physical Activity
+      exerciseDuration, exerciseType, walkingDistance, assistanceLevel, painDuringActivity, energyAfterActivity, participationWillingness, equipmentUsed, mobilityNotes,
       emergencyFlag, emergencyNote, notes, careRecipient]);
 
   // Create/Update mutation (for auto-save)
@@ -584,7 +609,8 @@ function CareLogFormComponent() {
     { id: 8, title: 'Unaccompanied Time', emoji: '⏱️' },
     { id: 9, title: 'Safety Checks', emoji: '🔒' },
     { id: 10, title: 'Spiritual & Emotional', emoji: '🙏' },
-    { id: 11, title: 'Notes & Submit', emoji: '📝' },
+    { id: 11, title: 'Physical Activity', emoji: '🏃' },
+    { id: 12, title: 'Notes & Submit', emoji: '📝' },
   ];
 
   return (
@@ -2468,6 +2494,233 @@ function CareLogFormComponent() {
                   ← Back
                 </Button>
                 <Button onClick={() => setCurrentSection(11)} variant="primary" className="flex-1">
+                  Next: Physical Activity →
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Section 11: Physical Activity & Exercise */}
+        {currentSection === 11 && (
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold">🏃 Physical Activity & Exercise</h2>
+              <p className="text-sm text-gray-600">Track exercise, mobility, and physical therapy</p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Exercise Duration */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Exercise Duration (minutes)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={exerciseDuration || ''}
+                  onChange={(e) => setExerciseDuration(e.target.value ? parseInt(e.target.value) : null)}
+                  placeholder="Enter minutes"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+
+              {/* Exercise Type (multiple selection) */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Exercise Type (select all that apply)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'walking', label: '🚶 Walking' },
+                    { value: 'stretching', label: '🧘 Stretching' },
+                    { value: 'chair_exercises', label: '🪑 Chair Exercises' },
+                    { value: 'outdoor_activity', label: '🌳 Outdoor Activity' },
+                    { value: 'physical_therapy', label: '🏥 Physical Therapy' },
+                  ].map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => {
+                        setExerciseType(prev =>
+                          prev.includes(type.value)
+                            ? prev.filter(t => t !== type.value)
+                            : [...prev, type.value]
+                        );
+                      }}
+                      className={`px-4 py-3 rounded-lg border-2 text-left transition-colors ${
+                        exerciseType.includes(type.value)
+                          ? 'border-primary-500 bg-primary-100 text-primary-900'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Walking Distance */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Walking Distance (optional)</label>
+                <input
+                  type="text"
+                  value={walkingDistance}
+                  onChange={(e) => setWalkingDistance(e.target.value)}
+                  placeholder="e.g., around house, to mailbox, 2 blocks"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+
+              {/* Assistance Level */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Assistance Level Required</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'none', label: 'None' },
+                    { value: 'minimal', label: 'Minimal' },
+                    { value: 'moderate', label: 'Moderate' },
+                    { value: 'full', label: 'Full' },
+                  ].map((level) => (
+                    <button
+                      key={level.value}
+                      type="button"
+                      onClick={() => setAssistanceLevel(level.value as any)}
+                      className={`px-4 py-2 rounded-lg border-2 transition-colors ${
+                        assistanceLevel === level.value
+                          ? 'border-primary-500 bg-primary-100 text-primary-900'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      {level.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pain During Activity */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Pain During Activity</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'none', label: '😊 None' },
+                    { value: 'mild', label: '😐 Mild' },
+                    { value: 'moderate', label: '😣 Moderate' },
+                    { value: 'severe', label: '😫 Severe' },
+                  ].map((pain) => (
+                    <button
+                      key={pain.value}
+                      type="button"
+                      onClick={() => setPainDuringActivity(pain.value as any)}
+                      className={`px-4 py-2 rounded-lg border-2 transition-colors ${
+                        painDuringActivity === pain.value
+                          ? 'border-primary-500 bg-primary-100 text-primary-900'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      {pain.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Energy After Activity */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Energy Level After Activity</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'energized', label: '⚡ Energized' },
+                    { value: 'same', label: '😐 Same' },
+                    { value: 'tired', label: '😴 Tired' },
+                    { value: 'exhausted', label: '🥱 Exhausted' },
+                  ].map((energy) => (
+                    <button
+                      key={energy.value}
+                      type="button"
+                      onClick={() => setEnergyAfterActivity(energy.value as any)}
+                      className={`px-4 py-2 rounded-lg border-2 transition-colors ${
+                        energyAfterActivity === energy.value
+                          ? 'border-primary-500 bg-primary-100 text-primary-900'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      {energy.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Participation Willingness */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Participation Willingness</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'enthusiastic', label: '🤩 Enthusiastic' },
+                    { value: 'willing', label: '👍 Willing' },
+                    { value: 'reluctant', label: '😒 Reluctant' },
+                    { value: 'refused', label: '🙅 Refused' },
+                  ].map((will) => (
+                    <button
+                      key={will.value}
+                      type="button"
+                      onClick={() => setParticipationWillingness(will.value as any)}
+                      className={`px-4 py-2 rounded-lg border-2 transition-colors ${
+                        participationWillingness === will.value
+                          ? 'border-primary-500 bg-primary-100 text-primary-900'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      {will.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Equipment Used */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Equipment Used (select all that apply)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'walker', label: '🚶‍♂️ Walker' },
+                    { value: 'cane', label: '🦯 Cane' },
+                    { value: 'wheelchair', label: '♿ Wheelchair' },
+                    { value: 'none', label: 'None' },
+                  ].map((equip) => (
+                    <button
+                      key={equip.value}
+                      type="button"
+                      onClick={() => {
+                        setEquipmentUsed(prev =>
+                          prev.includes(equip.value)
+                            ? prev.filter(e => e !== equip.value)
+                            : [...prev, equip.value]
+                        );
+                      }}
+                      className={`px-4 py-3 rounded-lg border-2 text-left transition-colors ${
+                        equipmentUsed.includes(equip.value)
+                          ? 'border-primary-500 bg-primary-100 text-primary-900'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      {equip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Mobility Notes */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Mobility Notes (optional)</label>
+                <textarea
+                  value={mobilityNotes}
+                  onChange={(e) => setMobilityNotes(e.target.value)}
+                  placeholder="Any observations about mobility changes or concerns..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  rows={3}
+                />
+              </div>
+
+              {/* Navigation */}
+              <div className="flex gap-3">
+                <Button onClick={() => setCurrentSection(10)} variant="outline" className="flex-1">
+                  ← Back
+                </Button>
+                <Button onClick={() => setCurrentSection(12)} variant="primary" className="flex-1">
                   Next: Notes & Submit →
                 </Button>
               </div>
@@ -2475,8 +2728,8 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 11: Notes & Submit */}
-        {currentSection === 11 && (
+        {/* Section 12: Notes & Submit */}
+        {currentSection === 12 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">📝 Notes & Submit</h2>
@@ -2703,7 +2956,7 @@ function CareLogFormComponent() {
                   )}
 
                   <div className="flex gap-3">
-                    <Button onClick={() => setCurrentSection(10)} variant="outline" className="flex-1">
+                    <Button onClick={() => setCurrentSection(11)} variant="outline" className="flex-1">
                       ← Back
                     </Button>
                     <Button
