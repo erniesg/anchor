@@ -315,6 +315,30 @@ const createCareLogSchema = z.object({
     notes: z.string().optional(),
   }).optional(),
 
+  // Sprint 3 Day 5: Special Concerns & Incidents (Template page 13)
+  specialConcerns: z.object({
+    priorityLevel: z.enum(['emergency', 'urgent', 'routine']).optional(),
+    behaviouralChanges: z.array(z.enum([
+      'increased_agitation',
+      'increased_confusion',
+      'increased_anxiety',
+      'withdrawal',
+      'aggression',
+      'sleep_disturbance',
+      'appetite_change',
+      'hallucinations',
+      'delusions',
+      'repetitive_behaviors',
+      'wandering',
+      'sundowning',
+      'mood_swings'
+    ])).optional(),
+    physicalChanges: z.string().optional(), // Free text for physical symptoms
+    incidentDescription: z.string().optional(), // Detailed incident description
+    actionsTaken: z.string().optional(), // What was done in response
+    notes: z.string().optional(), // Additional notes
+  }).optional(),
+
   // Notes
   notes: z.string().optional(),
 });
@@ -348,6 +372,12 @@ function calculateMedicationAdherence(medications: any[]): {
   const percentage = total > 0 ? Math.round((given / total) * 100) : 0;
 
   return { total, given, missed, percentage };
+}
+
+// Sprint 3 Day 5: Helper function to check for high-priority concerns
+function checkHighPriorityConcerns(specialConcerns: any): boolean {
+  if (!specialConcerns) return false;
+  return specialConcerns.priorityLevel === 'emergency';
 }
 
 // Helper function to safely parse JSON (handles double-stringified data)
@@ -390,6 +420,10 @@ function parseJsonFields(log: any): any {
     afternoonExerciseSession: safeJsonParse(log.afternoonExerciseSession || log.afternoon_exercise_session),
     movementDifficulties: safeJsonParse(log.movementDifficulties || log.movement_difficulties),
     physicalActivity: safeJsonParse(log.physicalActivity || log.physical_activity),
+    // Sprint 3 Day 3: Parse oral care
+    oralCare: safeJsonParse(log.oralCare || log.oral_care),
+    // Sprint 3 Day 5: Parse special concerns
+    specialConcerns: safeJsonParse(log.specialConcerns || log.special_concerns),
   };
 }
 
@@ -468,6 +502,8 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         movementDifficulties: data.movementDifficulties ? JSON.stringify(data.movementDifficulties) as any : null,
         // Sprint 3 Day 3: Oral Care & Hygiene
         oralCare: data.oralCare ? JSON.stringify(data.oralCare) as any : null,
+        // Sprint 3 Day 5: Special Concerns & Incidents
+        specialConcerns: data.specialConcerns ? JSON.stringify(data.specialConcerns) as any : null,
         notes: data.notes,
         createdAt: now,
         updatedAt: now,
@@ -479,6 +515,12 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
     if (data.actualFalls === 'major') {
       // TODO: Create alert/notification for family
       console.log('🚨 MAJOR FALL ALERT for care recipient:', data.careRecipientId);
+    }
+
+    // Sprint 3 Day 5: Check for emergency special concerns
+    if (checkHighPriorityConcerns(data.specialConcerns)) {
+      // TODO: Create alert/notification for family
+      console.log('🚨 EMERGENCY CONCERN ALERT for care recipient:', data.careRecipientId);
     }
 
     // Calculate total unaccompanied time
@@ -585,6 +627,16 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
         emergencyNote: data.emergencyNote,
         // Sprint 3 Day 1: Spiritual & Emotional Well-Being
         spiritualEmotional: data.spiritualEmotional as any,
+        // Sprint 3 Day 2: Physical Activity & Exercise
+        physicalActivity: data.physicalActivity as any,
+        // Sprint 3 Day 4: Detailed Exercise Sessions
+        morningExerciseSession: data.morningExerciseSession as any,
+        afternoonExerciseSession: data.afternoonExerciseSession as any,
+        movementDifficulties: data.movementDifficulties as any,
+        // Sprint 3 Day 3: Oral Care & Hygiene
+        oralCare: data.oralCare as any,
+        // Sprint 3 Day 5: Special Concerns & Incidents
+        specialConcerns: data.specialConcerns as any,
         notes: data.notes,
         updatedAt: new Date(),
       } as any)
@@ -596,6 +648,12 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
     if (data.actualFalls === 'major') {
       // TODO: Create alert/notification for family
       console.log('🚨 MAJOR FALL ALERT for care recipient:', data.careRecipientId);
+    }
+
+    // Sprint 3 Day 5: Check for emergency special concerns
+    if (checkHighPriorityConcerns(data.specialConcerns)) {
+      // TODO: Create alert/notification for family
+      console.log('🚨 EMERGENCY CONCERN ALERT for care recipient:', data.careRecipientId);
     }
 
     return c.json(parseJsonFields(updatedLog));
