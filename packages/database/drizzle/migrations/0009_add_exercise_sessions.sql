@@ -1,0 +1,96 @@
+-- Sprint 3 Day 4: Detailed Exercise Sessions
+-- Based on Daily Care Report Template pages 5-6
+
+-- Add morning_exercise_session column to store morning exercise details
+ALTER TABLE care_logs ADD COLUMN morning_exercise_session TEXT;
+
+-- Add afternoon_exercise_session column to store afternoon exercise details
+ALTER TABLE care_logs ADD COLUMN afternoon_exercise_session TEXT;
+
+-- Add movement_difficulties column to store movement assessment
+ALTER TABLE care_logs ADD COLUMN movement_difficulties TEXT;
+
+-- JSON structure for morning/afternoon exercise sessions:
+-- {
+--   "startTime": "09:00",
+--   "endTime": "10:00",
+--   "exercises": [
+--     {
+--       "type": "Eye Exercises",
+--       "done": true,
+--       "duration": 10,
+--       "participation": 4
+--     },
+--     {
+--       "type": "Arm/Shoulder Strengthening",
+--       "done": true,
+--       "duration": 15,
+--       "participation": 3
+--     },
+--     {
+--       "type": "Leg Strengthening",
+--       "done": true,
+--       "duration": 10,
+--       "participation": 4
+--     },
+--     {
+--       "type": "Balance Training",
+--       "done": true,
+--       "duration": 12,
+--       "participation": 3
+--     },
+--     {
+--       "type": "Stretching",
+--       "done": true,
+--       "duration": 8,
+--       "participation": 5
+--     },
+--     {
+--       "type": "Arm Pedalling",
+--       "done": false,
+--       "duration": 0,
+--       "participation": 0
+--     },
+--     {
+--       "type": "Leg Pedalling",
+--       "done": false,
+--       "duration": 0,
+--       "participation": 0
+--     },
+--     {
+--       "type": "Physiotherapist Exercises",
+--       "done": true,
+--       "duration": 20,
+--       "participation": 4
+--     }
+--   ],
+--   "notes": "Patient showed good energy and completed most exercises"
+-- }
+
+-- JSON structure for movement_difficulties:
+-- {
+--   "gettingOutOfBed": {
+--     "level": "needsSomeHelp",
+--     "notes": "Requires assistance to sit up"
+--   },
+--   "gettingIntoBed": {
+--     "level": "canDoAlone",
+--     "notes": ""
+--   },
+--   "sittingInChair": {
+--     "level": "canDoAlone",
+--     "notes": ""
+--   },
+--   "gettingUpFromChair": {
+--     "level": "needsSomeHelp",
+--     "notes": "Needs support to stand"
+--   },
+--   "gettingInCar": {
+--     "level": "needsFullHelp",
+--     "notes": "Two person assist required"
+--   },
+--   "gettingOutOfCar": {
+--     "level": "needsFullHelp",
+--     "notes": "Two person assist required"
+--   }
+-- }

@@ -1352,6 +1352,326 @@ function DashboardComponent() {
                   </Card>
                 )}
 
+                {/* Sprint 3 Day 2: Physical Activity & Exercise */}
+                {todayLog.physicalActivity && (
+                  <Card data-testid="physical-activity-card">
+                    <CardHeader>
+                      <h3 className="font-semibold">🏃 Physical Activity & Exercise</h3>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3 text-sm">
+                        {/* Exercise Duration */}
+                        {todayLog.physicalActivity.exerciseDuration && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Duration:</span>
+                            <span className="font-medium">{todayLog.physicalActivity.exerciseDuration} minutes</span>
+                          </div>
+                        )}
+
+                        {/* Exercise Type */}
+                        {todayLog.physicalActivity.exerciseType && todayLog.physicalActivity.exerciseType.length > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Exercise Type:</span>
+                            <span className="font-medium text-xs capitalize">
+                              {todayLog.physicalActivity.exerciseType.join(', ').replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Walking Distance */}
+                        {todayLog.physicalActivity.walkingDistance && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Walking:</span>
+                            <span className="font-medium">{todayLog.physicalActivity.walkingDistance}</span>
+                          </div>
+                        )}
+
+                        {/* Assistance Level */}
+                        {todayLog.physicalActivity.assistanceLevel && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Assistance:</span>
+                            <span className={`font-medium px-2 py-0.5 rounded capitalize ${
+                              todayLog.physicalActivity.assistanceLevel === 'none' ? 'bg-green-100 text-green-800' :
+                              todayLog.physicalActivity.assistanceLevel === 'minimal' ? 'bg-blue-100 text-blue-800' :
+                              todayLog.physicalActivity.assistanceLevel === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {todayLog.physicalActivity.assistanceLevel}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Pain During Activity */}
+                        {todayLog.physicalActivity.painDuringActivity && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Pain:</span>
+                            <span className={`font-medium px-2 py-0.5 rounded capitalize ${
+                              todayLog.physicalActivity.painDuringActivity === 'none' ? 'bg-green-100 text-green-800' :
+                              todayLog.physicalActivity.painDuringActivity === 'mild' ? 'bg-yellow-100 text-yellow-800' :
+                              todayLog.physicalActivity.painDuringActivity === 'moderate' ? 'bg-orange-100 text-orange-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {todayLog.physicalActivity.painDuringActivity}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Energy After Activity */}
+                        {todayLog.physicalActivity.energyAfterActivity && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Energy After:</span>
+                            <span className={`font-medium px-2 py-0.5 rounded capitalize ${
+                              todayLog.physicalActivity.energyAfterActivity === 'energized' ? 'bg-green-100 text-green-800' :
+                              todayLog.physicalActivity.energyAfterActivity === 'same' ? 'bg-blue-100 text-blue-800' :
+                              todayLog.physicalActivity.energyAfterActivity === 'tired' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {todayLog.physicalActivity.energyAfterActivity}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Participation Willingness */}
+                        {todayLog.physicalActivity.participationWillingness && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Willingness:</span>
+                            <span className={`font-medium px-2 py-0.5 rounded capitalize ${
+                              todayLog.physicalActivity.participationWillingness === 'enthusiastic' ? 'bg-green-100 text-green-800' :
+                              todayLog.physicalActivity.participationWillingness === 'willing' ? 'bg-blue-100 text-blue-800' :
+                              todayLog.physicalActivity.participationWillingness === 'reluctant' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {todayLog.physicalActivity.participationWillingness}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Equipment Used */}
+                        {todayLog.physicalActivity.equipmentUsed && todayLog.physicalActivity.equipmentUsed.length > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Equipment:</span>
+                            <span className="font-medium text-xs capitalize">
+                              {todayLog.physicalActivity.equipmentUsed.join(', ')}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Mobility Notes */}
+                        {todayLog.physicalActivity.mobilityNotes && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <span className="text-gray-600 text-xs font-medium">Notes:</span>
+                            <p className="text-gray-700 mt-1">{todayLog.physicalActivity.mobilityNotes}</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Sprint 3 Day 4: Detailed Exercise Sessions */}
+                {(todayLog.morningExerciseSession || todayLog.afternoonExerciseSession) && (
+                  <Card data-testid="exercise-sessions-card">
+                    <CardHeader>
+                      <h3 className="font-semibold">Exercise Sessions</h3>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Morning Session */}
+                        {todayLog.morningExerciseSession && (
+                          <div className="bg-gray-50 p-3 rounded">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-medium text-sm">Morning: {todayLog.morningExerciseSession.startTime} - {todayLog.morningExerciseSession.endTime}</span>
+                            </div>
+                            {todayLog.morningExerciseSession.exercises && todayLog.morningExerciseSession.exercises.length > 0 && (
+                              <div className="space-y-1 text-xs">
+                                {todayLog.morningExerciseSession.exercises.map((exercise: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between">
+                                    <span>{exercise.type} ({exercise.duration} min)</span>
+                                    <span className="text-gray-600">Participation: {exercise.participation}/5</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {todayLog.morningExerciseSession.notes && (
+                              <p className="text-xs text-gray-600 mt-2">{todayLog.morningExerciseSession.notes}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Afternoon Session */}
+                        {todayLog.afternoonExerciseSession && (
+                          <div className="bg-gray-50 p-3 rounded">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-medium text-sm">Afternoon: {todayLog.afternoonExerciseSession.startTime} - {todayLog.afternoonExerciseSession.endTime}</span>
+                            </div>
+                            {todayLog.afternoonExerciseSession.exercises && todayLog.afternoonExerciseSession.exercises.length > 0 && (
+                              <div className="space-y-1 text-xs">
+                                {todayLog.afternoonExerciseSession.exercises.map((exercise: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between">
+                                    <span>{exercise.type} ({exercise.duration} min)</span>
+                                    <span className="text-gray-600">Participation: {exercise.participation}/5</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {todayLog.afternoonExerciseSession.notes && (
+                              <p className="text-xs text-gray-600 mt-2">{todayLog.afternoonExerciseSession.notes}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Participation Summary */}
+                        {(todayLog.morningExerciseSession || todayLog.afternoonExerciseSession) && (
+                          <div className="text-sm">
+                            <span className="text-gray-600">Overall Participation: </span>
+                            <span className={`font-medium ${
+                              (() => {
+                                const allExercises = [
+                                  ...(todayLog.morningExerciseSession?.exercises || []),
+                                  ...(todayLog.afternoonExerciseSession?.exercises || [])
+                                ];
+                                if (allExercises.length === 0) return '';
+                                const avgParticipation = allExercises.reduce((sum: number, ex: any) => sum + ex.participation, 0) / allExercises.length;
+                                return avgParticipation >= 4 ? 'text-green-600' : avgParticipation >= 3 ? 'text-yellow-600' : 'text-red-600';
+                              })()
+                            }`}>
+                              {(() => {
+                                const allExercises = [
+                                  ...(todayLog.morningExerciseSession?.exercises || []),
+                                  ...(todayLog.afternoonExerciseSession?.exercises || [])
+                                ];
+                                if (allExercises.length === 0) return 'No exercises';
+                                const avgParticipation = allExercises.reduce((sum: number, ex: any) => sum + ex.participation, 0) / allExercises.length;
+                                return avgParticipation >= 4 ? 'Good' : avgParticipation >= 3 ? 'Fair' : 'Poor';
+                              })()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Movement Difficulties Assessment */}
+                {todayLog.movementDifficulties && Object.keys(todayLog.movementDifficulties).length > 0 && (
+                  <Card data-testid="movement-difficulties-card">
+                    <CardHeader>
+                      <h3 className="font-semibold">🚶 Movement Difficulties</h3>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm">
+                        {Object.entries(todayLog.movementDifficulties).map(([activity, data]: [string, any]) => (
+                          <div key={activity} className="flex justify-between items-center">
+                            <span className="text-gray-600 text-xs">
+                              {activity.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()}:
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className={`font-medium px-2 py-0.5 rounded text-xs ${
+                                data.level === 'canDoAlone' ? 'bg-green-100 text-green-800' :
+                                data.level === 'needsSomeHelp' ? 'bg-yellow-100 text-yellow-800' :
+                                data.level === 'needsFullHelp' ? 'bg-orange-100 text-orange-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {data.level === 'canDoAlone' ? '✓ Independent' :
+                                 data.level === 'needsSomeHelp' ? 'Some Help' :
+                                 data.level === 'needsFullHelp' ? 'Full Help' :
+                                 '⚠️ Falls/Drops'}
+                              </span>
+                              {data.notes && (
+                                <span className="text-gray-500 text-xs">({data.notes})</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Sprint 3 Day 3: Oral Care & Hygiene */}
+                {todayLog.oralCare && (
+                  <Card data-testid="oral-care-card">
+                    <CardHeader>
+                      <h3 className="font-semibold">🦷 Oral Care & Hygiene</h3>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3 text-sm">
+                        {/* Teeth Brushed */}
+                        {todayLog.oralCare.teethBrushed && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Teeth Brushed:</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">
+                                {todayLog.oralCare.timesBrushed ? `${todayLog.oralCare.timesBrushed}x` : 'Yes'}
+                              </span>
+                              <span className="text-green-600">✓</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Dentures Cleaned */}
+                        {todayLog.oralCare.denturesCleaned && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Dentures Cleaned:</span>
+                            <span className="font-medium text-green-600">✓ Yes</span>
+                          </div>
+                        )}
+
+                        {/* Mouth Rinsed */}
+                        {todayLog.oralCare.mouthRinsed && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Mouth Rinsed:</span>
+                            <span className="font-medium text-green-600">✓ Yes</span>
+                          </div>
+                        )}
+
+                        {/* Assistance Level */}
+                        {todayLog.oralCare.assistanceLevel && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Assistance:</span>
+                            <span className={`font-medium px-2 py-0.5 rounded capitalize ${
+                              todayLog.oralCare.assistanceLevel === 'none' ? 'bg-green-100 text-green-800' :
+                              todayLog.oralCare.assistanceLevel === 'minimal' ? 'bg-blue-100 text-blue-800' :
+                              todayLog.oralCare.assistanceLevel === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {todayLog.oralCare.assistanceLevel}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Oral Health Issues */}
+                        {todayLog.oralCare.oralHealthIssues && todayLog.oralCare.oralHealthIssues.length > 0 && !todayLog.oralCare.oralHealthIssues.includes('none') && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Health Issues:</span>
+                            <span className="font-medium text-xs text-orange-600 capitalize">
+                              {todayLog.oralCare.oralHealthIssues.filter(i => i !== 'none').join(', ').replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Pain or Bleeding */}
+                        {todayLog.oralCare.painOrBleeding && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Pain/Bleeding:</span>
+                            <span className="font-medium px-2 py-0.5 rounded bg-red-100 text-red-800">
+                              ⚠️ Yes
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Notes */}
+                        {todayLog.oralCare.notes && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <span className="text-gray-600 text-xs font-medium">Notes:</span>
+                            <p className="text-gray-700 mt-1">{todayLog.oralCare.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Sprint 1: Fall Risk Assessment */}
                 {(todayLog.balanceIssues || todayLog.nearFalls || todayLog.actualFalls || todayLog.freezingEpisodes || todayLog.totalUnaccompaniedMinutes > 0) && (
                   <Card className={todayLog.actualFalls === 'major' ? 'border-2 border-red-400' : ''}>

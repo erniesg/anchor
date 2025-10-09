@@ -234,7 +234,7 @@ function CareLogFormComponent() {
   const [communicationScale, setCommunicationScale] = useState<number | null>(null);
   const [socialInteraction, setSocialInteraction] = useState<'engaged' | 'responsive' | 'withdrawn' | 'aggressive_hostile' | ''>('');
 
-  // Sprint 3 Day 2: Physical Activity & Exercise
+  // Sprint 3 Day 2: Physical Activity & Exercise (simplified version - keeping for backward compatibility)
   const [exerciseDuration, setExerciseDuration] = useState<number | null>(null);
   const [exerciseType, setExerciseType] = useState<string[]>([]);
   const [walkingDistance, setWalkingDistance] = useState('');
@@ -244,6 +244,47 @@ function CareLogFormComponent() {
   const [participationWillingness, setParticipationWillingness] = useState<'enthusiastic' | 'willing' | 'reluctant' | 'refused' | ''>('');
   const [equipmentUsed, setEquipmentUsed] = useState<string[]>([]);
   const [mobilityNotes, setMobilityNotes] = useState('');
+
+  // Sprint 3 Day 4: Detailed Exercise Sessions
+  // Morning Exercise Session
+  const [morningExerciseStart, setMorningExerciseStart] = useState('');
+  const [morningExerciseEnd, setMorningExerciseEnd] = useState('');
+  const [morningExercises, setMorningExercises] = useState<Record<string, { done: boolean; duration: number; participation: number }>>({
+    eyeExercises: { done: false, duration: 0, participation: 0 },
+    armShoulderStrengthening: { done: false, duration: 0, participation: 0 },
+    legStrengthening: { done: false, duration: 0, participation: 0 },
+    balanceTraining: { done: false, duration: 0, participation: 0 },
+    stretching: { done: false, duration: 0, participation: 0 },
+    armPedalling: { done: false, duration: 0, participation: 0 },
+    legPedalling: { done: false, duration: 0, participation: 0 },
+    physiotherapistExercises: { done: false, duration: 0, participation: 0 },
+  });
+  const [morningExerciseNotes, setMorningExerciseNotes] = useState('');
+
+  // Afternoon Exercise Session
+  const [afternoonExerciseStart, setAfternoonExerciseStart] = useState('');
+  const [afternoonExerciseEnd, setAfternoonExerciseEnd] = useState('');
+  const [afternoonExercises, setAfternoonExercises] = useState<Record<string, { done: boolean; duration: number; participation: number }>>({
+    eyeExercises: { done: false, duration: 0, participation: 0 },
+    armShoulderStrengthening: { done: false, duration: 0, participation: 0 },
+    legStrengthening: { done: false, duration: 0, participation: 0 },
+    balanceTraining: { done: false, duration: 0, participation: 0 },
+    stretching: { done: false, duration: 0, participation: 0 },
+    armPedalling: { done: false, duration: 0, participation: 0 },
+    legPedalling: { done: false, duration: 0, participation: 0 },
+    physiotherapistExercises: { done: false, duration: 0, participation: 0 },
+  });
+  const [afternoonExerciseNotes, setAfternoonExerciseNotes] = useState('');
+
+  // Movement Difficulties Assessment
+  const [movementDifficulties, setMovementDifficulties] = useState<Record<string, { level: string; notes: string }>>({
+    gettingOutOfBed: { level: '', notes: '' },
+    gettingIntoBed: { level: '', notes: '' },
+    sittingInChair: { level: '', notes: '' },
+    gettingUpFromChair: { level: '', notes: '' },
+    gettingInCar: { level: '', notes: '' },
+    gettingOutOfCar: { level: '', notes: '' },
+  });
 
   // Sprint 3 Day 3: Oral Care & Hygiene
   const [teethBrushed, setTeethBrushed] = useState(false);
@@ -419,8 +460,37 @@ function CareLogFormComponent() {
         equipmentUsed: equipmentUsed.length > 0 ? equipmentUsed : undefined,
         mobilityNotes: omitEmpty(mobilityNotes),
       } : undefined,
-      // Sprint 3 Day 3: Oral Care & Hygiene
-      oralCare: (teethBrushed || timesBrushed || denturesCleaned || mouthRinsed || oralAssistanceLevel || oralHealthIssues.length > 0 || painOrBleeding || oralCareNotes) ? {
+      // Sprint 3 Day 4: Detailed Exercise Sessions
+      morningExerciseSession: (morningExerciseStart || morningExerciseEnd || Object.values(morningExercises).some(e => e.done) || morningExerciseNotes) ? {
+        startTime: morningExerciseStart || undefined,
+        endTime: morningExerciseEnd || undefined,
+        exercises: Object.entries(morningExercises).filter(([_, e]) => e.done).map(([type, e]) => ({
+          type: type.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim(),
+          done: e.done,
+          duration: e.duration,
+          participation: e.participation,
+        })),
+        notes: omitEmpty(morningExerciseNotes),
+      } : undefined,
+      afternoonExerciseSession: (afternoonExerciseStart || afternoonExerciseEnd || Object.values(afternoonExercises).some(e => e.done) || afternoonExerciseNotes) ? {
+        startTime: afternoonExerciseStart || undefined,
+        endTime: afternoonExerciseEnd || undefined,
+        exercises: Object.entries(afternoonExercises).filter(([_, e]) => e.done).map(([type, e]) => ({
+          type: type.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim(),
+          done: e.done,
+          duration: e.duration,
+          participation: e.participation,
+        })),
+        notes: omitEmpty(afternoonExerciseNotes),
+      } : undefined,
+      movementDifficulties: Object.values(movementDifficulties).some(d => d.level || d.notes) ?
+        Object.fromEntries(
+          Object.entries(movementDifficulties)
+            .filter(([_, d]) => d.level || d.notes)
+            .map(([key, d]) => [key, { level: d.level || undefined, notes: omitEmpty(d.notes) }])
+        ) : undefined,
+      // Sprint 3 Day 3: Oral Care & Hygiene - Hidden (not in template)
+      /* oralCare: (teethBrushed || timesBrushed || denturesCleaned || mouthRinsed || oralAssistanceLevel || oralHealthIssues.length > 0 || painOrBleeding || oralCareNotes) ? {
         teethBrushed: teethBrushed || undefined,
         timesBrushed: timesBrushed !== null ? timesBrushed : undefined,
         denturesCleaned: denturesCleaned || undefined,
@@ -429,7 +499,7 @@ function CareLogFormComponent() {
         oralHealthIssues: oralHealthIssues.length > 0 ? oralHealthIssues : undefined,
         painOrBleeding: painOrBleeding || undefined,
         notes: omitEmpty(oralCareNotes),
-      } : undefined,
+      } : undefined, */
       emergencyFlag,
       emergencyNote: omitEmpty(emergencyNote),
       notes: omitEmpty(notes),
@@ -447,6 +517,10 @@ function CareLogFormComponent() {
       prayerStartTime, prayerEndTime, prayerExpression, overallMood, communicationScale, socialInteraction,
       // Sprint 3 Day 2: Physical Activity
       exerciseDuration, exerciseType, walkingDistance, assistanceLevel, painDuringActivity, energyAfterActivity, participationWillingness, equipmentUsed, mobilityNotes,
+      // Sprint 3 Day 4: Detailed Exercise Sessions
+      morningExerciseStart, morningExerciseEnd, morningExercises, morningExerciseNotes,
+      afternoonExerciseStart, afternoonExerciseEnd, afternoonExercises, afternoonExerciseNotes,
+      movementDifficulties,
       // Sprint 3 Day 3: Oral Care
       teethBrushed, timesBrushed, denturesCleaned, mouthRinsed, oralAssistanceLevel, oralHealthIssues, painOrBleeding, oralCareNotes,
       emergencyFlag, emergencyNote, notes, careRecipient]);
@@ -633,7 +707,7 @@ function CareLogFormComponent() {
     { id: 9, title: 'Safety Checks', emoji: '🔒' },
     { id: 10, title: 'Spiritual & Emotional', emoji: '🙏' },
     { id: 11, title: 'Physical Activity', emoji: '🏃' },
-    { id: 12, title: 'Oral Care', emoji: '🦷' },
+    // { id: 12, title: 'Oral Care', emoji: '🦷' }, // Hidden - not in template
     { id: 13, title: 'Notes & Submit', emoji: '📝' },
   ];
 
@@ -2525,218 +2599,290 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 11: Physical Activity & Exercise */}
+        {/* Section 11: Physical Activity & Exercise - Enhanced with Detailed Sessions */}
         {currentSection === 11 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">🏃 Physical Activity & Exercise</h2>
-              <p className="text-sm text-gray-600">Track exercise, mobility, and physical therapy</p>
+              <p className="text-sm text-gray-600">Track detailed exercise sessions and movement assessment</p>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Exercise Duration */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium">Exercise Duration (minutes)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={exerciseDuration || ''}
-                  onChange={(e) => setExerciseDuration(e.target.value ? parseInt(e.target.value) : null)}
-                  placeholder="Enter minutes"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
+              {/* Morning Exercise Session */}
+              <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                <h3 className="font-semibold text-lg">Morning Exercise Session</h3>
 
-              {/* Exercise Type (multiple selection) */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium">Exercise Type (select all that apply)</label>
-                <div className="grid grid-cols-2 gap-2">
+                {/* Time Range */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Start Time</label>
+                    <input
+                      type="time"
+                      name="morningExerciseStart"
+                      value={morningExerciseStart}
+                      onChange={(e) => setMorningExerciseStart(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">End Time</label>
+                    <input
+                      type="time"
+                      name="morningExerciseEnd"
+                      value={morningExerciseEnd}
+                      onChange={(e) => setMorningExerciseEnd(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                </div>
+
+                {/* Exercise Types */}
+                <div className="space-y-3">
                   {[
-                    { value: 'walking', label: '🚶 Walking' },
-                    { value: 'stretching', label: '🧘 Stretching' },
-                    { value: 'chair_exercises', label: '🪑 Chair Exercises' },
-                    { value: 'outdoor_activity', label: '🌳 Outdoor Activity' },
-                    { value: 'physical_therapy', label: '🏥 Physical Therapy' },
-                  ].map((type) => (
-                    <button
-                      key={type.value}
-                      type="button"
-                      onClick={() => {
-                        setExerciseType(prev =>
-                          prev.includes(type.value)
-                            ? prev.filter(t => t !== type.value)
-                            : [...prev, type.value]
-                        );
-                      }}
-                      className={`px-4 py-3 rounded-lg border-2 text-left transition-colors ${
-                        exerciseType.includes(type.value)
-                          ? 'border-primary-500 bg-primary-100 text-primary-900'
-                          : 'border-gray-300 hover:border-primary-300'
-                      }`}
-                    >
-                      {type.label}
-                    </button>
+                    { key: 'eyeExercises', label: 'Eye Exercises', inputName: 'EyeExercises' },
+                    { key: 'armShoulderStrengthening', label: 'Arm/Shoulder Strengthening', inputName: 'ArmShoulderStrengthening' },
+                    { key: 'legStrengthening', label: 'Leg Strengthening', inputName: 'LegStrengthening' },
+                    { key: 'balanceTraining', label: 'Balance Training', inputName: 'BalanceTraining' },
+                    { key: 'stretching', label: 'Stretching', inputName: 'Stretching' },
+                    { key: 'armPedalling', label: 'Arm Pedalling (Cycling)', inputName: 'ArmPedalling' },
+                    { key: 'legPedalling', label: 'Leg Pedalling (Cycling)', inputName: 'LegPedalling' },
+                    { key: 'physiotherapistExercises', label: 'Physiotherapist Exercises', inputName: 'PhysiotherapistExercises' },
+                  ].map((exercise) => (
+                    <div key={exercise.key} className="border border-gray-200 rounded-md p-3 bg-white">
+                      <div className="flex items-center gap-3 mb-2">
+                        <input
+                          type="checkbox"
+                          name={`${exercise.inputName}Done`}
+                          checked={morningExercises[exercise.key].done}
+                          onChange={(e) => setMorningExercises(prev => ({
+                            ...prev,
+                            [exercise.key]: { ...prev[exercise.key], done: e.target.checked }
+                          }))}
+                          className="w-5 h-5"
+                        />
+                        <label className="font-medium">{exercise.label}</label>
+                      </div>
+
+                      {morningExercises[exercise.key].done && (
+                        <div className="grid grid-cols-2 gap-3 ml-8">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Duration (min)</label>
+                            <input
+                              type="number"
+                              name={`${exercise.inputName}Duration`}
+                              min="0"
+                              value={morningExercises[exercise.key].duration || ''}
+                              onChange={(e) => setMorningExercises(prev => ({
+                                ...prev,
+                                [exercise.key]: { ...prev[exercise.key], duration: parseInt(e.target.value) || 0 }
+                              }))}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Participation (1-5)</label>
+                            <div className="flex gap-1">
+                              {[1, 2, 3, 4, 5].map((level) => (
+                                <input
+                                  key={level}
+                                  type="radio"
+                                  name={`${exercise.inputName}Participation`}
+                                  value={level}
+                                  checked={morningExercises[exercise.key].participation === level}
+                                  onChange={() => setMorningExercises(prev => ({
+                                    ...prev,
+                                    [exercise.key]: { ...prev[exercise.key], participation: level }
+                                  }))}
+                                  className="w-6 h-6"
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ))}
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Session Notes</label>
+                  <textarea
+                    name="morningExerciseNotes"
+                    value={morningExerciseNotes}
+                    onChange={(e) => setMorningExerciseNotes(e.target.value)}
+                    placeholder="Any observations about the morning exercise session..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    rows={2}
+                  />
                 </div>
               </div>
 
-              {/* Walking Distance */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium">Walking Distance (optional)</label>
-                <input
-                  type="text"
-                  value={walkingDistance}
-                  onChange={(e) => setWalkingDistance(e.target.value)}
-                  placeholder="e.g., around house, to mailbox, 2 blocks"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
+              {/* Afternoon Exercise Session */}
+              <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                <h3 className="font-semibold text-lg">Afternoon Exercise Session</h3>
 
-              {/* Assistance Level */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium">Assistance Level Required</label>
-                <div className="grid grid-cols-2 gap-2">
+                {/* Time Range */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Start Time</label>
+                    <input
+                      type="time"
+                      name="afternoonExerciseStart"
+                      value={afternoonExerciseStart}
+                      onChange={(e) => setAfternoonExerciseStart(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">End Time</label>
+                    <input
+                      type="time"
+                      name="afternoonExerciseEnd"
+                      value={afternoonExerciseEnd}
+                      onChange={(e) => setAfternoonExerciseEnd(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                </div>
+
+                {/* Exercise Types - Afternoon */}
+                <div className="space-y-3">
                   {[
-                    { value: 'none', label: 'None' },
-                    { value: 'minimal', label: 'Minimal' },
-                    { value: 'moderate', label: 'Moderate' },
-                    { value: 'full', label: 'Full' },
-                  ].map((level) => (
-                    <button
-                      key={level.value}
-                      type="button"
-                      onClick={() => setAssistanceLevel(level.value as any)}
-                      className={`px-4 py-2 rounded-lg border-2 transition-colors ${
-                        assistanceLevel === level.value
-                          ? 'border-primary-500 bg-primary-100 text-primary-900'
-                          : 'border-gray-300 hover:border-primary-300'
-                      }`}
-                    >
-                      {level.label}
-                    </button>
+                    { key: 'eyeExercises', label: 'Eye Exercises', inputName: 'EyeExercises' },
+                    { key: 'armShoulderStrengthening', label: 'Arm/Shoulder Strengthening', inputName: 'ArmShoulderStrengthening' },
+                    { key: 'legStrengthening', label: 'Leg Strengthening', inputName: 'LegStrengthening' },
+                    { key: 'balanceTraining', label: 'Balance Training', inputName: 'BalanceTraining' },
+                    { key: 'stretching', label: 'Stretching', inputName: 'Stretching' },
+                    { key: 'armPedalling', label: 'Arm Pedalling (Cycling)', inputName: 'ArmPedalling' },
+                    { key: 'legPedalling', label: 'Leg Pedalling (Cycling)', inputName: 'LegPedalling' },
+                    { key: 'physiotherapistExercises', label: 'Physiotherapist Exercises', inputName: 'PhysiotherapistExercises' },
+                  ].map((exercise) => (
+                    <div key={exercise.key} className="border border-gray-200 rounded-md p-3 bg-white">
+                      <div className="flex items-center gap-3 mb-2">
+                        <input
+                          type="checkbox"
+                          name={`${exercise.inputName}AfternoonDone`}
+                          checked={afternoonExercises[exercise.key].done}
+                          onChange={(e) => setAfternoonExercises(prev => ({
+                            ...prev,
+                            [exercise.key]: { ...prev[exercise.key], done: e.target.checked }
+                          }))}
+                          className="w-5 h-5"
+                        />
+                        <label className="font-medium">{exercise.label}</label>
+                      </div>
+
+                      {afternoonExercises[exercise.key].done && (
+                        <div className="grid grid-cols-2 gap-3 ml-8">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Duration (min)</label>
+                            <input
+                              type="number"
+                              name={`${exercise.inputName}AfternoonDuration`}
+                              min="0"
+                              value={afternoonExercises[exercise.key].duration || ''}
+                              onChange={(e) => setAfternoonExercises(prev => ({
+                                ...prev,
+                                [exercise.key]: { ...prev[exercise.key], duration: parseInt(e.target.value) || 0 }
+                              }))}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Participation (1-5)</label>
+                            <div className="flex gap-1">
+                              {[1, 2, 3, 4, 5].map((level) => (
+                                <input
+                                  key={level}
+                                  type="radio"
+                                  name={`${exercise.inputName}AfternoonParticipation`}
+                                  value={level}
+                                  checked={afternoonExercises[exercise.key].participation === level}
+                                  onChange={() => setAfternoonExercises(prev => ({
+                                    ...prev,
+                                    [exercise.key]: { ...prev[exercise.key], participation: level }
+                                  }))}
+                                  className="w-6 h-6"
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ))}
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Session Notes</label>
+                  <textarea
+                    name="afternoonExerciseNotes"
+                    value={afternoonExerciseNotes}
+                    onChange={(e) => setAfternoonExerciseNotes(e.target.value)}
+                    placeholder="Any observations about the afternoon exercise session..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    rows={2}
+                  />
                 </div>
               </div>
 
-              {/* Pain During Activity */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium">Pain During Activity</label>
-                <div className="grid grid-cols-2 gap-2">
+              {/* Movement Difficulties Assessment */}
+              <div className="bg-blue-50 p-4 rounded-lg space-y-4">
+                <h3 className="font-semibold text-lg">Movement Difficulties Assessment</h3>
+
+                <div className="space-y-3">
                   {[
-                    { value: 'none', label: '😊 None' },
-                    { value: 'mild', label: '😐 Mild' },
-                    { value: 'moderate', label: '😣 Moderate' },
-                    { value: 'severe', label: '😫 Severe' },
-                  ].map((pain) => (
-                    <button
-                      key={pain.value}
-                      type="button"
-                      onClick={() => setPainDuringActivity(pain.value as any)}
-                      className={`px-4 py-2 rounded-lg border-2 transition-colors ${
-                        painDuringActivity === pain.value
-                          ? 'border-primary-500 bg-primary-100 text-primary-900'
-                          : 'border-gray-300 hover:border-primary-300'
-                      }`}
-                    >
-                      {pain.label}
-                    </button>
+                    { key: 'gettingOutOfBed', label: 'Getting out of bed', name: 'gettingOutOfBed' },
+                    { key: 'gettingIntoBed', label: 'Getting into bed', name: 'gettingIntoBed' },
+                    { key: 'sittingInChair', label: 'Sitting down in chair', name: 'sittingInChair' },
+                    { key: 'gettingUpFromChair', label: 'Getting up from chair', name: 'gettingUpFromChair' },
+                    { key: 'gettingInCar', label: 'Getting in car', name: 'gettingInCar' },
+                    { key: 'gettingOutOfCar', label: 'Getting out of car', name: 'gettingOutOfCar' },
+                  ].map((activity) => (
+                    <div key={activity.key} className="border border-gray-200 rounded-md p-3 bg-white">
+                      <label className="block font-medium mb-2">{activity.label}</label>
+
+                      <div className="grid grid-cols-4 gap-2 mb-2">
+                        {[
+                          { value: 'canDoAlone', label: 'Can Do Alone' },
+                          { value: 'needsSomeHelp', label: 'Needs Some Help' },
+                          { value: 'needsFullHelp', label: 'Needs Full Help' },
+                          { value: 'fallsDropsHard', label: 'Falls/Drops Hard' },
+                        ].map((level) => (
+                          <label key={level.value} className="flex items-center gap-1 text-xs">
+                            <input
+                              type="radio"
+                              name={activity.name}
+                              value={level.value}
+                              checked={movementDifficulties[activity.key].level === level.value}
+                              onChange={(e) => setMovementDifficulties(prev => ({
+                                ...prev,
+                                [activity.key]: { ...prev[activity.key], level: e.target.value }
+                              }))}
+                              className="w-4 h-4"
+                            />
+                            <span>{level.label}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      {movementDifficulties[activity.key].level && movementDifficulties[activity.key].level !== 'canDoAlone' && (
+                        <input
+                          type="text"
+                          name={`${activity.name}Notes`}
+                          value={movementDifficulties[activity.key].notes}
+                          onChange={(e) => setMovementDifficulties(prev => ({
+                            ...prev,
+                            [activity.key]: { ...prev[activity.key], notes: e.target.value }
+                          }))}
+                          placeholder="Additional notes..."
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm mt-2"
+                        />
+                      )}
+                    </div>
                   ))}
                 </div>
-              </div>
-
-              {/* Energy After Activity */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium">Energy Level After Activity</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: 'energized', label: '⚡ Energized' },
-                    { value: 'same', label: '😐 Same' },
-                    { value: 'tired', label: '😴 Tired' },
-                    { value: 'exhausted', label: '🥱 Exhausted' },
-                  ].map((energy) => (
-                    <button
-                      key={energy.value}
-                      type="button"
-                      onClick={() => setEnergyAfterActivity(energy.value as any)}
-                      className={`px-4 py-2 rounded-lg border-2 transition-colors ${
-                        energyAfterActivity === energy.value
-                          ? 'border-primary-500 bg-primary-100 text-primary-900'
-                          : 'border-gray-300 hover:border-primary-300'
-                      }`}
-                    >
-                      {energy.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Participation Willingness */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium">Participation Willingness</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: 'enthusiastic', label: '🤩 Enthusiastic' },
-                    { value: 'willing', label: '👍 Willing' },
-                    { value: 'reluctant', label: '😒 Reluctant' },
-                    { value: 'refused', label: '🙅 Refused' },
-                  ].map((will) => (
-                    <button
-                      key={will.value}
-                      type="button"
-                      onClick={() => setParticipationWillingness(will.value as any)}
-                      className={`px-4 py-2 rounded-lg border-2 transition-colors ${
-                        participationWillingness === will.value
-                          ? 'border-primary-500 bg-primary-100 text-primary-900'
-                          : 'border-gray-300 hover:border-primary-300'
-                      }`}
-                    >
-                      {will.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Equipment Used */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium">Equipment Used (select all that apply)</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: 'walker', label: '🚶‍♂️ Walker' },
-                    { value: 'cane', label: '🦯 Cane' },
-                    { value: 'wheelchair', label: '♿ Wheelchair' },
-                    { value: 'none', label: 'None' },
-                  ].map((equip) => (
-                    <button
-                      key={equip.value}
-                      type="button"
-                      onClick={() => {
-                        setEquipmentUsed(prev =>
-                          prev.includes(equip.value)
-                            ? prev.filter(e => e !== equip.value)
-                            : [...prev, equip.value]
-                        );
-                      }}
-                      className={`px-4 py-3 rounded-lg border-2 text-left transition-colors ${
-                        equipmentUsed.includes(equip.value)
-                          ? 'border-primary-500 bg-primary-100 text-primary-900'
-                          : 'border-gray-300 hover:border-primary-300'
-                      }`}
-                    >
-                      {equip.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Mobility Notes */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium">Mobility Notes (optional)</label>
-                <textarea
-                  value={mobilityNotes}
-                  onChange={(e) => setMobilityNotes(e.target.value)}
-                  placeholder="Any observations about mobility changes or concerns..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  rows={3}
-                />
               </div>
 
               {/* Navigation */}
@@ -2745,15 +2891,15 @@ function CareLogFormComponent() {
                   ← Back
                 </Button>
                 <Button onClick={() => setCurrentSection(12)} variant="primary" className="flex-1">
-                  Next: Oral Care →
+                  Review & Submit →
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Section 12: Oral Care & Hygiene */}
-        {currentSection === 12 && (
+        {/* Section 12: Oral Care & Hygiene - Hidden (not in template) */}
+        {/* currentSection === 12 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">🦷 Oral Care & Hygiene</h2>
@@ -2922,7 +3068,7 @@ function CareLogFormComponent() {
               </div>
             </CardContent>
           </Card>
-        )}
+        )} */}
 
         {/* Section 13: Notes & Submit */}
         {currentSection === 13 && (

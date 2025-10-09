@@ -200,6 +200,121 @@ const createCareLogSchema = z.object({
     socialInteraction: z.enum(['engaged', 'responsive', 'withdrawn', 'aggressive_hostile']).optional(),
   }).optional(),
 
+  // Sprint 3 Day 4: Detailed Exercise Sessions (Template pages 5-6)
+  // Exercise type schema for individual exercises
+  exerciseSchema: z.object({
+    type: z.enum([
+      'Eye Exercises',
+      'Arm/Shoulder Strengthening',
+      'Leg Strengthening',
+      'Balance Training',
+      'Stretching',
+      'Arm Pedalling',
+      'Leg Pedalling',
+      'Physiotherapist Exercises'
+    ]),
+    done: z.boolean(),
+    duration: z.number().int().min(0).max(120), // Minutes, max 2 hours per exercise
+    participation: z.number().int().min(0).max(5), // 0 = not done, 1-5 scale
+  }).optional(),
+
+  // Morning exercise session
+  morningExerciseSession: z.object({
+    startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+    endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+    exercises: z.array(z.object({
+      type: z.enum([
+        'Eye Exercises',
+        'Arm/Shoulder Strengthening',
+        'Leg Strengthening',
+        'Balance Training',
+        'Stretching',
+        'Arm Pedalling',
+        'Leg Pedalling',
+        'Physiotherapist Exercises'
+      ]),
+      done: z.boolean(),
+      duration: z.number().int().min(0).max(120),
+      participation: z.number().int().min(0).max(5),
+    })).optional(),
+    notes: z.string().optional(),
+  }).optional(),
+
+  // Afternoon exercise session
+  afternoonExerciseSession: z.object({
+    startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+    endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+    exercises: z.array(z.object({
+      type: z.enum([
+        'Eye Exercises',
+        'Arm/Shoulder Strengthening',
+        'Leg Strengthening',
+        'Balance Training',
+        'Stretching',
+        'Arm Pedalling',
+        'Leg Pedalling',
+        'Physiotherapist Exercises'
+      ]),
+      done: z.boolean(),
+      duration: z.number().int().min(0).max(120),
+      participation: z.number().int().min(0).max(5),
+    })).optional(),
+    notes: z.string().optional(),
+  }).optional(),
+
+  // Movement difficulties assessment (Template page 5)
+  movementDifficulties: z.object({
+    gettingOutOfBed: z.object({
+      level: z.enum(['canDoAlone', 'needsSomeHelp', 'needsFullHelp', 'fallsDropsHard']),
+      notes: z.string().optional(),
+    }).optional(),
+    gettingIntoBed: z.object({
+      level: z.enum(['canDoAlone', 'needsSomeHelp', 'needsFullHelp', 'fallsDropsHard']),
+      notes: z.string().optional(),
+    }).optional(),
+    sittingInChair: z.object({
+      level: z.enum(['canDoAlone', 'needsSomeHelp', 'needsFullHelp', 'fallsDropsHard']),
+      notes: z.string().optional(),
+    }).optional(),
+    gettingUpFromChair: z.object({
+      level: z.enum(['canDoAlone', 'needsSomeHelp', 'needsFullHelp', 'fallsDropsHard']),
+      notes: z.string().optional(),
+    }).optional(),
+    gettingInCar: z.object({
+      level: z.enum(['canDoAlone', 'needsSomeHelp', 'needsFullHelp', 'fallsDropsHard']),
+      notes: z.string().optional(),
+    }).optional(),
+    gettingOutOfCar: z.object({
+      level: z.enum(['canDoAlone', 'needsSomeHelp', 'needsFullHelp', 'fallsDropsHard']),
+      notes: z.string().optional(),
+    }).optional(),
+  }).optional(),
+
+  // Keep simplified physical activity for backward compatibility
+  physicalActivity: z.object({
+    exerciseDuration: z.number().int().nonnegative().optional(), // Total minutes
+    exerciseType: z.array(z.enum(['walking', 'stretching', 'chair_exercises', 'outdoor_activity', 'physical_therapy'])).optional(),
+    walkingDistance: z.string().optional(), // e.g., "around house", "to mailbox", "2 blocks"
+    assistanceLevel: z.enum(['none', 'minimal', 'moderate', 'full']).optional(),
+    painDuringActivity: z.enum(['none', 'mild', 'moderate', 'severe']).optional(),
+    energyAfterActivity: z.enum(['energized', 'tired', 'exhausted', 'same']).optional(),
+    participationWillingness: z.enum(['enthusiastic', 'willing', 'reluctant', 'refused']).optional(),
+    equipmentUsed: z.array(z.enum(['walker', 'cane', 'wheelchair', 'none'])).optional(),
+    mobilityNotes: z.string().optional(),
+  }).optional(),
+
+  // Sprint 3 Day 3: Oral Care & Hygiene (Template page 10)
+  oralCare: z.object({
+    teethBrushed: z.boolean().optional(),
+    timesBrushed: z.number().int().nonnegative().optional(),
+    denturesCleaned: z.boolean().optional(),
+    mouthRinsed: z.boolean().optional(),
+    assistanceLevel: z.enum(['none', 'minimal', 'moderate', 'full']).optional(),
+    oralHealthIssues: z.array(z.enum(['bleeding_gums', 'dry_mouth', 'sores', 'pain', 'bad_breath', 'none'])).optional(),
+    painOrBleeding: z.boolean().optional(),
+    notes: z.string().optional(),
+  }).optional(),
+
   // Notes
   notes: z.string().optional(),
 });
@@ -270,6 +385,11 @@ function parseJsonFields(log: any): any {
     emergencyPrep: safeJsonParse(log.emergencyPrep),
     // Sprint 3 Day 1: Parse spiritual & emotional (handle both snake_case from DB and camelCase from client)
     spiritualEmotional: safeJsonParse(log.spiritualEmotional || log.spiritual_emotional),
+    // Sprint 3 Day 4: Parse exercise sessions
+    morningExerciseSession: safeJsonParse(log.morningExerciseSession || log.morning_exercise_session),
+    afternoonExerciseSession: safeJsonParse(log.afternoonExerciseSession || log.afternoon_exercise_session),
+    movementDifficulties: safeJsonParse(log.movementDifficulties || log.movement_difficulties),
+    physicalActivity: safeJsonParse(log.physicalActivity || log.physical_activity),
   };
 }
 
@@ -340,6 +460,14 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         emergencyNote: data.emergencyNote,
         // Sprint 3 Day 1: Spiritual & Emotional Well-Being
         spiritualEmotional: data.spiritualEmotional ? JSON.stringify(data.spiritualEmotional) as any : null,
+        // Sprint 3 Day 2: Physical Activity & Exercise (simplified)
+        physicalActivity: data.physicalActivity ? JSON.stringify(data.physicalActivity) as any : null,
+        // Sprint 3 Day 4: Detailed Exercise Sessions
+        morningExerciseSession: data.morningExerciseSession ? JSON.stringify(data.morningExerciseSession) as any : null,
+        afternoonExerciseSession: data.afternoonExerciseSession ? JSON.stringify(data.afternoonExerciseSession) as any : null,
+        movementDifficulties: data.movementDifficulties ? JSON.stringify(data.movementDifficulties) as any : null,
+        // Sprint 3 Day 3: Oral Care & Hygiene
+        oralCare: data.oralCare ? JSON.stringify(data.oralCare) as any : null,
         notes: data.notes,
         createdAt: now,
         updatedAt: now,
