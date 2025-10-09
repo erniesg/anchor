@@ -245,6 +245,16 @@ function CareLogFormComponent() {
   const [equipmentUsed, setEquipmentUsed] = useState<string[]>([]);
   const [mobilityNotes, setMobilityNotes] = useState('');
 
+  // Sprint 3 Day 3: Oral Care & Hygiene
+  const [teethBrushed, setTeethBrushed] = useState(false);
+  const [timesBrushed, setTimesBrushed] = useState<number | null>(null);
+  const [denturesCleaned, setDenturesCleaned] = useState(false);
+  const [mouthRinsed, setMouthRinsed] = useState(false);
+  const [oralAssistanceLevel, setOralAssistanceLevel] = useState<'none' | 'minimal' | 'moderate' | 'full' | ''>('');
+  const [oralHealthIssues, setOralHealthIssues] = useState<string[]>([]);
+  const [painOrBleeding, setPainOrBleeding] = useState(false);
+  const [oralCareNotes, setOralCareNotes] = useState('');
+
   // Safety
   const [emergencyFlag, setEmergencyFlag] = useState(false);
   const [emergencyNote, setEmergencyNote] = useState('');
@@ -409,6 +419,17 @@ function CareLogFormComponent() {
         equipmentUsed: equipmentUsed.length > 0 ? equipmentUsed : undefined,
         mobilityNotes: omitEmpty(mobilityNotes),
       } : undefined,
+      // Sprint 3 Day 3: Oral Care & Hygiene
+      oralCare: (teethBrushed || timesBrushed || denturesCleaned || mouthRinsed || oralAssistanceLevel || oralHealthIssues.length > 0 || painOrBleeding || oralCareNotes) ? {
+        teethBrushed: teethBrushed || undefined,
+        timesBrushed: timesBrushed !== null ? timesBrushed : undefined,
+        denturesCleaned: denturesCleaned || undefined,
+        mouthRinsed: mouthRinsed || undefined,
+        assistanceLevel: oralAssistanceLevel || undefined,
+        oralHealthIssues: oralHealthIssues.length > 0 ? oralHealthIssues : undefined,
+        painOrBleeding: painOrBleeding || undefined,
+        notes: omitEmpty(oralCareNotes),
+      } : undefined,
       emergencyFlag,
       emergencyNote: omitEmpty(emergencyNote),
       notes: omitEmpty(notes),
@@ -426,6 +447,8 @@ function CareLogFormComponent() {
       prayerStartTime, prayerEndTime, prayerExpression, overallMood, communicationScale, socialInteraction,
       // Sprint 3 Day 2: Physical Activity
       exerciseDuration, exerciseType, walkingDistance, assistanceLevel, painDuringActivity, energyAfterActivity, participationWillingness, equipmentUsed, mobilityNotes,
+      // Sprint 3 Day 3: Oral Care
+      teethBrushed, timesBrushed, denturesCleaned, mouthRinsed, oralAssistanceLevel, oralHealthIssues, painOrBleeding, oralCareNotes,
       emergencyFlag, emergencyNote, notes, careRecipient]);
 
   // Create/Update mutation (for auto-save)
@@ -610,7 +633,8 @@ function CareLogFormComponent() {
     { id: 9, title: 'Safety Checks', emoji: '🔒' },
     { id: 10, title: 'Spiritual & Emotional', emoji: '🙏' },
     { id: 11, title: 'Physical Activity', emoji: '🏃' },
-    { id: 12, title: 'Notes & Submit', emoji: '📝' },
+    { id: 12, title: 'Oral Care', emoji: '🦷' },
+    { id: 13, title: 'Notes & Submit', emoji: '📝' },
   ];
 
   return (
@@ -2721,6 +2745,178 @@ function CareLogFormComponent() {
                   ← Back
                 </Button>
                 <Button onClick={() => setCurrentSection(12)} variant="primary" className="flex-1">
+                  Next: Oral Care →
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Section 12: Oral Care & Hygiene */}
+        {currentSection === 12 && (
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold">🦷 Oral Care & Hygiene</h2>
+              <p className="text-sm text-gray-600">Track teeth brushing, denture care, and oral health</p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Teeth Brushed */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="teethBrushed"
+                    checked={teethBrushed}
+                    onChange={(e) => setTeethBrushed(e.target.checked)}
+                    className="w-5 h-5"
+                  />
+                  <label htmlFor="teethBrushed" className="text-sm font-medium">
+                    Teeth Brushed Today
+                  </label>
+                </div>
+              </div>
+
+              {/* Times Brushed (conditional on teeth brushed) */}
+              {teethBrushed && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Number of Times Brushed</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={timesBrushed || ''}
+                    onChange={(e) => setTimesBrushed(e.target.value ? parseInt(e.target.value) : null)}
+                    placeholder="Enter number of times"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+              )}
+
+              {/* Dentures Cleaned */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="denturesCleaned"
+                    checked={denturesCleaned}
+                    onChange={(e) => setDenturesCleaned(e.target.checked)}
+                    className="w-5 h-5"
+                  />
+                  <label htmlFor="denturesCleaned" className="text-sm font-medium">
+                    Dentures Cleaned
+                  </label>
+                </div>
+              </div>
+
+              {/* Mouth Rinsed */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="mouthRinsed"
+                    checked={mouthRinsed}
+                    onChange={(e) => setMouthRinsed(e.target.checked)}
+                    className="w-5 h-5"
+                  />
+                  <label htmlFor="mouthRinsed" className="text-sm font-medium">
+                    Mouth Rinsed
+                  </label>
+                </div>
+              </div>
+
+              {/* Assistance Level */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Assistance Level Required</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'none', label: 'None' },
+                    { value: 'minimal', label: 'Minimal' },
+                    { value: 'moderate', label: 'Moderate' },
+                    { value: 'full', label: 'Full' },
+                  ].map((level) => (
+                    <button
+                      key={level.value}
+                      type="button"
+                      onClick={() => setOralAssistanceLevel(level.value as any)}
+                      className={`px-4 py-2 rounded-lg border-2 transition-colors ${
+                        oralAssistanceLevel === level.value
+                          ? 'border-primary-500 bg-primary-100 text-primary-900'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      {level.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Oral Health Issues (multi-select) */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Oral Health Issues (select all that apply)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'bleeding_gums', label: '🩸 Bleeding Gums' },
+                    { value: 'dry_mouth', label: '💧 Dry Mouth' },
+                    { value: 'sores', label: '🔴 Sores' },
+                    { value: 'pain', label: '😣 Pain' },
+                    { value: 'bad_breath', label: '💨 Bad Breath' },
+                    { value: 'none', label: '✅ None' },
+                  ].map((issue) => (
+                    <button
+                      key={issue.value}
+                      type="button"
+                      onClick={() => {
+                        setOralHealthIssues(prev =>
+                          prev.includes(issue.value)
+                            ? prev.filter(i => i !== issue.value)
+                            : [...prev, issue.value]
+                        );
+                      }}
+                      className={`px-4 py-3 rounded-lg border-2 text-left transition-colors ${
+                        oralHealthIssues.includes(issue.value)
+                          ? 'border-primary-500 bg-primary-100 text-primary-900'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      {issue.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pain Or Bleeding */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="painOrBleeding"
+                    checked={painOrBleeding}
+                    onChange={(e) => setPainOrBleeding(e.target.checked)}
+                    className="w-5 h-5"
+                  />
+                  <label htmlFor="painOrBleeding" className="text-sm font-medium">
+                    Pain or Bleeding During Care
+                  </label>
+                </div>
+              </div>
+
+              {/* Oral Care Notes */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Oral Care Notes (optional)</label>
+                <textarea
+                  value={oralCareNotes}
+                  onChange={(e) => setOralCareNotes(e.target.value)}
+                  placeholder="Any observations about oral health or concerns..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  rows={3}
+                />
+              </div>
+
+              {/* Navigation */}
+              <div className="flex gap-3">
+                <Button onClick={() => setCurrentSection(11)} variant="outline" className="flex-1">
+                  ← Back
+                </Button>
+                <Button onClick={() => setCurrentSection(13)} variant="primary" className="flex-1">
                   Next: Notes & Submit →
                 </Button>
               </div>
@@ -2728,8 +2924,8 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 12: Notes & Submit */}
-        {currentSection === 12 && (
+        {/* Section 13: Notes & Submit */}
+        {currentSection === 13 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">📝 Notes & Submit</h2>
@@ -2956,7 +3152,7 @@ function CareLogFormComponent() {
                   )}
 
                   <div className="flex gap-3">
-                    <Button onClick={() => setCurrentSection(11)} variant="outline" className="flex-1">
+                    <Button onClick={() => setCurrentSection(12)} variant="outline" className="flex-1">
                       ← Back
                     </Button>
                     <Button
