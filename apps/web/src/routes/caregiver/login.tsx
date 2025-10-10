@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { apiCall } from '@/lib/api';
+import { Eye, EyeOff } from 'lucide-react';
 
 export const Route = createFileRoute('/caregiver/login')({
   component: CaregiverLoginComponent,
@@ -14,6 +15,7 @@ function CaregiverLoginComponent() {
   const navigate = useNavigate();
   const [caregiverId, setCaregiverId] = useState('');
   const [pin, setPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState('');
 
   const loginMutation = useMutation({
@@ -75,17 +77,31 @@ function CaregiverLoginComponent() {
               placeholder="Enter your caregiver ID"
             />
 
-            <Input
-              label="PIN"
-              name="pin"
-              type="password"
-              inputMode="numeric"
-              required
-              maxLength={6}
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-              placeholder="Enter 6-digit PIN"
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                PIN *
+              </label>
+              <div className="relative">
+                <input
+                  name="pin"
+                  type={showPin ? 'text' : 'password'}
+                  inputMode="numeric"
+                  required
+                  maxLength={6}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Enter 6-digit PIN"
+                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
 
             {error && (
               <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg text-sm text-center">
