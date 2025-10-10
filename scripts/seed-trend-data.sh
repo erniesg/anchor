@@ -41,13 +41,13 @@ create_care_log() {
   local BALANCE=$((5 - DAY_OFFSET))  # 5 = excellent → 1 = poor
   if [ $BALANCE -lt 1 ]; then BALANCE=1; fi
   local NEAR_FALLS_OPTIONS=("none" "none" "none" "once_or_twice" "once_or_twice" "multiple" "multiple")
-  local NEAR_FALLS=${NEAR_FALLS_OPTIONS[$DAY_OFFSET]}
+  local NEAR_FALLS=${NEAR_FALLS_OPTIONS[$((DAY_OFFSET % 7))]}
   local FALLS_OPTIONS=("none" "none" "none" "none" "minor" "none" "minor")
-  local ACTUAL_FALLS=${FALLS_OPTIONS[$DAY_OFFSET]}
+  local ACTUAL_FALLS=${FALLS_OPTIONS[$((DAY_OFFSET % 7))]}
 
   # Sleep quality data (varying)
   local SLEEP_QUALITY_OPTIONS=("deep" "light" "light" "restless" "light" "deep" "restless")
-  local SLEEP_QUALITY=${SLEEP_QUALITY_OPTIONS[$DAY_OFFSET]}
+  local SLEEP_QUALITY=${SLEEP_QUALITY_OPTIONS[$((DAY_OFFSET % 7))]}
   local SLEEP_WAKINGS=$((DAY_OFFSET % 4))  # 0-3 wakings per night
 
   echo ""
@@ -68,7 +68,7 @@ create_care_log() {
         \"breakfast\": {
           \"time\": \"09:30\",
           \"appetite\": $APPETITE,
-          \"amountEaten\": $((60 + (DAY_OFFSET * 5)))
+          \"amountEaten\": $((60 + ((DAY_OFFSET % 8) * 5)))
         }
       },
       \"bloodPressure\": \"${BP_SYSTOLIC}/${BP_DIASTOLIC}\",
@@ -152,11 +152,11 @@ create_care_log() {
   fi
 }
 
-# Create care logs for the past 7 days
+# Create care logs for the past 10 days (covers full week view)
 echo ""
-echo "🌱 Seeding 7 days of care log data..."
+echo "🌱 Seeding 10 days of care log data..."
 
-for i in {0..6}; do
+for i in {0..9}; do
   DATE=$(date -v-${i}d +%Y-%m-%d)
   create_care_log "$DATE" $i
   sleep 0.5  # Small delay between requests
