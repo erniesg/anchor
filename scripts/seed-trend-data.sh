@@ -1,8 +1,6 @@
 #!/bin/bash
 # Seed 7 days of care logs for trend visualization testing
-# Date: 2025-10-09
-
-set -e
+# Date: 2025-10-10
 
 API_URL="https://anchor-dev-api.erniesg.workers.dev"
 CAREGIVER_ID="88fef386-a0bd-452d-a8b6-be2844ef0bc6"
@@ -12,10 +10,7 @@ CARE_RECIPIENT_ID="0725fbb9-21c5-46a4-9ed0-305b0a506f20"
 echo "🔐 Logging in as caregiver..."
 LOGIN_RESPONSE=$(curl -s -X POST "$API_URL/auth/caregiver/login" \
   -H "Content-Type: application/json" \
-  -d "{
-    \"caregiverId\": \"$CAREGIVER_ID\",
-    \"pin\": \"123456\"
-  }")
+  -d '{"caregiverId":"'$CAREGIVER_ID'","pin":"123456"}')
 
 TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
 
@@ -41,6 +36,19 @@ create_care_log() {
   local MOOD_OPTIONS=("alert" "calm" "sleepy" "confused" "agitated")
   local MOOD=${MOOD_OPTIONS[$((DAY_OFFSET % 5))]}
   local HAIR_WASH=$([ $((DAY_OFFSET % 2)) -eq 0 ] && echo "true" || echo "false")
+
+  # Fall risk trending data (balance getting worse over time)
+  local BALANCE=$((5 - DAY_OFFSET))  # 5 = excellent → 1 = poor
+  if [ $BALANCE -lt 1 ]; then BALANCE=1; fi
+  local NEAR_FALLS_OPTIONS=("none" "none" "none" "once_or_twice" "once_or_twice" "multiple" "multiple")
+  local NEAR_FALLS=${NEAR_FALLS_OPTIONS[$DAY_OFFSET]}
+  local FALLS_OPTIONS=("none" "none" "none" "none" "minor" "none" "minor")
+  local ACTUAL_FALLS=${FALLS_OPTIONS[$DAY_OFFSET]}
+
+  # Sleep quality data (varying)
+  local SLEEP_QUALITY_OPTIONS=("deep" "light" "light" "restless" "light" "deep" "restless")
+  local SLEEP_QUALITY=${SLEEP_QUALITY_OPTIONS[$DAY_OFFSET]}
+  local SLEEP_WAKINGS=$((DAY_OFFSET % 4))  # 0-3 wakings per night
 
   echo ""
   echo "📅 Creating care log for $DATE (Day $DAY_OFFSET)..."
@@ -78,6 +86,33 @@ create_care_log() {
         \"endTime\": \"15:30\",
         \"quality\": \"light\"
       },
+      \"nightSleep\": {
+        \"bedtime\": \"22:00\",
+        \"quality\": \"$SLEEP_QUALITY\",
+        \"wakings\": $SLEEP_WAKINGS,
+        \"wakingReasons\": $([ $SLEEP_WAKINGS -gt 0 ] && echo "[\"toilet\", \"pain\"]" || echo "[]"),
+        \"behaviors\": [\"snoring\"]
+      },
+      \"balanceIssues\": $BALANCE,
+      \"nearFalls\": \"$NEAR_FALLS\",
+      \"actualFalls\": \"$ACTUAL_FALLS\",
+      \"walkingPattern\": [\"shuffling\"],
+      \"medications\": [
+        {
+          \"name\": \"Metformin\",
+          \"time\": \"08:00\",
+          \"given\": true,
+          \"timeSlot\": \"after_breakfast\",
+          \"purpose\": \"Blood sugar control\"
+        },
+        {
+          \"name\": \"Aspirin\",
+          \"time\": \"20:00\",
+          \"given\": $([ $((DAY_OFFSET % 4)) -ne 0 ] && echo "true" || echo "false"),
+          \"timeSlot\": \"after_dinner\",
+          \"purpose\": \"Heart health\"
+        }
+      ],
       \"safetyChecks\": {
         \"tripHazards\": {\"checked\": true, \"action\": \"\"},
         \"cables\": {\"checked\": true, \"action\": \"\"},
