@@ -1,6 +1,7 @@
-import { Link, useLocation } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { Home, Settings, ChevronRight } from 'lucide-react';
-import { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 interface BreadcrumbItem {
   label: string;
@@ -13,6 +14,30 @@ interface FamilyLayoutProps {
 
 export function FamilyLayout({ children }: FamilyLayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  const [careRecipient, setCareRecipient] = useState<any>(null);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    const recipientData = localStorage.getItem('careRecipient');
+    if (userData) setUser(JSON.parse(userData));
+    if (recipientData) setCareRecipient(JSON.parse(recipientData));
+    setIsChecking(false);
+  }, []);
+
+  // Redirect to onboarding if no care recipient exists
+  useEffect(() => {
+    if (!isChecking && user && !careRecipient && !location.pathname.includes('/onboarding')) {
+      navigate({ to: '/family/onboarding' });
+    }
+  }, [user, careRecipient, isChecking, navigate, location.pathname]);
+
+  // Show nothing while checking to avoid flash
+  if (isChecking) {
+    return null;
+  }
 
   const getBreadcrumbs = (): BreadcrumbItem[] => {
     const path = location.pathname;

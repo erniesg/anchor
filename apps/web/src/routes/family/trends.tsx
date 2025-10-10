@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ interface User {
 }
 
 function TrendsComponent() {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [careRecipient, setCareRecipient] = useState<any>(null);
 
@@ -38,6 +39,13 @@ function TrendsComponent() {
     if (userData) setUser(JSON.parse(userData));
     if (recipientData) setCareRecipient(JSON.parse(recipientData));
   }, []);
+
+  // Redirect to onboarding if no care recipient exists
+  useEffect(() => {
+    if (user && !careRecipient) {
+      navigate({ to: '/family/onboarding' });
+    }
+  }, [user, careRecipient, navigate]);
 
   // Fetch 7-day historical data for trends
   const { data: weekLogs, isLoading: weekLoading } = useQuery({

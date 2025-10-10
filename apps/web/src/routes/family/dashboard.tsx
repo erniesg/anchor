@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,7 @@ function StatusBadge({ status }: { status?: string }) {
 }
 
 function DashboardComponent() {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [careRecipient, setCareRecipient] = useState<any>(null);
   const [token, setToken] = useState<string>('');
@@ -70,6 +71,13 @@ function DashboardComponent() {
     if (recipientData) setCareRecipient(JSON.parse(recipientData));
     if (tokenData) setToken(tokenData);
   }, []);
+
+  // Redirect to onboarding if no care recipient exists
+  useEffect(() => {
+    if (user && !careRecipient) {
+      navigate({ to: '/family/onboarding' });
+    }
+  }, [user, careRecipient, navigate]);
 
   // Calculate week range (Mon-Sun)
   const getWeekRange = (offset: number = 0) => {

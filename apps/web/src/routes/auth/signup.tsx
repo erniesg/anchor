@@ -34,7 +34,7 @@ function SignupComponent() {
     onSuccess: (data) => {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      navigate({ to: '/family/dashboard' });
+      navigate({ to: '/family/onboarding' });
     },
   });
 
