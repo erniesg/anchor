@@ -383,17 +383,23 @@ function checkHighPriorityConcerns(specialConcerns: any): boolean {
 // Helper function to safely parse JSON (handles double-stringified data)
 function safeJsonParse(value: any): any {
   if (!value) return null;
-  try {
-    const parsed = JSON.parse(value);
-    // If the result is still a string, try parsing again (double-stringified)
-    if (typeof parsed === 'string') {
-      return JSON.parse(parsed);
+  // If already an object (drizzle with mode: 'json' auto-parses), return as-is
+  if (typeof value === 'object' && value !== null) return value;
+  // If string, try to parse
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      // If the result is still a string, try parsing again (double-stringified)
+      if (typeof parsed === 'string') {
+        return JSON.parse(parsed);
+      }
+      return parsed;
+    } catch (error) {
+      console.error('JSON parse error:', error, 'value:', value);
+      return null;
     }
-    return parsed;
-  } catch (error) {
-    console.error('JSON parse error:', error, 'value:', value);
-    return null;
   }
+  return value;
 }
 
 // Helper function to parse JSON fields in care log responses
