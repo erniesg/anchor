@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { apiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/family/onboarding/caregiver')({
   component: CaregiverOnboardingComponent,
@@ -25,13 +26,11 @@ function CaregiverOnboardingComponent() {
 
   const createCaregiverMutation = useMutation({
     mutationFn: async (data: CaregiverData) => {
-      const response = await fetch('/api/caregivers', {
+      // Use apiCall helper for correct API URL in all environments
+      return apiCall('/caregivers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Failed to create caregiver');
-      return response.json();
     },
     onSuccess: (data) => {
       setGeneratedPin(data.pin);
@@ -41,6 +40,11 @@ function CaregiverOnboardingComponent() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const careRecipient = JSON.parse(localStorage.getItem('careRecipient') || '{}');
+
+    if (!careRecipient.id) {
+      alert('Care recipient information is missing. Please go back and complete the previous step.');
+      return;
+    }
 
     createCaregiverMutation.mutate({
       careRecipientId: careRecipient.id,
@@ -162,7 +166,7 @@ function CaregiverOnboardingComponent() {
 
               {createCaregiverMutation.isError && (
                 <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg text-sm">
-                  Failed to create caregiver account. Please try again.
+                  {createCaregiverMutation.error?.message || 'Failed to create caregiver account. Please try again.'}
                 </div>
               )}
 

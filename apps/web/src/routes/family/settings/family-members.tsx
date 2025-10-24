@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Users, ArrowLeft, UserPlus, Shield, ShieldOff, Trash2, Mail } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
+import { authenticatedApiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/family/settings/family-members')({
   component: FamilyMembersSettingsComponent,
@@ -46,32 +47,19 @@ function FamilyMembersSettingsComponent() {
   const { data: members, isLoading } = useQuery({
     queryKey: ['family-members'],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/family-members', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error('Failed to fetch family members');
-      return response.json() as Promise<FamilyMember[]>;
+      const token = localStorage.getItem('token') || '';
+      return authenticatedApiCall<FamilyMember[]>('/family-members', token);
     },
   });
 
   // Invite family member mutation
   const inviteMutation = useMutation({
     mutationFn: async (data: { email: string; name: string }) => {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/family-members/invite', {
+      const token = localStorage.getItem('token') || '';
+      return authenticatedApiCall('/family-members/invite', token, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(data),
       });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to invite member');
-      }
-      return response.json();
     },
     onSuccess: () => {
       setShowInviteModal(false);
@@ -84,17 +72,11 @@ function FamilyMembersSettingsComponent() {
   // Grant access mutation
   const grantAccessMutation = useMutation({
     mutationFn: async ({ userId, careRecipientId }: { userId: string; careRecipientId: string }) => {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/family-members/grant-access', {
+      const token = localStorage.getItem('token') || '';
+      return authenticatedApiCall('/family-members/grant-access', token, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ userId, careRecipientId }),
       });
-      if (!response.ok) throw new Error('Failed to grant access');
-      return response.json();
     },
     onSuccess: () => {
       setShowAccessModal(false);
@@ -105,30 +87,21 @@ function FamilyMembersSettingsComponent() {
   // Revoke access mutation
   const revokeAccessMutation = useMutation({
     mutationFn: async ({ userId, careRecipientId }: { userId: string; careRecipientId: string }) => {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/family-members/revoke-access', {
+      const token = localStorage.getItem('token') || '';
+      return authenticatedApiCall('/family-members/revoke-access', token, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ userId, careRecipientId }),
       });
-      if (!response.ok) throw new Error('Failed to revoke access');
-      return response.json();
     },
   });
 
   // Remove member mutation
   const removeMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/family-members/${userId}`, {
+      const token = localStorage.getItem('token') || '';
+      return authenticatedApiCall(`/family-members/${userId}`, token, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw new Error('Failed to remove member');
-      return response.json();
     },
     onSuccess: () => {
       setShowRemoveModal(false);

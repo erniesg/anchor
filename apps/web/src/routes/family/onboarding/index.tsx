@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { apiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/family/onboarding/')({
   component: OnboardingComponent,
@@ -29,16 +30,20 @@ function OnboardingComponent() {
   const createRecipientMutation = useMutation({
     mutationFn: async (data: CareRecipientData) => {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const response = await fetch('/api/care-recipients', {
+
+      // Guard: Check if user is authenticated
+      if (!user.id) {
+        throw new Error('User session expired. Please log in again.');
+      }
+
+      // Use apiCall helper for correct API URL in all environments
+      return apiCall('/care-recipients', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'x-user-id': user.id,
         },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Failed to create care recipient');
-      return response.json();
     },
     onSuccess: (data) => {
       localStorage.setItem('careRecipient', JSON.stringify(data));
@@ -123,7 +128,7 @@ function OnboardingComponent() {
 
               {createRecipientMutation.isError && (
                 <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg text-sm">
-                  Failed to create care recipient. Please try again.
+                  {createRecipientMutation.error?.message || 'Failed to create care recipient. Please try again.'}
                 </div>
               )}
 
