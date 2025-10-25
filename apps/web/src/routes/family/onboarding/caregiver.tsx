@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { apiCall } from '@/lib/api';
+import { authenticatedApiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/family/onboarding/caregiver')({
   component: CaregiverOnboardingComponent,
@@ -26,8 +26,14 @@ function CaregiverOnboardingComponent() {
 
   const createCaregiverMutation = useMutation({
     mutationFn: async (data: CaregiverData) => {
-      // Use apiCall helper for correct API URL in all environments
-      return apiCall('/caregivers', {
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token not found. Please log in again.');
+      }
+
+      // Use authenticatedApiCall for JWT authentication
+      return authenticatedApiCall('/caregivers', token, {
         method: 'POST',
         body: JSON.stringify(data),
       });
