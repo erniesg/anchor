@@ -45,8 +45,8 @@ const afternoonRestSchema = z.object({
   notes: z.string().optional(),
 }).refine((data) => {
   // Validate start < end
-  const [startHour, startMin] = data.startTime.split(':').map(Number);
-  const [endHour, endMin] = data.endTime.split(':').map(Number);
+  const [startHour = 0, startMin = 0] = data.startTime.split(':').map(Number);
+  const [endHour = 0, endMin = 0] = data.endTime.split(':').map(Number);
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
   return startMinutes < endMinutes;
@@ -76,8 +76,8 @@ const unaccompaniedTimePeriodSchema = z.object({
   notes: z.string().optional(),
 }).refine((data) => {
   // Validate start < end
-  const [startHour, startMin] = data.startTime.split(':').map(Number);
-  const [endHour, endMin] = data.endTime.split(':').map(Number);
+  const [startHour = 0, startMin = 0] = data.startTime.split(':').map(Number);
+  const [endHour = 0, endMin = 0] = data.endTime.split(':').map(Number);
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
   return startMinutes < endMinutes;
@@ -520,13 +520,11 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
     // Check for major fall alert
     if (data.actualFalls === 'major') {
       // TODO: Create alert/notification for family
-      console.log('🚨 MAJOR FALL ALERT for care recipient:', data.careRecipientId);
     }
 
     // Sprint 3 Day 5: Check for emergency special concerns
     if (checkHighPriorityConcerns(data.specialConcerns)) {
       // TODO: Create alert/notification for family
-      console.log('🚨 EMERGENCY CONCERN ALERT for care recipient:', data.careRecipientId);
     }
 
     // Calculate total unaccompanied time
@@ -653,13 +651,11 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
     // Check for major fall alert
     if (data.actualFalls === 'major') {
       // TODO: Create alert/notification for family
-      console.log('🚨 MAJOR FALL ALERT for care recipient:', data.careRecipientId);
     }
 
     // Sprint 3 Day 5: Check for emergency special concerns
     if (checkHighPriorityConcerns(data.specialConcerns)) {
       // TODO: Create alert/notification for family
-      console.log('🚨 EMERGENCY CONCERN ALERT for care recipient:', data.careRecipientId);
     }
 
     return c.json(parseJsonFields(updatedLog));
@@ -800,21 +796,17 @@ careLogsRoute.get('/recipient/:recipientId/date/:date', ...familyMemberAccess, r
     // Filter by date (compare YYYY-MM-DD portion)
     // Note: log.logDate is stored as Unix timestamp (seconds), need to convert to milliseconds
     const targetDate = new Date(date).toISOString().split('T')[0];
-    console.log(`[GET /date/:date] Searching for date ${targetDate}, found ${logs.length} submitted logs`);
 
     const matchingLog = logs.find(log => {
       // log.logDate might be a Date object or Unix timestamp
       const logDateMs = typeof log.logDate === 'number' ? log.logDate * 1000 : new Date(log.logDate).getTime();
       const logDate = new Date(logDateMs).toISOString().split('T')[0];
-      console.log(`  Comparing: ${logDate} === ${targetDate} ? ${logDate === targetDate} (logDate type: ${typeof log.logDate}, value: ${log.logDate})`);
       return logDate === targetDate;
     });
 
     if (!matchingLog) {
-      console.log(`[GET /date/:date] No log found for ${targetDate}`);
       return c.json(null);
     }
-    console.log(`[GET /date/:date] Found log ${matchingLog.id} for ${targetDate}`);
 
     // Normalize meals data and parse JSON fields
     const parsedLog = parseJsonFields(matchingLog);

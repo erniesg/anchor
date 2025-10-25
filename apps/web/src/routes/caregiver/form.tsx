@@ -367,10 +367,8 @@ function CareLogFormComponent() {
   const formData = useMemo(() => {
     const recipientId = careRecipient.id;
 
-    // Debug logging
     if (!recipientId) {
       console.error('No care recipient ID found in localStorage');
-      console.error('careRecipient:', careRecipient);
     }
 
     // Helper to omit empty strings and null/undefined values
@@ -574,7 +572,6 @@ function CareLogFormComponent() {
     onSuccess: () => {
       setLogStatus('submitted');
       // Don't use alert() - let the visual success message show instead
-      console.log('✅ Care log submitted successfully');
     },
   });
 
@@ -600,7 +597,6 @@ function CareLogFormComponent() {
 
       // Save current draft first if needed
       if (!careLogId) {
-        console.log('Creating draft before submit...');
         const draft = await saveDraftMutation.mutateAsync(formData);
         if (draft?.id) {
           setCareLogId(draft.id);
