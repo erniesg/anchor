@@ -91,7 +91,7 @@ Object.defineProperty(global, 'crypto', {
 
 // Mock hono/jwt for tests
 vi.mock('hono/jwt', () => ({
-  verify: vi.fn(async (token: string, secret: string) => {
+  verify: vi.fn(async (token: string, _secret: string) => {
     // Mock JWT verification based on token prefix
     if (token.startsWith('mock-token-family-admin')) {
       return {
@@ -116,7 +116,7 @@ vi.mock('hono/jwt', () => ({
     }
     throw new Error('Invalid JWT token');
   }),
-  sign: vi.fn(async (payload: any, secret: string) => {
+  sign: vi.fn(async (_payload: any, _secret: string) => {
     return 'mock-jwt-token';
   }),
 }));
@@ -127,16 +127,16 @@ vi.mock('./lib/access-control', () => ({
   isActiveCaregiver: vi.fn(async () => true),
   caregiverHasAccess: vi.fn(async () => true),
   // Context-aware: reject if different caregiver (caregiver-999)
-  caregiverOwnsCareLog: vi.fn(async (db: any, caregiverId: string, logId: string) => {
+  caregiverOwnsCareLog: vi.fn(async (_db: any, caregiverId: string, _logId: string) => {
     return caregiverId !== 'caregiver-999';
   }),
   // Context-aware: reject if recipientId is 'other-recipient-123'
-  canAccessCareRecipient: vi.fn(async (db: any, userId: string, recipientId: string) => {
+  canAccessCareRecipient: vi.fn(async (_db: any, _userId: string, recipientId: string) => {
     return recipientId !== 'other-recipient-123';
   }),
   canInvalidateCareLog: vi.fn(async () => true),
   canManageCaregivers: vi.fn(async () => true),
-  getAccessibleCareRecipients: vi.fn(async (db: any, userId: string) => [
+  getAccessibleCareRecipients: vi.fn(async (_db: any, _userId: string) => [
     { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Test Recipient' }
   ]),
   canGrantAccess: vi.fn(async () => true),

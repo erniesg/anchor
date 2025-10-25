@@ -163,7 +163,6 @@ familyMembers.post('/invite', async (c) => {
     .get();
 
   // TODO: Send invitation email with temporary password
-  console.log(`Invitation sent to ${data.email} with temp password: ${tempPassword}`);
 
   return c.json({
     member: {
