@@ -47,7 +47,7 @@ careRecipientsRoute.post('/', ...familyMemberAccess, async (c) => {
       .values({
         userId: userId,
         careRecipientId: newRecipient.id,
-        grantedAt: Date.now(), // Unix timestamp in milliseconds
+        grantedAt: new Date(), // Use Date object for timestamp mode
         grantedBy: userId,
       });
 
