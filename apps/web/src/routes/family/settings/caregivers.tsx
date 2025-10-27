@@ -47,6 +47,7 @@ function CaregiversSettingsComponent() {
   const [newPin, setNewPin] = useState<string | null>(null);
   const [deactivationReason, setDeactivationReason] = useState('');
   const [copiedPin, setCopiedPin] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null); // Track which ID was copied
   const [userRole, setUserRole] = useState<'family_admin' | 'family_member' | null>(getUserRole);
 
   // Edit form state
@@ -252,6 +253,12 @@ function CaregiversSettingsComponent() {
     }
   };
 
+  const copyCaregiverId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   // Filter and sort caregivers
   const filteredAndSortedCaregivers = useMemo(() => {
     if (!caregivers) return [];
@@ -420,7 +427,25 @@ function CaregiversSettingsComponent() {
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div className="flex-1">
                               <h3 className="font-semibold text-lg text-gray-900">{caregiver.name}</h3>
-                            <div className="mt-1 space-y-1">
+                            <div className="mt-2 space-y-1">
+                              {/* Caregiver ID with copy button */}
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm text-gray-600">
+                                  <span className="font-medium">Caregiver ID:</span>
+                                  <code className="ml-1 text-xs bg-gray-100 px-2 py-1 rounded font-mono">{caregiver.id}</code>
+                                </p>
+                                <button
+                                  onClick={() => copyCaregiverId(caregiver.id)}
+                                  className="text-blue-600 hover:text-blue-700 transition-colors"
+                                  title="Copy Caregiver ID"
+                                >
+                                  {copiedId === caregiver.id ? (
+                                    <Check className="h-4 w-4 text-green-600" />
+                                  ) : (
+                                    <Copy className="h-4 w-4" />
+                                  )}
+                                </button>
+                              </div>
                               {caregiver.phone && <p className="text-sm text-gray-600">Phone: {caregiver.phone}</p>}
                               {caregiver.email && <p className="text-sm text-gray-600">Email: {caregiver.email}</p>}
                               <p className="text-xs text-gray-500">
@@ -479,7 +504,25 @@ function CaregiversSettingsComponent() {
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                           <div className="flex-1">
                             <h3 className="font-semibold text-lg text-gray-900">{caregiver.name}</h3>
-                            <div className="mt-1 space-y-1">
+                            <div className="mt-2 space-y-1">
+                              {/* Caregiver ID with copy button */}
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm text-gray-600">
+                                  <span className="font-medium">Caregiver ID:</span>
+                                  <code className="ml-1 text-xs bg-gray-100 px-2 py-1 rounded font-mono">{caregiver.id}</code>
+                                </p>
+                                <button
+                                  onClick={() => copyCaregiverId(caregiver.id)}
+                                  className="text-blue-600 hover:text-blue-700 transition-colors"
+                                  title="Copy Caregiver ID"
+                                >
+                                  {copiedId === caregiver.id ? (
+                                    <Check className="h-4 w-4 text-green-600" />
+                                  ) : (
+                                    <Copy className="h-4 w-4" />
+                                  )}
+                                </button>
+                              </div>
                               {caregiver.phone && <p className="text-sm text-gray-600">Phone: {caregiver.phone}</p>}
                               {caregiver.email && <p className="text-sm text-gray-600">Email: {caregiver.email}</p>}
                               <p className="text-xs text-red-600 font-medium">
