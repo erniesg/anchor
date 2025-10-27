@@ -16,13 +16,12 @@ const createCareRecipientSchema = z.object({
 });
 
 // Create care recipient
-careRecipientsRoute.post('/', async (c) => {
+careRecipientsRoute.post('/', ...familyMemberAccess, async (c) => {
   try {
     const body = await c.req.json();
     const data = createCareRecipientSchema.parse(body);
 
-    // TODO: Get userId from JWT token instead of header
-    const userId = c.req.header('x-user-id');
+    const userId = c.get('userId');
     if (!userId) {
       return c.json({ error: 'User ID required' }, 401);
     }

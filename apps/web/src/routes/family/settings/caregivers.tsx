@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
-import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal, Edit, Plus } from 'lucide-react';
+import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal, Edit, Plus, Heart } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { authenticatedApiCall } from '@/lib/api';
 
@@ -37,8 +37,14 @@ const getUserRole = (): 'family_admin' | 'family_member' | null => {
   }
 };
 
+interface CareRecipient {
+  id: string;
+  name: string;
+  condition?: string;
+}
+
 function CaregiversSettingsComponent() {
-  const [careRecipient, setCareRecipient] = useState<any>(null);
+  const [selectedRecipientId, setSelectedRecipientId] = useState<string | null>(null);
   const [selectedCaregiver, setSelectedCaregiver] = useState<Caregiver | null>(null);
   const [showResetPinModal, setShowResetPinModal] = useState(false);
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
@@ -76,28 +82,37 @@ function CaregiversSettingsComponent() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
 
-  useEffect(() => {
-    const recipientData = localStorage.getItem('careRecipient');
-    if (recipientData) setCareRecipient(JSON.parse(recipientData));
-
-    // Ensure user role is set from localStorage
-    const role = getUserRole();
-    if (role && role !== userRole) {
-      setUserRole(role);
-    }
-  }, [userRole]);
-
-  // Fetch caregivers
-  const { data: caregivers, isLoading } = useQuery({
-    queryKey: ['caregivers', careRecipient?.id],
+  // Fetch all care recipients
+  const { data: careRecipients, isLoading: recipientsLoading } = useQuery({
+    queryKey: ['care-recipients'],
     queryFn: async () => {
-      if (!careRecipient?.id) return [];
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token');
-      return authenticatedApiCall(`/caregivers/recipient/${careRecipient.id}`, token);
+      return authenticatedApiCall<CareRecipient[]>('/care-recipients', token);
     },
-    enabled: !!careRecipient?.id,
   });
+
+  // Auto-select first care recipient
+  useEffect(() => {
+    if (careRecipients && careRecipients.length > 0 && !selectedRecipientId) {
+      setSelectedRecipientId(careRecipients[0].id);
+    }
+  }, [careRecipients, selectedRecipientId]);
+
+  // Fetch caregivers for selected recipient
+  const { data: caregivers, isLoading: caregiversLoading } = useQuery({
+    queryKey: ['caregivers', selectedRecipientId],
+    queryFn: async () => {
+      if (!selectedRecipientId) return [];
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token');
+      return authenticatedApiCall(`/caregivers/recipient/${selectedRecipientId}`, token);
+    },
+    enabled: !!selectedRecipientId,
+  });
+
+  const isLoading = recipientsLoading || caregiversLoading;
+  const selectedRecipient = careRecipients?.find(r => r.id === selectedRecipientId);
 
   // Reset PIN mutation
   const resetPinMutation = useMutation({
@@ -208,12 +223,13 @@ function CaregiversSettingsComponent() {
   // Add caregiver mutation
   const addCaregiverMutation = useMutation({
     mutationFn: async (data: typeof addForm) => {
+      if (!selectedRecipientId) throw new Error('No care recipient selected');
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token');
       return authenticatedApiCall('/caregivers', token, {
         method: 'POST',
         body: JSON.stringify({
-          careRecipientId: careRecipient.id,
+          careRecipientId: selectedRecipientId,
           name: data.name,
           phone: data.phone || undefined,
           email: data.email || undefined,
@@ -409,7 +425,59 @@ function CaregiversSettingsComponent() {
         </div>
       </div>
 
+      {/* Care Recipient Selector */}
+      {!recipientsLoading && careRecipients && careRecipients.length > 0 && (
+        <div className="max-w-7xl mx-auto px-4 pt-6">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-pink-600" />
+                <label className="text-sm font-semibold text-gray-700">Viewing caregivers for:</label>
+              </div>
+              <select
+                value={selectedRecipientId || ''}
+                onChange={(e) => setSelectedRecipientId(e.target.value)}
+                className="flex-1 sm:flex-initial sm:min-w-[300px] px-4 py-2 border-2 border-blue-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
+              >
+                {careRecipients.map((recipient) => (
+                  <option key={recipient.id} value={recipient.id}>
+                    {recipient.name} {recipient.condition ? `(${recipient.condition})` : ''}
+                  </option>
+                ))}
+              </select>
+              {careRecipients.length > 1 && (
+                <span className="text-xs text-gray-600 bg-white px-3 py-1 rounded-full border border-gray-200">
+                  {careRecipients.length} care recipients
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No Care Recipients Message */}
+      {!recipientsLoading && (!careRecipients || careRecipients.length === 0) && (
+        <div className="max-w-7xl mx-auto px-4 py-12">
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Heart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Care Recipients Yet</h3>
+              <p className="text-gray-600 mb-6">
+                You need to add a care recipient before you can manage caregivers
+              </p>
+              <Link to="/family/settings/care-recipients">
+                <Button className="bg-pink-600 hover:bg-pink-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Care Recipient
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Search, Filter, and Sort Controls */}
+      {selectedRecipientId && (
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="bg-white rounded-lg border p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -797,6 +865,7 @@ function CaregiversSettingsComponent() {
             </CardContent>
           </Card>
         </div>
+      )}
       )}
 
       {/* Add Caregiver Modal */}
