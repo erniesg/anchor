@@ -99,7 +99,7 @@ test.describe('Full Production Onboarding Flow', () => {
     await page.fill('input[type="date"]', testData.careRecipient.dateOfBirth);
 
     // Find and fill condition field by placeholder
-    const conditionInput = page.locator('input[placeholder*="Progressive"]');
+    const conditionInput = page.locator('input[placeholder*="Dementia"]');
     await conditionInput.fill(testData.careRecipient.condition);
 
     // Find and fill location by placeholder

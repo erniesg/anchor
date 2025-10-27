@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { authenticatedApiCall } from '@/lib/api';
+import { Copy, Check } from 'lucide-react';
 
 export const Route = createFileRoute('/family/onboarding/caregiver')({
   component: CaregiverOnboardingComponent,
@@ -23,6 +24,9 @@ function CaregiverOnboardingComponent() {
   const [phone, setPhone] = useState('');
   const [language, setLanguage] = useState('en');
   const [generatedPin, setGeneratedPin] = useState<string | null>(null);
+  const [caregiverId, setCaregiverId] = useState<string | null>(null);
+  const [copiedPin, setCopiedPin] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
 
   const createCaregiverMutation = useMutation({
     mutationFn: async (data: CaregiverData) => {
@@ -40,6 +44,7 @@ function CaregiverOnboardingComponent() {
     },
     onSuccess: (data) => {
       setGeneratedPin(data.pin);
+      setCaregiverId(data.id);
     },
   });
 
@@ -64,6 +69,21 @@ function CaregiverOnboardingComponent() {
     navigate({ to: '/family/dashboard' });
   };
 
+  const copyToClipboard = async (text: string, type: 'pin' | 'id') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (type === 'pin') {
+        setCopiedPin(true);
+        setTimeout(() => setCopiedPin(false), 2000);
+      } else {
+        setCopiedId(true);
+        setTimeout(() => setCopiedId(false), 2000);
+      }
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   if (generatedPin) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary-50 to-accent-50 py-12 px-4">
@@ -77,14 +97,57 @@ function CaregiverOnboardingComponent() {
                   </svg>
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Caregiver Account Created!</h2>
-                <p className="text-gray-600">Share this PIN with your caregiver</p>
+                <p className="text-gray-600">Share these credentials with your caregiver</p>
               </div>
             </CardHeader>
 
             <CardContent className="space-y-6">
-              <div className="bg-primary-50 border-2 border-primary-200 rounded-xl p-8 text-center">
-                <p className="text-sm text-gray-600 mb-2">6-Digit PIN</p>
-                <p className="text-5xl font-bold text-primary-700 tracking-widest font-mono">{generatedPin}</p>
+              {/* Caregiver ID */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold text-blue-900">Caregiver ID</p>
+                  <button
+                    onClick={() => caregiverId && copyToClipboard(caregiverId, 'id')}
+                    className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    {copiedId ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-sm font-mono text-blue-900 break-all">{caregiverId}</p>
+              </div>
+
+              {/* PIN */}
+              <div className="bg-primary-50 border-2 border-primary-200 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-primary-900">6-Digit PIN</p>
+                  <button
+                    onClick={() => generatedPin && copyToClipboard(generatedPin, 'pin')}
+                    className="flex items-center gap-1 text-primary-600 hover:text-primary-700 text-sm font-medium"
+                  >
+                    {copiedPin ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-5xl font-bold text-primary-700 tracking-widest font-mono text-center">{generatedPin}</p>
               </div>
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -93,10 +156,12 @@ function CaregiverOnboardingComponent() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                   <div>
-                    <p className="font-medium text-yellow-900 text-sm">Important</p>
+                    <p className="font-medium text-yellow-900 text-sm">Important - Share BOTH with {name}</p>
                     <p className="text-yellow-800 text-sm mt-1">
-                      Write this PIN down and share it with <span className="font-semibold">{name}</span>.
-                      They'll need it to log in and submit daily care reports.
+                      Your caregiver needs <span className="font-semibold">both the Caregiver ID and PIN</span> to log in at <span className="font-semibold">anchor-dev.erniesg.workers.dev/caregiver/login</span>
+                    </p>
+                    <p className="text-yellow-800 text-sm mt-2">
+                      💡 Tip: Use the copy buttons above to easily share via WhatsApp or SMS
                     </p>
                   </div>
                 </div>
