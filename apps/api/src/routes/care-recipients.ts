@@ -48,7 +48,8 @@ careRecipientsRoute.post('/', async (c) => {
       .values({
         userId: userId,
         careRecipientId: newRecipient.id,
-        grantedAt: new Date(),
+        grantedAt: Date.now(), // Unix timestamp in milliseconds
+        grantedBy: userId,
       });
 
     return c.json(newRecipient, 201);
