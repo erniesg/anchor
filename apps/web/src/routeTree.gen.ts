@@ -21,6 +21,7 @@ import { Route as FamilyOnboardingIndexRouteImport } from './routes/family/onboa
 import { Route as FamilySettingsProfileRouteImport } from './routes/family/settings/profile'
 import { Route as FamilySettingsFamilyMembersRouteImport } from './routes/family/settings/family-members'
 import { Route as FamilySettingsCaregiversRouteImport } from './routes/family/settings/caregivers'
+import { Route as FamilySettingsCareRecipientsRouteImport } from './routes/family/settings/care-recipients'
 import { Route as FamilyOnboardingCaregiverRouteImport } from './routes/family/onboarding/caregiver'
 
 const IndexRoute = IndexRouteImport.update({
@@ -85,6 +86,12 @@ const FamilySettingsCaregiversRoute =
     path: '/family/settings/caregivers',
     getParentRoute: () => rootRouteImport,
   } as any)
+const FamilySettingsCareRecipientsRoute =
+  FamilySettingsCareRecipientsRouteImport.update({
+    id: '/family/settings/care-recipients',
+    path: '/family/settings/care-recipients',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const FamilyOnboardingCaregiverRoute =
   FamilyOnboardingCaregiverRouteImport.update({
     id: '/family/onboarding/caregiver',
@@ -101,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/family/dashboard': typeof FamilyDashboardRoute
   '/family/trends': typeof FamilyTrendsRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
+  '/family/settings/care-recipients': typeof FamilySettingsCareRecipientsRoute
   '/family/settings/caregivers': typeof FamilySettingsCaregiversRoute
   '/family/settings/family-members': typeof FamilySettingsFamilyMembersRoute
   '/family/settings/profile': typeof FamilySettingsProfileRoute
@@ -116,6 +124,7 @@ export interface FileRoutesByTo {
   '/family/dashboard': typeof FamilyDashboardRoute
   '/family/trends': typeof FamilyTrendsRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
+  '/family/settings/care-recipients': typeof FamilySettingsCareRecipientsRoute
   '/family/settings/caregivers': typeof FamilySettingsCaregiversRoute
   '/family/settings/family-members': typeof FamilySettingsFamilyMembersRoute
   '/family/settings/profile': typeof FamilySettingsProfileRoute
@@ -132,6 +141,7 @@ export interface FileRoutesById {
   '/family/dashboard': typeof FamilyDashboardRoute
   '/family/trends': typeof FamilyTrendsRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
+  '/family/settings/care-recipients': typeof FamilySettingsCareRecipientsRoute
   '/family/settings/caregivers': typeof FamilySettingsCaregiversRoute
   '/family/settings/family-members': typeof FamilySettingsFamilyMembersRoute
   '/family/settings/profile': typeof FamilySettingsProfileRoute
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/family/dashboard'
     | '/family/trends'
     | '/family/onboarding/caregiver'
+    | '/family/settings/care-recipients'
     | '/family/settings/caregivers'
     | '/family/settings/family-members'
     | '/family/settings/profile'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/family/dashboard'
     | '/family/trends'
     | '/family/onboarding/caregiver'
+    | '/family/settings/care-recipients'
     | '/family/settings/caregivers'
     | '/family/settings/family-members'
     | '/family/settings/profile'
@@ -179,6 +191,7 @@ export interface FileRouteTypes {
     | '/family/dashboard'
     | '/family/trends'
     | '/family/onboarding/caregiver'
+    | '/family/settings/care-recipients'
     | '/family/settings/caregivers'
     | '/family/settings/family-members'
     | '/family/settings/profile'
@@ -195,6 +208,7 @@ export interface RootRouteChildren {
   FamilyDashboardRoute: typeof FamilyDashboardRoute
   FamilyTrendsRoute: typeof FamilyTrendsRoute
   FamilyOnboardingCaregiverRoute: typeof FamilyOnboardingCaregiverRoute
+  FamilySettingsCareRecipientsRoute: typeof FamilySettingsCareRecipientsRoute
   FamilySettingsCaregiversRoute: typeof FamilySettingsCaregiversRoute
   FamilySettingsFamilyMembersRoute: typeof FamilySettingsFamilyMembersRoute
   FamilySettingsProfileRoute: typeof FamilySettingsProfileRoute
@@ -288,6 +302,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FamilySettingsCaregiversRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/family/settings/care-recipients': {
+      id: '/family/settings/care-recipients'
+      path: '/family/settings/care-recipients'
+      fullPath: '/family/settings/care-recipients'
+      preLoaderRoute: typeof FamilySettingsCareRecipientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/family/onboarding/caregiver': {
       id: '/family/onboarding/caregiver'
       path: '/family/onboarding/caregiver'
@@ -307,6 +328,7 @@ const rootRouteChildren: RootRouteChildren = {
   FamilyDashboardRoute: FamilyDashboardRoute,
   FamilyTrendsRoute: FamilyTrendsRoute,
   FamilyOnboardingCaregiverRoute: FamilyOnboardingCaregiverRoute,
+  FamilySettingsCareRecipientsRoute: FamilySettingsCareRecipientsRoute,
   FamilySettingsCaregiversRoute: FamilySettingsCaregiversRoute,
   FamilySettingsFamilyMembersRoute: FamilySettingsFamilyMembersRoute,
   FamilySettingsProfileRoute: FamilySettingsProfileRoute,

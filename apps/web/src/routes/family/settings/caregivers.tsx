@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
-import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal, Edit } from 'lucide-react';
+import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal, Edit, Plus } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { authenticatedApiCall } from '@/lib/api';
 
@@ -44,11 +44,21 @@ function CaregiversSettingsComponent() {
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [showReactivateModal, setShowReactivateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [newPin, setNewPin] = useState<string | null>(null);
+  const [newCaregiverId, setNewCaregiverId] = useState<string | null>(null);
   const [deactivationReason, setDeactivationReason] = useState('');
   const [copiedPin, setCopiedPin] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null); // Track which ID was copied
   const [userRole, setUserRole] = useState<'family_admin' | 'family_member' | null>(getUserRole);
+
+  // Add caregiver form state
+  const [addForm, setAddForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    language: 'en',
+  });
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -195,6 +205,46 @@ function CaregiversSettingsComponent() {
     },
   });
 
+  // Add caregiver mutation
+  const addCaregiverMutation = useMutation({
+    mutationFn: async (data: typeof addForm) => {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token');
+      return authenticatedApiCall('/caregivers', token, {
+        method: 'POST',
+        body: JSON.stringify({
+          careRecipientId: careRecipient.id,
+          name: data.name,
+          phone: data.phone || undefined,
+          email: data.email || undefined,
+          language: data.language,
+        }),
+      });
+    },
+    onSuccess: (data) => {
+      setNewPin(data.pin);
+      setNewCaregiverId(data.id);
+      setShowAddModal(false);
+      setAddForm({
+        name: '',
+        phone: '',
+        email: '',
+        language: 'en',
+      });
+      queryClient.invalidateQueries({ queryKey: ['caregivers'] });
+      addToast({
+        type: 'success',
+        message: 'Caregiver created successfully! Save the PIN and ID.',
+      });
+    },
+    onError: (error) => {
+      addToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to add caregiver. Please try again.',
+      });
+    },
+  });
+
   const handleResetPin = (caregiver: Caregiver) => {
     setSelectedCaregiver(caregiver);
     setShowResetPinModal(true);
@@ -257,6 +307,17 @@ function CaregiversSettingsComponent() {
     navigator.clipboard.writeText(id);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const copyToClipboard = (text: string, type: 'pin' | 'id') => {
+    navigator.clipboard.writeText(text);
+    if (type === 'pin') {
+      setCopiedPin(true);
+      setTimeout(() => setCopiedPin(false), 2000);
+    } else {
+      setCopiedId(text);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
   };
 
   // Filter and sort caregivers
@@ -330,12 +391,20 @@ function CaregiversSettingsComponent() {
                 </p>
               </div>
             </div>
-            <Link to="/family/settings" className="self-start sm:self-auto">
-              <Button variant="outline">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Settings
-              </Button>
-            </Link>
+            <div className="flex gap-2">
+              {isAdmin && (
+                <Button onClick={() => setShowAddModal(true)} className="bg-blue-600 hover:bg-blue-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Caregiver
+                </Button>
+              )}
+              <Link to="/family/settings" className="self-start sm:self-auto">
+                <Button variant="outline">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Settings
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -723,6 +792,203 @@ function CaregiversSettingsComponent() {
                   className="flex-1"
                 >
                   {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Add Caregiver Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <CardHeader className="border-b">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <UserCog className="h-5 w-5 text-blue-600" />
+                Add New Caregiver
+              </h2>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <Input
+                  label="Name *"
+                  type="text"
+                  value={addForm.name}
+                  onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                  placeholder="Enter caregiver's full name"
+                  required
+                />
+                <Input
+                  label="Phone"
+                  type="tel"
+                  value={addForm.phone}
+                  onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
+                  placeholder="+65 9123 4567"
+                />
+                <Input
+                  label="Email"
+                  type="email"
+                  value={addForm.email}
+                  onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                  placeholder="caregiver@example.com"
+                />
+                <div>
+                  <label htmlFor="language-select" className="block text-sm font-medium text-gray-700 mb-1">
+                    Preferred Language
+                  </label>
+                  <select
+                    id="language-select"
+                    value={addForm.language}
+                    onChange={(e) => setAddForm({ ...addForm, language: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="en">English</option>
+                    <option value="zh">中文 (Chinese)</option>
+                    <option value="ms">Bahasa Melayu (Malay)</option>
+                    <option value="ta">தமிழ் (Tamil)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setAddForm({
+                      name: '',
+                      phone: '',
+                      email: '',
+                      language: 'en',
+                    });
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!addForm.name.trim()) {
+                      addToast({
+                        type: 'error',
+                        message: 'Name is required',
+                      });
+                      return;
+                    }
+                    addCaregiverMutation.mutate(addForm);
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  disabled={addCaregiverMutation.isPending}
+                >
+                  {addCaregiverMutation.isPending ? 'Creating...' : 'Create Caregiver'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Show Credentials Modal after successful caregiver creation */}
+      {newPin && newCaregiverId && !showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="border-b bg-green-50">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-green-700">
+                <Check className="h-5 w-5" />
+                Caregiver Created Successfully!
+              </h2>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-yellow-900 mb-2">⚠️ Save These Credentials</p>
+                  <p className="text-xs text-yellow-800">
+                    The caregiver will need both the PIN and ID to login. Make sure to save them securely!
+                  </p>
+                </div>
+
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-blue-900">6-Digit PIN</p>
+                    <button
+                      onClick={() => {
+                        copyToClipboard(newPin, 'pin');
+                      }}
+                      className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      {copiedPin ? (
+                        <>
+                          <Check className="h-4 w-4" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-2xl font-mono font-bold text-blue-900 tracking-widest">{newPin}</p>
+                </div>
+
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-blue-900">Caregiver ID</p>
+                    <button
+                      onClick={() => {
+                        copyToClipboard(newCaregiverId, 'id');
+                      }}
+                      className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      {copiedId === newCaregiverId ? (
+                        <>
+                          <Check className="h-4 w-4" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-sm font-mono text-blue-900 break-all">{newCaregiverId}</p>
+                </div>
+
+                <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="font-bold text-blue-900 text-base mb-2">Where Caregivers Login</p>
+                      <a
+                        href="https://anchor-dev.erniesg.workers.dev/caregiver/login"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block bg-white border-2 border-blue-400 rounded-lg px-4 py-3 text-center hover:bg-blue-50 transition-colors"
+                      >
+                        <p className="text-blue-700 font-bold text-lg">
+                          anchor-dev.erniesg.workers.dev/caregiver/login
+                        </p>
+                        <p className="text-blue-600 text-xs mt-1">Click to open login page →</p>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <Button
+                  onClick={() => {
+                    setNewPin(null);
+                    setNewCaregiverId(null);
+                  }}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  Done
                 </Button>
               </div>
             </CardContent>

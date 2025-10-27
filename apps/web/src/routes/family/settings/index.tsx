@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Settings, Users, UserCog, User, LogOut } from 'lucide-react';
+import { Settings, Users, UserCog, User, LogOut, Heart } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
 
 export const Route = createFileRoute('/family/settings/')({
@@ -18,8 +18,15 @@ function SettingsIndexComponent() {
 
   const settingsSections = [
     {
+      title: 'Care Recipients',
+      description: 'Add and manage care recipients you are caring for',
+      icon: Heart,
+      href: '/family/settings/care-recipients',
+      color: 'text-pink-600',
+    },
+    {
       title: 'Caregivers',
-      description: 'Manage caregivers, reset PINs, and deactivate accounts',
+      description: 'Add and manage caregivers, reset PINs, and deactivate accounts',
       icon: UserCog,
       href: '/family/settings/caregivers',
       color: 'text-blue-600',
