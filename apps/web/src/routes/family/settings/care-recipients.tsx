@@ -14,6 +14,12 @@ export const Route = createFileRoute('/family/settings/care-recipients')({
   component: CareRecipientsSettingsComponent,
 });
 
+interface Caregiver {
+  id: string;
+  name: string;
+  active: boolean;
+}
+
 interface CareRecipient {
   id: string;
   name: string;
@@ -22,6 +28,7 @@ interface CareRecipient {
   location?: string;
   emergencyContact?: string;
   createdAt: string;
+  caregivers?: Caregiver[];
 }
 
 function CareRecipientsSettingsComponent() {
@@ -198,12 +205,55 @@ function CareRecipientsSettingsComponent() {
                           <span className="font-medium">{recipient.emergencyContact}</span>
                         </div>
                       )}
+                      {/* Caregivers Section */}
                       <div className="pt-3 border-t mt-3">
-                        <Link to="/family/settings/caregivers" className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
-                          <UserCog className="h-4 w-4" />
-                          Manage Caregivers →
-                        </Link>
-                      </div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700">Assigned Caregivers</span>
+                          <span className="text-xs text-gray-500">
+                            {recipient.caregivers?.filter(c => c.active).length || 0} active
+                          </span>
+                        </div>
+
+                        {recipient.caregivers && recipient.caregivers.length > 0 ? (
+                          <>
+                            <div className="space-y-1 mb-3">
+                              {recipient.caregivers.slice(0, 3).map((caregiver) => (
+                                <div key={caregiver.id} className="flex items-center gap-2 text-sm">
+                                  <div className={`h-2 w-2 rounded-full ${caregiver.active ? 'bg-green-500' : 'bg-gray-400'}`} />
+                                  <span className="text-gray-700">{caregiver.name}</span>
+                                  {!caregiver.active && (
+                                    <span className="text-xs text-gray-500">(Inactive)</span>
+                                  )}
+                                </div>
+                              ))}
+                              {recipient.caregivers.length > 3 && (
+                                <p className="text-xs text-gray-500 pl-4">
+                                  +{recipient.caregivers.length - 3} more
+                                </p>
+                              )}
+                            </div>
+                            <Link
+                              to="/family/settings/caregivers"
+                              search={{ recipientId: recipient.id }}
+                              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium"
+                            >
+                              <UserCog className="h-4 w-4" />
+                              Manage Caregivers →
+                            </Link>
+                          </>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-sm text-gray-500 italic">No caregivers assigned yet</p>
+                            <Link
+                              to="/family/settings/caregivers"
+                              search={{ recipientId: recipient.id }}
+                              className="inline-flex items-center gap-1 text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              <Plus className="h-4 w-4" />
+                              Add Caregiver
+                            </Link>
+                          </div>
+                        )}
                     </div>
                   </CardContent>
                 </Card>

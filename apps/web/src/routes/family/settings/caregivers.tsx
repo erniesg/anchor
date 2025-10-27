@@ -12,6 +12,11 @@ import { authenticatedApiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/family/settings/caregivers')({
   component: CaregiversSettingsComponent,
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      recipientId: (search.recipientId as string) || undefined,
+    };
+  },
 });
 
 interface Caregiver {
@@ -44,7 +49,8 @@ interface CareRecipient {
 }
 
 function CaregiversSettingsComponent() {
-  const [selectedRecipientId, setSelectedRecipientId] = useState<string | null>(null);
+  const { recipientId } = Route.useSearch();
+  const [selectedRecipientId, setSelectedRecipientId] = useState<string | null>(recipientId || null);
   const [selectedCaregiver, setSelectedCaregiver] = useState<Caregiver | null>(null);
   const [showResetPinModal, setShowResetPinModal] = useState(false);
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
@@ -92,12 +98,19 @@ function CaregiversSettingsComponent() {
     },
   });
 
-  // Auto-select first care recipient
+  // Auto-select care recipient (from URL or first available)
   useEffect(() => {
-    if (careRecipients && careRecipients.length > 0 && !selectedRecipientId) {
+    if (!careRecipients || careRecipients.length === 0) return;
+
+    // If recipientId from URL exists and is valid, use it
+    if (recipientId && careRecipients.find(r => r.id === recipientId)) {
+      setSelectedRecipientId(recipientId);
+    }
+    // Otherwise, auto-select first recipient if none selected
+    else if (!selectedRecipientId) {
       setSelectedRecipientId(careRecipients[0].id);
     }
-  }, [careRecipients, selectedRecipientId]);
+  }, [careRecipients, recipientId, selectedRecipientId]);
 
   // Fetch caregivers for selected recipient
   const { data: caregivers, isLoading: caregiversLoading } = useQuery({
