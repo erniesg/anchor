@@ -680,10 +680,12 @@ function CareLogFormComponent() {
         hasData: toiletingData,
         missing: [],
       },
-      6: { // Fall Risk & Safety - optional
-        complete: true,
+      6: { // Fall Risk & Safety - if started, complete the key fields
+        complete: !(balanceIssues !== null && (nearFalls === 'none' && actualFalls === 'none')),
         hasData: fallRiskData,
-        missing: [],
+        missing: balanceIssues !== null && nearFalls === 'none' && actualFalls === 'none'
+          ? ['⚠️ Near Falls frequency', '⚠️ Actual Falls status']
+          : [],
       },
       7: { // Unaccompanied Time - optional
         complete: true,
@@ -1980,7 +1982,7 @@ function CareLogFormComponent() {
               {/* Balance Issues Scale */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Balance Issues (1-5)
+                  Balance Issues (1-5) <span className="text-gray-500 font-normal text-xs">(optional, but if selected, please complete Near Falls and Actual Falls below)</span>
                 </label>
                 <div className="bg-gray-50 p-3 rounded-lg mb-2 text-xs">
                   <p><strong>1</strong> = No balance problems</p>
@@ -2009,7 +2011,10 @@ function CareLogFormComponent() {
 
               {/* Near Falls */}
               <div>
-                <label className="block text-sm font-medium mb-2">Near Falls</label>
+                <label className="block text-sm font-medium mb-2">
+                  Near Falls {balanceIssues !== null && <span className="text-orange-600">*</span>}
+                  {balanceIssues !== null && <span className="text-gray-500 font-normal text-xs ml-1">(required when Balance Issues is filled)</span>}
+                </label>
                 <select
                   value={nearFalls}
                   onChange={(e) => setNearFalls(e.target.value as any)}
@@ -2024,7 +2029,8 @@ function CareLogFormComponent() {
               {/* Actual Falls */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Actual Falls 🚨
+                  Actual Falls 🚨 {balanceIssues !== null && <span className="text-orange-600">*</span>}
+                  {balanceIssues !== null && <span className="text-gray-500 font-normal text-xs ml-1">(required when Balance Issues is filled)</span>}
                 </label>
                 <select
                   value={actualFalls}
@@ -2047,7 +2053,7 @@ function CareLogFormComponent() {
               {/* Walking Pattern */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Walking Pattern (How she walks)
+                  Walking Pattern (How she walks) <span className="text-gray-500 font-normal text-xs">(optional - select all that apply)</span>
                 </label>
                 <div className="space-y-2">
                   {['normal', 'shuffling', 'uneven', 'very_slow', 'stumbling', 'cannot_lift_feet'].map((pattern) => (
@@ -2075,7 +2081,7 @@ function CareLogFormComponent() {
               {/* Freezing Episodes */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Freezing Episodes
+                  Freezing Episodes <span className="text-gray-500 font-normal text-xs">(optional)</span>
                 </label>
                 <p className="text-xs text-gray-600 mb-2">
                   (Suddenly stopping and being unable to move forward, like feet stuck to ground)
