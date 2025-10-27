@@ -22,7 +22,7 @@ function HomeComponent() {
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
             <Link to="/auth/signup">
               <Button size="lg" variant="primary" className="w-64 text-lg py-6">
                 <Users className="h-6 w-6 mr-2" />
@@ -34,6 +34,14 @@ function HomeComponent() {
                 <Heart className="h-6 w-6 mr-2" />
                 Caregiver Login
               </Button>
+            </Link>
+          </div>
+
+          {/* Login Links for Existing Users */}
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center text-sm mb-16">
+            <p className="text-gray-600">Already have an account?</p>
+            <Link to="/auth/login" className="text-primary-600 hover:text-primary-700 font-semibold underline">
+              Family Member Login →
             </Link>
           </div>
 
