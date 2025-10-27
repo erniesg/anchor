@@ -41,21 +41,83 @@ familyMembers.get('/', async (c) => {
     return c.json({ error: 'User not found' }, 404);
   }
 
-  // For now, we'll return all users (in production, you'd filter by family)
-  // This assumes a single-family setup per deployment
-  const familyMembers = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      name: users.name,
-      phone: users.phone,
-      role: users.role,
-      active: users.active,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .where(eq(users.active, true))
+  // Get all care recipients owned by this user (if they're a family_admin)
+  const ownedRecipients = await db
+    .select({ id: careRecipients.id })
+    .from(careRecipients)
+    .where(eq(careRecipients.familyAdminId, userId))
     .all();
+
+  const ownedRecipientIds = ownedRecipients.map(r => r.id);
+
+  // Find all users who have access to any of these care recipients
+  const memberIds = new Set<string>();
+  memberIds.add(userId); // Always include current user
+
+  if (ownedRecipientIds.length > 0) {
+    // Get users with explicit access to our care recipients
+    const accessRecords = await db
+      .select({ userId: careRecipientAccess.userId })
+      .from(careRecipientAccess)
+      .where(
+        and(
+          eq(careRecipientAccess.revokedAt, null as any)
+        )
+      )
+      .all();
+
+    // Filter to only include users who have access to OUR care recipients
+    for (const record of accessRecords) {
+      const hasAccessToOurRecipient = await db
+        .select({ id: careRecipientAccess.id })
+        .from(careRecipientAccess)
+        .where(
+          and(
+            eq(careRecipientAccess.userId, record.userId),
+            eq(careRecipientAccess.revokedAt, null as any)
+          )
+        )
+        .get();
+
+      if (hasAccessToOurRecipient) {
+        // Check if this access is for one of OUR care recipients
+        const access = await db
+          .select({ careRecipientId: careRecipientAccess.careRecipientId })
+          .from(careRecipientAccess)
+          .where(eq(careRecipientAccess.userId, record.userId))
+          .all();
+
+        for (const a of access) {
+          if (ownedRecipientIds.includes(a.careRecipientId)) {
+            memberIds.add(record.userId);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Get full user details for these member IDs
+  const familyMembers = [];
+  for (const memberId of memberIds) {
+    const member = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        phone: users.phone,
+        role: users.role,
+        active: users.active,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(and(eq(users.id, memberId), eq(users.active, true)))
+      .get();
+
+    if (member) {
+      familyMembers.push(member);
+    }
+  }
 
   return c.json(familyMembers);
 });
