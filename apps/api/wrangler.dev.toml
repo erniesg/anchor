@@ -9,11 +9,13 @@ vars = { ENVIRONMENT = "dev" }
 binding = "DB"
 database_name = "anchor-dev-db"
 database_id = "900612ba-b5f7-4593-ac31-8bb9abac2c11"
+preview_database_id = "900612ba-b5f7-4593-ac31-8bb9abac2c11"
 migrations_dir = "../../packages/database/drizzle/migrations"
 
 [[r2_buckets]]
 binding = "STORAGE"
 bucket_name = "anchor-dev-storage"
+preview_bucket_name = "anchor-dev-storage"
 
 [dev]
 port = 8787
