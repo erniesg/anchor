@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppContext } from '../index';
-import { careRecipients, caregivers } from '@anchor/database/schema';
+import { careRecipients, caregivers, careRecipientAccess } from '@anchor/database/schema';
 import { eq } from 'drizzle-orm';
 import { familyMemberAccess } from '../middleware/rbac';
 
@@ -41,6 +41,15 @@ careRecipientsRoute.post('/', async (c) => {
       })
       .returning()
       .get();
+
+    // Automatically grant access to the family admin who created the care recipient
+    await db
+      .insert(careRecipientAccess)
+      .values({
+        userId: userId,
+        careRecipientId: newRecipient.id,
+        grantedAt: new Date(),
+      });
 
     return c.json(newRecipient, 201);
   } catch (error) {
