@@ -71,12 +71,29 @@ careRecipientsRoute.get('/', ...familyMemberAccess, async (c) => {
 
     const db = c.get('db');
 
-    // Get care recipients owned by this family admin
-    const recipients = await db
+    // Get care recipients where user is family admin (implicit access)
+    const ownedRecipients = await db
       .select()
       .from(careRecipients)
       .where(eq(careRecipients.familyAdminId, userId))
       .all();
+
+    // Get care recipients where user has explicit access (via care_recipient_access)
+    const accessRecipients = await db
+      .select({
+        careRecipient: careRecipients,
+      })
+      .from(careRecipientAccess)
+      .innerJoin(careRecipients, eq(careRecipientAccess.careRecipientId, careRecipients.id))
+      .where(eq(careRecipientAccess.userId, userId))
+      .all();
+
+    // Combine both lists and deduplicate by ID
+    const recipientMap = new Map();
+    [...ownedRecipients, ...accessRecipients.map(r => r.careRecipient)].forEach(recipient => {
+      recipientMap.set(recipient.id, recipient);
+    });
+    const recipients = Array.from(recipientMap.values());
 
     // For each recipient, get their caregivers
     const recipientsWithCaregivers = await Promise.all(
