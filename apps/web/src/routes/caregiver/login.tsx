@@ -66,7 +66,7 @@ function CaregiverLoginComponent() {
             <p className="text-gray-600">Enter your 6-digit PIN</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" autoComplete="on">
             <Input
               label="Caregiver ID"
               name="caregiverId"
@@ -75,28 +75,37 @@ function CaregiverLoginComponent() {
               value={caregiverId}
               onChange={(e) => setCaregiverId(e.target.value)}
               placeholder="Enter your caregiver ID"
+              autoComplete="username"
             />
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="pin-input" className="block text-sm font-medium text-gray-700 mb-1">
                 PIN *
               </label>
               <div className="relative">
                 <input
+                  id="pin-input"
                   name="pin"
                   type={showPin ? 'text' : 'password'}
                   inputMode="numeric"
+                  pattern="\d{6}"
                   required
                   maxLength={6}
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                   placeholder="Enter 6-digit PIN"
-                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  autoComplete="current-password"
+                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg
+                    transition-colors
+                    focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                    autofill:bg-blue-50"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPin(!showPin)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                  aria-label={showPin ? 'Hide PIN' : 'Show PIN'}
+                  tabIndex={-1}
                 >
                   {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
