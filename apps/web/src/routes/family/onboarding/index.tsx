@@ -106,7 +106,7 @@ function OnboardingComponent() {
                 type="text"
                 value={condition}
                 onChange={(e) => setCondition(e.target.value)}
-                placeholder="e.g., Progressive Supranuclear Palsy"
+                placeholder="e.g., Dementia, Parkinson's Disease"
                 helperText="Optional - helps us customize care tracking"
               />
 
