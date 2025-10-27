@@ -694,7 +694,7 @@ careLogsRoute.get('/recipient/:recipientId', ...familyMemberAccess, requireCareR
     const parsedLogs = logs.map(log => ({
       ...parseJsonFields(log),
       totalUnaccompaniedMinutes: log.unaccompaniedTime
-        ? calculateTotalUnaccompaniedTime(JSON.parse(log.unaccompaniedTime as any))
+        ? calculateTotalUnaccompaniedTime(log.unaccompaniedTime)
         : 0,
     }));
 
@@ -768,7 +768,7 @@ careLogsRoute.get('/recipient/:recipientId/today', ...familyMemberAccess, requir
       ...parsedLog,
       meals: normalizeMealsData(log.meals as any),
       totalUnaccompaniedMinutes: log.unaccompaniedTime
-        ? calculateTotalUnaccompaniedTime(JSON.parse(log.unaccompaniedTime as any))
+        ? calculateTotalUnaccompaniedTime(log.unaccompaniedTime)
         : 0,
       medicationAdherence: calculateMedicationAdherence(medications), // Sprint 2 Day 4
     });
@@ -824,7 +824,7 @@ careLogsRoute.get('/recipient/:recipientId/date/:date', ...familyMemberAccess, r
       ...parsedLog,
       meals: normalizeMealsData(matchingLog.meals as any),
       totalUnaccompaniedMinutes: matchingLog.unaccompaniedTime
-        ? calculateTotalUnaccompaniedTime(JSON.parse(matchingLog.unaccompaniedTime as any))
+        ? calculateTotalUnaccompaniedTime(matchingLog.unaccompaniedTime)
         : 0,
       medicationAdherence: calculateMedicationAdherence(medications), // Sprint 2 Day 4
     });
