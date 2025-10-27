@@ -386,51 +386,40 @@ function DashboardComponent() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-4">
-                    <div className="space-y-3">
+                    <div className="divide-y divide-gray-200">
                       {alerts.map((alert) => (
-                        <div
-                          key={alert.id}
-                          className={`p-3 rounded-lg border-2 ${
-                            alert.severity === 'critical'
-                              ? 'bg-red-50 border-red-300'
-                              : alert.severity === 'attention'
-                              ? 'bg-orange-50 border-orange-300'
-                              : 'bg-yellow-50 border-yellow-300'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <span className="text-2xl flex-shrink-0">{alert.icon}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className={`font-medium ${
+                        <div key={alert.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                          <span className="text-2xl flex-shrink-0">{alert.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium ${
+                              alert.severity === 'critical'
+                                ? 'text-red-800'
+                                : alert.severity === 'attention'
+                                ? 'text-orange-800'
+                                : 'text-yellow-800'
+                            }`}>
+                              {alert.title}
+                            </p>
+                            <p className={`text-sm mt-1 ${
+                              alert.severity === 'critical'
+                                ? 'text-red-700'
+                                : alert.severity === 'attention'
+                                ? 'text-orange-700'
+                                : 'text-yellow-700'
+                            }`}>
+                              {alert.description}
+                            </p>
+                            {alert.details && (
+                              <p className={`text-xs mt-1 ${
                                 alert.severity === 'critical'
-                                  ? 'text-red-800'
+                                  ? 'text-red-600'
                                   : alert.severity === 'attention'
-                                  ? 'text-orange-800'
-                                  : 'text-yellow-800'
+                                  ? 'text-orange-600'
+                                  : 'text-yellow-600'
                               }`}>
-                                {alert.title}
+                                {alert.details}
                               </p>
-                              <p className={`text-sm mt-1 ${
-                                alert.severity === 'critical'
-                                  ? 'text-red-700'
-                                  : alert.severity === 'attention'
-                                  ? 'text-orange-700'
-                                  : 'text-yellow-700'
-                              }`}>
-                                {alert.description}
-                              </p>
-                              {alert.details && (
-                                <p className={`text-xs mt-1 ${
-                                  alert.severity === 'critical'
-                                    ? 'text-red-600'
-                                    : alert.severity === 'attention'
-                                    ? 'text-orange-600'
-                                    : 'text-yellow-600'
-                                }`}>
-                                  {alert.details}
-                                </p>
-                              )}
-                            </div>
+                            )}
                           </div>
                         </div>
                       ))}
