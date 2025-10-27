@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { apiCall } from '@/lib/api';
+import { authenticatedApiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/family/onboarding/')({
   component: OnboardingComponent,
@@ -29,19 +29,16 @@ function OnboardingComponent() {
 
   const createRecipientMutation = useMutation({
     mutationFn: async (data: CareRecipientData) => {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('token');
 
       // Guard: Check if user is authenticated
-      if (!user.id) {
+      if (!token) {
         throw new Error('User session expired. Please log in again.');
       }
 
-      // Use apiCall helper for correct API URL in all environments
-      return apiCall('/care-recipients', {
+      // Use authenticatedApiCall with JWT token
+      return authenticatedApiCall('/care-recipients', token, {
         method: 'POST',
-        headers: {
-          'x-user-id': user.id,
-        },
         body: JSON.stringify(data),
       });
     },
