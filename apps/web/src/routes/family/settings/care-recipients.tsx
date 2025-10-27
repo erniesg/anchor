@@ -254,6 +254,7 @@ function CareRecipientsSettingsComponent() {
                             </Link>
                           </div>
                         )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
