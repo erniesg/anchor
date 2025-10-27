@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import type { AppContext } from '../index';
 import { caregivers } from '@anchor/database/schema';
 import { eq } from 'drizzle-orm';
@@ -21,10 +22,9 @@ const generatePin = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Hash PIN using SHA-256 (in production, use bcrypt)
+// Hash PIN using bcrypt (consistent with user password hashing)
 const hashPin = async (pin: string): Promise<string> => {
-  const crypto = await import('crypto');
-  return crypto.createHash('sha256').update(pin).digest('hex');
+  return bcrypt.hash(pin, 10);
 };
 
 // Create caregiver with auto-generated PIN (family_admin only)
