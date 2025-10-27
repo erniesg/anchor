@@ -15,6 +15,7 @@ export const Route = createFileRoute('/family/settings/caregivers')({
   validateSearch: (search: Record<string, unknown>) => {
     return {
       recipientId: (search.recipientId as string) || undefined,
+      action: (search.action as string) || undefined,
     };
   },
 });
@@ -49,7 +50,7 @@ interface CareRecipient {
 }
 
 function CaregiversSettingsComponent() {
-  const { recipientId } = Route.useSearch();
+  const { recipientId, action } = Route.useSearch();
   const [selectedRecipientId, setSelectedRecipientId] = useState<string | null>(recipientId || null);
   const [selectedCaregiver, setSelectedCaregiver] = useState<Caregiver | null>(null);
   const [showResetPinModal, setShowResetPinModal] = useState(false);
@@ -111,6 +112,13 @@ function CaregiversSettingsComponent() {
       setSelectedRecipientId(careRecipients[0].id);
     }
   }, [careRecipients, recipientId, selectedRecipientId]);
+
+  // Auto-open Add Caregiver modal when action=add in URL
+  useEffect(() => {
+    if (action === 'add' && selectedRecipientId && userRole === 'family_admin') {
+      setShowAddModal(true);
+    }
+  }, [action, selectedRecipientId, userRole]);
 
   // Fetch caregivers for selected recipient
   const { data: caregivers, isLoading: caregiversLoading } = useQuery({

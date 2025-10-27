@@ -246,7 +246,7 @@ function CareRecipientsSettingsComponent() {
                             <p className="text-sm text-gray-500 italic">No caregivers assigned yet</p>
                             <Link
                               to="/family/settings/caregivers"
-                              search={{ recipientId: recipient.id }}
+                              search={{ recipientId: recipient.id, action: 'add' }}
                               className="inline-flex items-center gap-1 text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors"
                             >
                               <Plus className="h-4 w-4" />

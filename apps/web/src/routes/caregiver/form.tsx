@@ -640,7 +640,8 @@ function CareLogFormComponent() {
     const morningRoutineData = wakeTime || mood || showerTime || hairWash;
     const medicationsData = medications.some(med => med.given || med.time);
     const mealsData = breakfastTime || breakfastAppetite > 0 || breakfastAmount > 0;
-    const vitalsData = bloodPressure || pulseRate || oxygenLevel || bloodSugar || vitalsTime;
+    // Vital signs: only count as hasData if at least ONE actual measurement is entered (not just time)
+    const vitalsData = bloodPressure || pulseRate || oxygenLevel || bloodSugar;
     const toiletingData = bowelFreq > 0 || urineFreq > 0;
     const fallRiskData = balanceIssues !== null || nearFalls !== 'none' || actualFalls !== 'none' ||
                          walkingPattern.length > 0 || freezingEpisodes !== 'none';
