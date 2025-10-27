@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --config wrangler.dev.toml --remote",
+    "dev": "wrangler dev --config wrangler.dev.toml --persist-to .wrangler/state",
     "build": "tsc && esbuild src/index.ts --bundle --outdir=dist --format=esm --external:crypto --external:stream --external:util",
     "deploy:dev": "wrangler deploy --env dev",
     "deploy:prod": "wrangler deploy --env production",
