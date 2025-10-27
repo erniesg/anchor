@@ -318,104 +318,127 @@ function DashboardComponent() {
               </Card>
             )}
 
-            {/* Sprint 2 Day 2: Low Fluid Warning Banner */}
-            {viewMode === 'today' && todayLog && todayLog.totalFluidIntake < 1000 && (
-              <Card data-testid="low-fluid-warning" className="border-2 border-yellow-300 bg-yellow-50">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">💧</span>
-                    <div className="flex-1">
-                      <p className="font-medium text-yellow-800">Low fluid intake today</p>
-                      <p className="text-sm text-yellow-700">
-                        Current: {todayLog.totalFluidIntake || 0}ml / Recommended: 1500-2000ml per day
-                      </p>
-                      <p className="text-xs text-yellow-600 mt-1">
-                        Dehydration risk - encourage more fluids
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Consolidated Health Alerts & Warnings */}
+            {viewMode === 'today' && todayLog && (() => {
+              const alerts = [];
 
-            {/* Sprint 2 Day 2: Swallowing Issues Alert */}
-            {viewMode === 'today' && todayLog?.fluids?.some((f: any) => f.swallowingIssues && f.swallowingIssues.length > 0) && (
-              <Card data-testid="swallowing-issues-alert" className="border-2 border-red-300 bg-red-50">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">⚠️</span>
-                    <div className="flex-1">
-                      <p className="font-medium text-red-800">Swallowing issues reported</p>
-                      <p className="text-sm text-red-700 mt-2">Observed during fluid intake:</p>
-                      <ul className="text-xs text-red-700 mt-2 space-y-1">
-                        {todayLog.fluids
-                          .filter((f: any) => f.swallowingIssues && f.swallowingIssues.length > 0)
-                          .map((f: any, idx: number) => (
-                            <li key={idx} className="bg-white p-2 rounded border border-red-200">
-                              <strong>{f.time} - {f.name}:</strong>{' '}
-                              <span className="capitalize">{f.swallowingIssues.join(', ')}</span>
-                            </li>
-                          ))}
-                      </ul>
-                      <p className="text-xs text-red-600 mt-2">
-                        Consider consulting with healthcare provider
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+              // Low fluid intake warning
+              if (todayLog.totalFluidIntake < 1000) {
+                alerts.push({
+                  id: 'low-fluid',
+                  severity: 'warning',
+                  icon: '💧',
+                  title: 'Low fluid intake today',
+                  description: `Current: ${todayLog.totalFluidIntake || 0}ml / Recommended: 1500-2000ml per day`,
+                  details: 'Dehydration risk - encourage more fluids',
+                });
+              }
 
-            {/* Sprint 2 Day 3: Poor Sleep Quality Warning */}
-            {viewMode === 'today' && todayLog && (todayLog.nightSleep?.quality === 'no_sleep' || todayLog.nightSleep?.quality === 'restless') && (
-              <Card data-testid="poor-sleep-warning" className="border-2 border-orange-300 bg-orange-50">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">😔</span>
-                    <div className="flex-1">
-                      <p className="font-medium text-orange-800">
-                        {todayLog.nightSleep.quality === 'no_sleep' ? 'No sleep reported last night' : 'Restless sleep last night'}
-                      </p>
-                      <p className="text-sm text-orange-700">
-                        Bedtime: {todayLog.nightSleep.bedtime}
-                        {todayLog.nightSleep.wakings > 0 && ` • Woke ${todayLog.nightSleep.wakings} ${todayLog.nightSleep.wakings === 1 ? 'time' : 'times'}`}
-                      </p>
-                      {todayLog.nightSleep.wakingReasons && todayLog.nightSleep.wakingReasons.length > 0 && (
-                        <p className="text-xs text-orange-600 mt-1">
-                          Reasons: {todayLog.nightSleep.wakingReasons.join(', ')}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+              // Swallowing issues alert
+              if (todayLog.fluids?.some((f: any) => f.swallowingIssues && f.swallowingIssues.length > 0)) {
+                const swallowingDetails = todayLog.fluids
+                  .filter((f: any) => f.swallowingIssues && f.swallowingIssues.length > 0)
+                  .map((f: any) => `${f.time} - ${f.name}: ${f.swallowingIssues.join(', ')}`)
+                  .join('; ');
+                alerts.push({
+                  id: 'swallowing',
+                  severity: 'critical',
+                  icon: '⚠️',
+                  title: 'Swallowing issues reported',
+                  description: swallowingDetails,
+                  details: 'Consider consulting with healthcare provider',
+                });
+              }
 
-            {/* Sprint 2 Day 3: Multiple Night Wakings Alert */}
-            {viewMode === 'today' && todayLog?.nightSleep?.wakings >= 3 && (
-              <Card data-testid="multiple-wakings-alert" className="border-2 border-yellow-300 bg-yellow-50">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">⚠️</span>
-                    <div className="flex-1">
-                      <p className="font-medium text-yellow-800">Frequent night wakings</p>
-                      <p className="text-sm text-yellow-700">
-                        Woke {todayLog.nightSleep.wakings} times during the night
-                      </p>
-                      {todayLog.nightSleep.wakingReasons && todayLog.nightSleep.wakingReasons.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {todayLog.nightSleep.wakingReasons.map((reason: string, idx: number) => (
-                            <span key={idx} className="text-xs bg-white px-2 py-1 rounded border border-yellow-300 text-yellow-800">
-                              {reason.charAt(0).toUpperCase() + reason.slice(1)}
-                            </span>
-                          ))}
+              // Poor sleep quality warning
+              if (todayLog.nightSleep && (todayLog.nightSleep.quality === 'no_sleep' || todayLog.nightSleep.quality === 'restless')) {
+                const sleepDetails = `Bedtime: ${todayLog.nightSleep.bedtime}${todayLog.nightSleep.wakings > 0 ? ` • Woke ${todayLog.nightSleep.wakings} ${todayLog.nightSleep.wakings === 1 ? 'time' : 'times'}` : ''}`;
+                alerts.push({
+                  id: 'poor-sleep',
+                  severity: 'attention',
+                  icon: '😔',
+                  title: todayLog.nightSleep.quality === 'no_sleep' ? 'No sleep reported last night' : 'Restless sleep last night',
+                  description: sleepDetails,
+                  details: todayLog.nightSleep.wakingReasons?.length > 0 ? `Reasons: ${todayLog.nightSleep.wakingReasons.join(', ')}` : null,
+                });
+              }
+
+              // Frequent night wakings alert
+              if (todayLog.nightSleep?.wakings >= 3) {
+                alerts.push({
+                  id: 'frequent-wakings',
+                  severity: 'warning',
+                  icon: '⚠️',
+                  title: 'Frequent night wakings',
+                  description: `Woke ${todayLog.nightSleep.wakings} times during the night`,
+                  details: todayLog.nightSleep.wakingReasons?.length > 0 ? todayLog.nightSleep.wakingReasons.map((r: string) => r.charAt(0).toUpperCase() + r.slice(1)).join(', ') : null,
+                });
+              }
+
+              return alerts.length > 0 ? (
+                <Card className="border-2 border-yellow-400">
+                  <CardHeader className="rounded-t-lg bg-yellow-50">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-yellow-800">⚠️ Health Alerts</h3>
+                      <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full font-medium">
+                        {alerts.length} {alerts.length === 1 ? 'alert' : 'alerts'}
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    <div className="space-y-3">
+                      {alerts.map((alert) => (
+                        <div
+                          key={alert.id}
+                          className={`p-3 rounded-lg border-2 ${
+                            alert.severity === 'critical'
+                              ? 'bg-red-50 border-red-300'
+                              : alert.severity === 'attention'
+                              ? 'bg-orange-50 border-orange-300'
+                              : 'bg-yellow-50 border-yellow-300'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="text-2xl flex-shrink-0">{alert.icon}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className={`font-medium ${
+                                alert.severity === 'critical'
+                                  ? 'text-red-800'
+                                  : alert.severity === 'attention'
+                                  ? 'text-orange-800'
+                                  : 'text-yellow-800'
+                              }`}>
+                                {alert.title}
+                              </p>
+                              <p className={`text-sm mt-1 ${
+                                alert.severity === 'critical'
+                                  ? 'text-red-700'
+                                  : alert.severity === 'attention'
+                                  ? 'text-orange-700'
+                                  : 'text-yellow-700'
+                              }`}>
+                                {alert.description}
+                              </p>
+                              {alert.details && (
+                                <p className={`text-xs mt-1 ${
+                                  alert.severity === 'critical'
+                                    ? 'text-red-600'
+                                    : alert.severity === 'attention'
+                                    ? 'text-orange-600'
+                                    : 'text-yellow-600'
+                                }`}>
+                                  {alert.details}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  </CardContent>
+                </Card>
+              ) : null;
+            })()}
 
             {/* Week View - Trend Charts */}
             {viewMode === 'week' && (
@@ -1863,11 +1886,11 @@ function DashboardComponent() {
                   ? 'border-2 border-green-300'
                   : 'border border-yellow-400'
               }>
-                <CardHeader className={
+                <CardHeader className={`rounded-t-lg ${
                   Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length === 6
                     ? 'bg-green-50'
                     : 'bg-yellow-50'
-                }>
+                }`}>
                   <h3 className={`font-semibold ${
                     Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length === 6
                       ? 'text-green-800'
