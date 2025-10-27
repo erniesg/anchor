@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -26,6 +26,27 @@ function OnboardingComponent() {
   const [condition, setCondition] = useState('');
   const [location, setLocation] = useState('');
   const [emergencyContact, setEmergencyContact] = useState('');
+
+  // Check if user already has care recipients - if yes, redirect to dashboard
+  const { data: existingRecipients } = useQuery({
+    queryKey: ['care-recipients-check'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      try {
+        return await authenticatedApiCall('/care-recipients', token);
+      } catch {
+        return null;
+      }
+    },
+  });
+
+  // Redirect to dashboard if user already has care recipients
+  useEffect(() => {
+    if (existingRecipients && existingRecipients.length > 0) {
+      navigate({ to: '/family/dashboard' });
+    }
+  }, [existingRecipients, navigate]);
 
   const createRecipientMutation = useMutation({
     mutationFn: async (data: CareRecipientData) => {

@@ -65,19 +65,40 @@ function DashboardComponent() {
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
-    const recipientData = localStorage.getItem('careRecipient');
     const tokenData = localStorage.getItem('token');
     if (userData) setUser(JSON.parse(userData));
-    if (recipientData) setCareRecipient(JSON.parse(recipientData));
     if (tokenData) setToken(tokenData);
   }, []);
 
-  // Redirect to onboarding if no care recipient exists
+  // Fetch care recipients from API to check onboarding status
+  const { data: careRecipients } = useQuery({
+    queryKey: ['care-recipients-onboarding-check'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      try {
+        return await authenticatedApiCall('/care-recipients', token);
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!user,
+  });
+
+  // Set care recipient from API data
   useEffect(() => {
-    if (user && !careRecipient) {
+    if (careRecipients && careRecipients.length > 0) {
+      setCareRecipient(careRecipients[0]);
+      localStorage.setItem('careRecipient', JSON.stringify(careRecipients[0]));
+    }
+  }, [careRecipients]);
+
+  // Redirect to onboarding if no care recipients exist (checked via API)
+  useEffect(() => {
+    if (user && careRecipients !== undefined && careRecipients !== null && careRecipients.length === 0) {
       navigate({ to: '/family/onboarding' });
     }
-  }, [user, careRecipient, navigate]);
+  }, [user, careRecipients, navigate]);
 
   // Calculate week range (Mon-Sun)
   const getWeekRange = (offset: number = 0) => {
