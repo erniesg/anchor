@@ -478,6 +478,7 @@ function CaregiversSettingsComponent() {
 
       {/* Search, Filter, and Sort Controls */}
       {selectedRecipientId && (
+      <>
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="bg-white rounded-lg border p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -866,6 +867,7 @@ function CaregiversSettingsComponent() {
           </Card>
         </div>
       )}
+      </>
       )}
 
       {/* Add Caregiver Modal */}
