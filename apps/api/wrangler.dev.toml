@@ -8,7 +8,7 @@ vars = { ENVIRONMENT = "dev" }
 [[d1_databases]]
 binding = "DB"
 database_name = "anchor-dev-db"
-database_id = ""
+database_id = "900612ba-b5f7-4593-ac31-8bb9abac2c11"
 migrations_dir = "../../packages/database/drizzle/migrations"
 
 [[r2_buckets]]
