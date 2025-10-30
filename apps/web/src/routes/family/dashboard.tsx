@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Settings } from 'lucide-react';
+import { Settings, ExternalLink, Copy, Check, Heart } from 'lucide-react';
 import { authenticatedApiCall } from '@/lib/api';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import {
@@ -170,6 +170,17 @@ function DashboardComponent() {
   // Sprint 2 Day 3: Sleep details toggle
   const [showSleepDetails, setShowSleepDetails] = useState(false);
 
+  // Caregiver login URL copy state
+  const [copiedLoginUrl, setCopiedLoginUrl] = useState(false);
+
+  const caregiverLoginUrl = window.location.origin + '/caregiver/login';
+
+  const copyCaregiverLoginUrl = () => {
+    navigator.clipboard.writeText(caregiverLoginUrl);
+    setCopiedLoginUrl(true);
+    setTimeout(() => setCopiedLoginUrl(false), 2000);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -320,6 +331,62 @@ function DashboardComponent() {
                       </p>
                     </div>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Caregiver Login Info Card */}
+            <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                      <Heart className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-bold text-blue-900 mb-2">
+                      Caregiver Login
+                    </h3>
+                    <p className="text-sm text-gray-700 mb-4">
+                      Share this URL with your caregivers so they can submit daily care reports:
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <a
+                        href={caregiverLoginUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 flex items-center gap-2 bg-white border-2 border-blue-300 rounded-lg px-4 py-3 hover:bg-blue-50 transition-colors group"
+                      >
+                        <span className="text-blue-700 font-semibold text-sm break-all">
+                          {caregiverLoginUrl}
+                        </span>
+                        <ExternalLink className="h-4 w-4 text-blue-600 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </a>
+                      <button
+                        onClick={copyCaregiverLoginUrl}
+                        className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                      >
+                        {copiedLoginUrl ? (
+                          <>
+                            <Check className="h-4 w-4" />
+                            <span>Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-3">
+                      💡 Caregivers need their Caregiver ID and PIN to login. You can manage caregivers in{' '}
+                      <Link to="/family/settings/caregivers" className="text-blue-600 hover:text-blue-700 font-semibold underline">
+                        Settings → Caregivers
+                      </Link>
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

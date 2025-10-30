@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
-import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal, Edit, Plus, Heart } from 'lucide-react';
+import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal, Edit, Plus, Heart, ExternalLink } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { authenticatedApiCall } from '@/lib/api';
 
@@ -86,8 +86,19 @@ function CaregiversSettingsComponent() {
   const [sortBy, setSortBy] = useState<'name' | 'date'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
+  // Caregiver login URL copy state
+  const [copiedLoginUrl, setCopiedLoginUrl] = useState(false);
+
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+
+  const caregiverLoginUrl = typeof window !== 'undefined' ? window.location.origin + '/caregiver/login' : '';
+
+  const copyCaregiverLoginUrl = () => {
+    navigator.clipboard.writeText(caregiverLoginUrl);
+    setCopiedLoginUrl(true);
+    setTimeout(() => setCopiedLoginUrl(false), 2000);
+  };
 
   // Fetch all care recipients
   const { data: careRecipients, isLoading: recipientsLoading } = useQuery({
@@ -444,6 +455,61 @@ function CaregiversSettingsComponent() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Caregiver Login Info Card */}
+      <div className="max-w-7xl mx-auto px-4 pt-6">
+        <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                  <Heart className="h-5 w-5 text-white" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-blue-900 mb-2">
+                  Where Caregivers Login
+                </h3>
+                <p className="text-sm text-gray-700 mb-3">
+                  Share this URL with caregivers so they can submit daily care reports:
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <a
+                    href={caregiverLoginUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center gap-2 bg-white border-2 border-blue-300 rounded-lg px-3 py-2 hover:bg-blue-50 transition-colors group"
+                  >
+                    <span className="text-blue-700 font-semibold text-sm break-all">
+                      {caregiverLoginUrl}
+                    </span>
+                    <ExternalLink className="h-4 w-4 text-blue-600 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </a>
+                  <button
+                    onClick={copyCaregiverLoginUrl}
+                    className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                  >
+                    {copiedLoginUrl ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        <span>Copy URL</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-600 mt-2">
+                  💡 Each caregiver needs their unique Caregiver ID and PIN to login
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Care Recipient Selector */}
