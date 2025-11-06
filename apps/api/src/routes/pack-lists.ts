@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AppContext } from '../index';
 import { packLists } from '@anchor/database/schema';
 import { eq } from 'drizzle-orm';
-import { familyMemberAccess } from '../middleware/rbac';
+import { authFamilyOrCaregiver } from '../middleware/auth';
 
 const packListsRoute = new Hono<AppContext>();
 
@@ -28,7 +28,7 @@ const upsertPackListSchema = z.object({
  * Get pack list for a care recipient
  * Accessible by family members and caregivers
  */
-packListsRoute.get('/recipient/:recipientId', ...familyMemberAccess, async (c) => {
+packListsRoute.get('/recipient/:recipientId', authFamilyOrCaregiver, async (c) => {
   try {
     const recipientId = c.req.param('recipientId');
     const db = c.get('db');
@@ -62,13 +62,14 @@ packListsRoute.get('/recipient/:recipientId', ...familyMemberAccess, async (c) =
  * Create or update pack list
  * Accessible by family members (creates/full update) and caregivers (updates only)
  */
-packListsRoute.post('/', ...familyMemberAccess, async (c) => {
+packListsRoute.post('/', authFamilyOrCaregiver, async (c) => {
   try {
     const body = await c.req.json();
     const data = upsertPackListSchema.parse(body);
 
     const db = c.get('db');
-    const userId = c.get('userId');
+    // Get userId (family member) or null if caregiver
+    const userId = c.get('userId') || null;
 
     // Check if pack list already exists
     const existing = await db
@@ -122,11 +123,11 @@ packListsRoute.post('/', ...familyMemberAccess, async (c) => {
  * Mark pack list as verified
  * Used when someone checks and confirms all items are packed
  */
-packListsRoute.post('/:recipientId/verify', ...familyMemberAccess, async (c) => {
+packListsRoute.post('/:recipientId/verify', authFamilyOrCaregiver, async (c) => {
   try {
     const recipientId = c.req.param('recipientId');
     const db = c.get('db');
-    const userId = c.get('userId');
+    const userId = c.get('userId') || null;
 
     const updated = await db
       .update(packLists)
@@ -153,9 +154,9 @@ packListsRoute.post('/:recipientId/verify', ...familyMemberAccess, async (c) => 
 
 /**
  * Delete pack list (rare, but available)
- * Only family admins should be able to do this
+ * Accessible by both family and caregivers for now
  */
-packListsRoute.delete('/:recipientId', ...familyMemberAccess, async (c) => {
+packListsRoute.delete('/:recipientId', authFamilyOrCaregiver, async (c) => {
   try {
     const recipientId = c.req.param('recipientId');
     const db = c.get('db');
