@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAutoSave } from '@/hooks/use-auto-save';
-import { Save, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Save, CheckCircle, AlertCircle, Clock, Backpack } from 'lucide-react';
 import { authenticatedApiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/caregiver/form')({
@@ -745,8 +745,19 @@ function CareLogFormComponent() {
               <p className="text-sm text-gray-600">Today: {new Date().toLocaleDateString()}</p>
             </div>
 
-            {/* Auto-save status */}
+            {/* Auto-save status and Quick Links */}
             <div className="flex items-center gap-3">
+              {/* Pack List Quick Link */}
+              <Button
+                onClick={() => navigate({ to: '/caregiver/pack-list' })}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Backpack className="h-4 w-4" />
+                <span className="hidden sm:inline">Pack List</span>
+              </Button>
+
               {logStatus === 'draft' && (
                 <div className="flex items-center gap-2 text-sm">
                   {isSaving ? (
