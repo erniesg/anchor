@@ -64,7 +64,7 @@ test.describe('Caregiver Form Submission', () => {
     // Section 3: Meals
     console.log('Filling Section 3: Meals');
     await page.locator('input[type="time"]').first().fill('09:30');
-    let sliders = await page.locator('input[type="range"]').all();
+    const sliders = await page.locator('input[type="range"]').all();
     if (sliders.length >= 2) {
       await sliders[0].fill('4'); // appetite
       await sliders[1].fill('75'); // amount eaten
@@ -175,7 +175,7 @@ test.describe('Caregiver Form Submission', () => {
     // Navigate through remaining sections (10-13) until we find Submit button
     console.log('Navigating through remaining sections...');
     let sectionCount = 10;
-    let maxAttempts = 20; // Safety limit (13 sections + buffer)
+    const maxAttempts = 20; // Safety limit (13 sections + buffer)
 
     for (let i = 0; i < maxAttempts; i++) {
       await page.waitForTimeout(800);

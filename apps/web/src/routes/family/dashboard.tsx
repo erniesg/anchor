@@ -382,7 +382,7 @@ function DashboardComponent() {
                     </div>
                     <p className="text-xs text-gray-600 mt-3">
                       💡 Caregivers need their Caregiver ID and PIN to login. You can manage caregivers in{' '}
-                      <Link to="/family/settings/caregivers" className="text-blue-600 hover:text-blue-700 font-semibold underline">
+                      <Link to="/family/settings/caregivers" search={{ recipientId: undefined, action: undefined }} className="text-blue-600 hover:text-blue-700 font-semibold underline">
                         Settings → Caregivers
                       </Link>
                     </p>
@@ -1755,7 +1755,7 @@ function DashboardComponent() {
                           <div className="flex justify-between items-center">
                             <span className="text-gray-600">Health Issues:</span>
                             <span className="font-medium text-xs text-orange-600 capitalize">
-                              {todayLog.oralCare.oralHealthIssues.filter(i => i !== 'none').join(', ').replace(/_/g, ' ')}
+                              {todayLog.oralCare.oralHealthIssues.filter((i: string) => i !== 'none').join(', ').replace(/_/g, ' ')}
                             </span>
                           </div>
                         )}

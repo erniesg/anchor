@@ -234,7 +234,7 @@ function CareRecipientsSettingsComponent() {
                             </div>
                             <Link
                               to="/family/settings/caregivers"
-                              search={{ recipientId: recipient.id }}
+                              search={{ recipientId: recipient.id, action: undefined }}
                               className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium"
                             >
                               <UserCog className="h-4 w-4" />

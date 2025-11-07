@@ -135,8 +135,8 @@ const validateVitals = (
 const calculateDuration = (startTime: string, endTime: string): number => {
   if (!startTime || !endTime) return 0;
 
-  const [startHour, startMin] = startTime.split(':').map(Number);
-  const [endHour, endMin] = endTime.split(':').map(Number);
+  const [startHour = 0, startMin = 0] = startTime.split(':').map(Number);
+  const [endHour = 0, endMin = 0] = endTime.split(':').map(Number);
 
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
@@ -224,7 +224,7 @@ function CareLogFormComponent() {
   const [urineConcerns, setUrineConcerns] = useState('');
 
   // Legacy (to be removed after migration)
-  const [diaperChanges, setDiaperChanges] = useState(0);
+  const [diaperChanges, _setDiaperChanges] = useState(0);
 
   // Sprint 3 Day 1: Spiritual & Emotional Well-Being
   const [prayerStartTime, setPrayerStartTime] = useState('');
@@ -235,15 +235,15 @@ function CareLogFormComponent() {
   const [socialInteraction, setSocialInteraction] = useState<'engaged' | 'responsive' | 'withdrawn' | 'aggressive_hostile' | ''>('');
 
   // Sprint 3 Day 2: Physical Activity & Exercise (simplified version - keeping for backward compatibility)
-  const [exerciseDuration, setExerciseDuration] = useState<number | null>(null);
-  const [exerciseType, setExerciseType] = useState<string[]>([]);
-  const [walkingDistance, setWalkingDistance] = useState('');
-  const [assistanceLevel, setAssistanceLevel] = useState<'none' | 'minimal' | 'moderate' | 'full' | ''>('');
-  const [painDuringActivity, setPainDuringActivity] = useState<'none' | 'mild' | 'moderate' | 'severe' | ''>('');
-  const [energyAfterActivity, setEnergyAfterActivity] = useState<'energized' | 'tired' | 'exhausted' | 'same' | ''>('');
-  const [participationWillingness, setParticipationWillingness] = useState<'enthusiastic' | 'willing' | 'reluctant' | 'refused' | ''>('');
-  const [equipmentUsed, setEquipmentUsed] = useState<string[]>([]);
-  const [mobilityNotes, setMobilityNotes] = useState('');
+  const [exerciseDuration, _setExerciseDuration] = useState<number | null>(null);
+  const [exerciseType, _setExerciseType] = useState<string[]>([]);
+  const [walkingDistance, _setWalkingDistance] = useState('');
+  const [assistanceLevel, _setAssistanceLevel] = useState<'none' | 'minimal' | 'moderate' | 'full' | ''>('');
+  const [painDuringActivity, _setPainDuringActivity] = useState<'none' | 'mild' | 'moderate' | 'severe' | ''>('');
+  const [energyAfterActivity, _setEnergyAfterActivity] = useState<'energized' | 'tired' | 'exhausted' | 'same' | ''>('');
+  const [participationWillingness, _setParticipationWillingness] = useState<'enthusiastic' | 'willing' | 'reluctant' | 'refused' | ''>('');
+  const [equipmentUsed, _setEquipmentUsed] = useState<string[]>([]);
+  const [mobilityNotes, _setMobilityNotes] = useState('');
 
   // Sprint 3 Day 4: Detailed Exercise Sessions
   // Morning Exercise Session
@@ -287,14 +287,14 @@ function CareLogFormComponent() {
   });
 
   // Sprint 3 Day 3: Oral Care & Hygiene
-  const [teethBrushed, setTeethBrushed] = useState(false);
-  const [timesBrushed, setTimesBrushed] = useState<number | null>(null);
-  const [denturesCleaned, setDenturesCleaned] = useState(false);
-  const [mouthRinsed, setMouthRinsed] = useState(false);
-  const [oralAssistanceLevel, setOralAssistanceLevel] = useState<'none' | 'minimal' | 'moderate' | 'full' | ''>('');
-  const [oralHealthIssues, setOralHealthIssues] = useState<string[]>([]);
-  const [painOrBleeding, setPainOrBleeding] = useState(false);
-  const [oralCareNotes, setOralCareNotes] = useState('');
+  const [teethBrushed, _setTeethBrushed] = useState(false);
+  const [timesBrushed, _setTimesBrushed] = useState<number | null>(null);
+  const [denturesCleaned, _setDenturesCleaned] = useState(false);
+  const [mouthRinsed, _setMouthRinsed] = useState(false);
+  const [oralAssistanceLevel, _setOralAssistanceLevel] = useState<'none' | 'minimal' | 'moderate' | 'full' | ''>('');
+  const [oralHealthIssues, _setOralHealthIssues] = useState<string[]>([]);
+  const [painOrBleeding, _setPainOrBleeding] = useState(false);
+  const [oralCareNotes, _setOralCareNotes] = useState('');
 
   // Sprint 3 Day 5: Special Concerns & Incidents
   const [priorityLevel, setPriorityLevel] = useState<'emergency' | 'urgent' | 'routine' | ''>('');
@@ -348,7 +348,7 @@ function CareLogFormComponent() {
   });
 
   // Get care recipient ID (mock for now - should come from caregiver session)
-  const careRecipientId = localStorage.getItem('careRecipientId') || '';
+  const _careRecipientId = localStorage.getItem('careRecipientId') || '';
   const caregiverToken = localStorage.getItem('caregiverToken') || '';
 
   // Get care recipient demographics for personalized validation
@@ -367,10 +367,8 @@ function CareLogFormComponent() {
   const formData = useMemo(() => {
     const recipientId = careRecipient.id;
 
-    // Debug logging
     if (!recipientId) {
       console.error('No care recipient ID found in localStorage');
-      console.error('careRecipient:', careRecipient);
     }
 
     // Helper to omit empty strings and null/undefined values
@@ -574,12 +572,11 @@ function CareLogFormComponent() {
     onSuccess: () => {
       setLogStatus('submitted');
       // Don't use alert() - let the visual success message show instead
-      console.log('✅ Care log submitted successfully');
     },
   });
 
   // Auto-save hook
-  const { lastSaved, isSaving, saveError } = useAutoSave({
+  const { lastSaved, isSaving, saveError: _saveError } = useAutoSave({
     data: formData,
     onSave: async (data) => {
       await saveDraftMutation.mutateAsync(data);
@@ -600,7 +597,6 @@ function CareLogFormComponent() {
 
       // Save current draft first if needed
       if (!careLogId) {
-        console.log('Creating draft before submit...');
         const draft = await saveDraftMutation.mutateAsync(formData);
         if (draft?.id) {
           setCareLogId(draft.id);
@@ -713,7 +709,7 @@ function CareLogFormComponent() {
   const totalSections = Object.keys(sectionValidation).length;
   const completionPercentage = Math.round((sectionsWithData / totalSections) * 100);
 
-  const incompleteSections = Object.entries(sectionValidation)
+  const _incompleteSections = Object.entries(sectionValidation)
     .filter(([_, validation]) => !validation.complete)
     .map(([id]) => parseInt(id));
 
@@ -920,7 +916,7 @@ function CareLogFormComponent() {
                           const newMeds = [...medications];
                           newMeds[idx].given = e.target.checked;
                           if (e.target.checked && !newMeds[idx].time) {
-                            newMeds[idx].time = new Date().toTimeString().slice(0, 5);
+                            newMeds[idx].time = new Date().toTimeString().slice(0, 5) as any;
                           }
                           setMedications(newMeds);
                         }}
@@ -955,7 +951,7 @@ function CareLogFormComponent() {
                       value={med.time || ''}
                       onChange={(e) => {
                         const newMeds = [...medications];
-                        newMeds[idx].time = e.target.value;
+                        newMeds[idx].time = e.target.value as any;
                         setMedications(newMeds);
                       }}
                     />

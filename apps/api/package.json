@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/"
+    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint src/"
   },
   "dependencies": {
     "@anchor/database": "workspace:*",
@@ -29,8 +29,11 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.20.0",
+    "@typescript-eslint/parser": "^8.20.0",
     "better-sqlite3": "^12.4.1",
     "esbuild": "^0.24.2",
+    "eslint": "^9.39.1",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8",
     "wrangler": "^3.97.0"

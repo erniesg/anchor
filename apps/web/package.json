@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "deploy:dev": "pnpm build:dev && wrangler deploy --env dev",
     "deploy:prod": "pnpm build:prod && wrangler deploy --env production",
-    "lint": "eslint . --ext ts,tsx",
+    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext ts,tsx",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
