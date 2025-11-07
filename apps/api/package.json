@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/"
+    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint src/"
   },
   "dependencies": {
     "@anchor/database": "workspace:*",
