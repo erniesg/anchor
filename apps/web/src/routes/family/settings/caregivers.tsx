@@ -586,21 +586,21 @@ function CaregiversSettingsComponent() {
             {/* Filter by Status */}
             <div className="flex gap-2">
               <Button
-                variant={statusFilter === 'all' ? 'default' : 'outline'}
+                variant={statusFilter === 'all' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter('all')}
               >
                 All
               </Button>
               <Button
-                variant={statusFilter === 'active' ? 'default' : 'outline'}
+                variant={statusFilter === 'active' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter('active')}
               >
                 Active
               </Button>
               <Button
-                variant={statusFilter === 'inactive' ? 'default' : 'outline'}
+                variant={statusFilter === 'inactive' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter('inactive')}
               >
