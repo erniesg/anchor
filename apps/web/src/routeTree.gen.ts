@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FamilyTrendsRouteImport } from './routes/family/trends'
 import { Route as FamilyDashboardRouteImport } from './routes/family/dashboard'
+import { Route as CaregiverPackListRouteImport } from './routes/caregiver/pack-list'
 import { Route as CaregiverLoginRouteImport } from './routes/caregiver/login'
 import { Route as CaregiverFormRouteImport } from './routes/caregiver/form'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
@@ -19,6 +20,7 @@ import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as FamilySettingsIndexRouteImport } from './routes/family/settings/index'
 import { Route as FamilyOnboardingIndexRouteImport } from './routes/family/onboarding/index'
 import { Route as FamilySettingsProfileRouteImport } from './routes/family/settings/profile'
+import { Route as FamilySettingsPackListRouteImport } from './routes/family/settings/pack-list'
 import { Route as FamilySettingsFamilyMembersRouteImport } from './routes/family/settings/family-members'
 import { Route as FamilySettingsCaregiversRouteImport } from './routes/family/settings/caregivers'
 import { Route as FamilySettingsCareRecipientsRouteImport } from './routes/family/settings/care-recipients'
@@ -37,6 +39,11 @@ const FamilyTrendsRoute = FamilyTrendsRouteImport.update({
 const FamilyDashboardRoute = FamilyDashboardRouteImport.update({
   id: '/family/dashboard',
   path: '/family/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CaregiverPackListRoute = CaregiverPackListRouteImport.update({
+  id: '/caregiver/pack-list',
+  path: '/caregiver/pack-list',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CaregiverLoginRoute = CaregiverLoginRouteImport.update({
@@ -74,6 +81,11 @@ const FamilySettingsProfileRoute = FamilySettingsProfileRouteImport.update({
   path: '/family/settings/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FamilySettingsPackListRoute = FamilySettingsPackListRouteImport.update({
+  id: '/family/settings/pack-list',
+  path: '/family/settings/pack-list',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FamilySettingsFamilyMembersRoute =
   FamilySettingsFamilyMembersRouteImport.update({
     id: '/family/settings/family-members',
@@ -105,12 +117,14 @@ export interface FileRoutesByFullPath {
   '/auth/signup': typeof AuthSignupRoute
   '/caregiver/form': typeof CaregiverFormRoute
   '/caregiver/login': typeof CaregiverLoginRoute
+  '/caregiver/pack-list': typeof CaregiverPackListRoute
   '/family/dashboard': typeof FamilyDashboardRoute
   '/family/trends': typeof FamilyTrendsRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
   '/family/settings/care-recipients': typeof FamilySettingsCareRecipientsRoute
   '/family/settings/caregivers': typeof FamilySettingsCaregiversRoute
   '/family/settings/family-members': typeof FamilySettingsFamilyMembersRoute
+  '/family/settings/pack-list': typeof FamilySettingsPackListRoute
   '/family/settings/profile': typeof FamilySettingsProfileRoute
   '/family/onboarding': typeof FamilyOnboardingIndexRoute
   '/family/settings': typeof FamilySettingsIndexRoute
@@ -121,12 +135,14 @@ export interface FileRoutesByTo {
   '/auth/signup': typeof AuthSignupRoute
   '/caregiver/form': typeof CaregiverFormRoute
   '/caregiver/login': typeof CaregiverLoginRoute
+  '/caregiver/pack-list': typeof CaregiverPackListRoute
   '/family/dashboard': typeof FamilyDashboardRoute
   '/family/trends': typeof FamilyTrendsRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
   '/family/settings/care-recipients': typeof FamilySettingsCareRecipientsRoute
   '/family/settings/caregivers': typeof FamilySettingsCaregiversRoute
   '/family/settings/family-members': typeof FamilySettingsFamilyMembersRoute
+  '/family/settings/pack-list': typeof FamilySettingsPackListRoute
   '/family/settings/profile': typeof FamilySettingsProfileRoute
   '/family/onboarding': typeof FamilyOnboardingIndexRoute
   '/family/settings': typeof FamilySettingsIndexRoute
@@ -138,12 +154,14 @@ export interface FileRoutesById {
   '/auth/signup': typeof AuthSignupRoute
   '/caregiver/form': typeof CaregiverFormRoute
   '/caregiver/login': typeof CaregiverLoginRoute
+  '/caregiver/pack-list': typeof CaregiverPackListRoute
   '/family/dashboard': typeof FamilyDashboardRoute
   '/family/trends': typeof FamilyTrendsRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
   '/family/settings/care-recipients': typeof FamilySettingsCareRecipientsRoute
   '/family/settings/caregivers': typeof FamilySettingsCaregiversRoute
   '/family/settings/family-members': typeof FamilySettingsFamilyMembersRoute
+  '/family/settings/pack-list': typeof FamilySettingsPackListRoute
   '/family/settings/profile': typeof FamilySettingsProfileRoute
   '/family/onboarding/': typeof FamilyOnboardingIndexRoute
   '/family/settings/': typeof FamilySettingsIndexRoute
@@ -156,12 +174,14 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/caregiver/form'
     | '/caregiver/login'
+    | '/caregiver/pack-list'
     | '/family/dashboard'
     | '/family/trends'
     | '/family/onboarding/caregiver'
     | '/family/settings/care-recipients'
     | '/family/settings/caregivers'
     | '/family/settings/family-members'
+    | '/family/settings/pack-list'
     | '/family/settings/profile'
     | '/family/onboarding'
     | '/family/settings'
@@ -172,12 +192,14 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/caregiver/form'
     | '/caregiver/login'
+    | '/caregiver/pack-list'
     | '/family/dashboard'
     | '/family/trends'
     | '/family/onboarding/caregiver'
     | '/family/settings/care-recipients'
     | '/family/settings/caregivers'
     | '/family/settings/family-members'
+    | '/family/settings/pack-list'
     | '/family/settings/profile'
     | '/family/onboarding'
     | '/family/settings'
@@ -188,12 +210,14 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/caregiver/form'
     | '/caregiver/login'
+    | '/caregiver/pack-list'
     | '/family/dashboard'
     | '/family/trends'
     | '/family/onboarding/caregiver'
     | '/family/settings/care-recipients'
     | '/family/settings/caregivers'
     | '/family/settings/family-members'
+    | '/family/settings/pack-list'
     | '/family/settings/profile'
     | '/family/onboarding/'
     | '/family/settings/'
@@ -205,12 +229,14 @@ export interface RootRouteChildren {
   AuthSignupRoute: typeof AuthSignupRoute
   CaregiverFormRoute: typeof CaregiverFormRoute
   CaregiverLoginRoute: typeof CaregiverLoginRoute
+  CaregiverPackListRoute: typeof CaregiverPackListRoute
   FamilyDashboardRoute: typeof FamilyDashboardRoute
   FamilyTrendsRoute: typeof FamilyTrendsRoute
   FamilyOnboardingCaregiverRoute: typeof FamilyOnboardingCaregiverRoute
   FamilySettingsCareRecipientsRoute: typeof FamilySettingsCareRecipientsRoute
   FamilySettingsCaregiversRoute: typeof FamilySettingsCaregiversRoute
   FamilySettingsFamilyMembersRoute: typeof FamilySettingsFamilyMembersRoute
+  FamilySettingsPackListRoute: typeof FamilySettingsPackListRoute
   FamilySettingsProfileRoute: typeof FamilySettingsProfileRoute
   FamilyOnboardingIndexRoute: typeof FamilyOnboardingIndexRoute
   FamilySettingsIndexRoute: typeof FamilySettingsIndexRoute
@@ -237,6 +263,13 @@ declare module '@tanstack/react-router' {
       path: '/family/dashboard'
       fullPath: '/family/dashboard'
       preLoaderRoute: typeof FamilyDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/caregiver/pack-list': {
+      id: '/caregiver/pack-list'
+      path: '/caregiver/pack-list'
+      fullPath: '/caregiver/pack-list'
+      preLoaderRoute: typeof CaregiverPackListRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/caregiver/login': {
@@ -288,6 +321,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FamilySettingsProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/family/settings/pack-list': {
+      id: '/family/settings/pack-list'
+      path: '/family/settings/pack-list'
+      fullPath: '/family/settings/pack-list'
+      preLoaderRoute: typeof FamilySettingsPackListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/family/settings/family-members': {
       id: '/family/settings/family-members'
       path: '/family/settings/family-members'
@@ -325,12 +365,14 @@ const rootRouteChildren: RootRouteChildren = {
   AuthSignupRoute: AuthSignupRoute,
   CaregiverFormRoute: CaregiverFormRoute,
   CaregiverLoginRoute: CaregiverLoginRoute,
+  CaregiverPackListRoute: CaregiverPackListRoute,
   FamilyDashboardRoute: FamilyDashboardRoute,
   FamilyTrendsRoute: FamilyTrendsRoute,
   FamilyOnboardingCaregiverRoute: FamilyOnboardingCaregiverRoute,
   FamilySettingsCareRecipientsRoute: FamilySettingsCareRecipientsRoute,
   FamilySettingsCaregiversRoute: FamilySettingsCaregiversRoute,
   FamilySettingsFamilyMembersRoute: FamilySettingsFamilyMembersRoute,
+  FamilySettingsPackListRoute: FamilySettingsPackListRoute,
   FamilySettingsProfileRoute: FamilySettingsProfileRoute,
   FamilyOnboardingIndexRoute: FamilyOnboardingIndexRoute,
   FamilySettingsIndexRoute: FamilySettingsIndexRoute,

@@ -365,6 +365,46 @@ export const medicationSchedules = sqliteTable('medication_schedules', {
 });
 
 /**
+ * Pack Lists Table (Hospital Bag / Emergency Bag)
+ * One-time setup list that tracks items needed for emergency hospital visits
+ * - Created once per care recipient
+ * - Can be updated by family admin or caregivers as needed
+ * - Separate from daily tracking
+ */
+export const packLists = sqliteTable('pack_lists', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  careRecipientId: text('care_recipient_id')
+    .references(() => careRecipients.id, { onDelete: 'cascade' })
+    .notNull()
+    .unique(), // One pack list per care recipient
+
+  // Pack list items stored as JSON array
+  items: text('items', { mode: 'json' }).$type<Array<{
+    id: string;
+    name: string;
+    packed: boolean;
+    category: 'documents' | 'medications' | 'clothing' | 'toiletries' | 'medical_equipment' | 'other';
+    priority: 'essential' | 'important' | 'optional';
+    notes?: string;
+    quantity?: string; // e.g., "2", "1 week supply"
+  }>>().default([]).notNull(),
+
+  // Tracking
+  lastVerifiedAt: integer('last_verified_at', { mode: 'timestamp' }),
+  lastVerifiedBy: text('last_verified_by').references(() => users.id),
+
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  createdBy: text('created_by').references(() => users.id),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date())
+    .$onUpdateFn(() => new Date())
+    .notNull(),
+  updatedBy: text('updated_by').references(() => users.id),
+});
+
+/**
  * Alerts Table
  * System-generated and manual alerts for family members
  */
@@ -396,5 +436,6 @@ export const schema = {
   caregivers,
   careLogs,
   medicationSchedules,
+  packLists,
   alerts,
 };

@@ -203,3 +203,64 @@ export const optionalAuth = createMiddleware<AppContext>(async (c, next) => {
   await next();
 });
 
+/**
+ * Authenticate either family member OR caregiver (required)
+ * Useful for resources that both family and caregivers should access
+ * Sets either userId/userRole OR caregiverId/careRecipientId
+ */
+export const authFamilyOrCaregiver = createMiddleware<AppContext>(async (c, next) => {
+  const authHeader = c.req.header('Authorization');
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Unauthorized', message: 'Missing or invalid authorization header' }, 401);
+  }
+
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  const db = c.get('db');
+
+  try {
+    // Try to verify as JWT token
+    const payload = await verify(token, c.env.JWT_SECRET);
+
+    // Check if it's a family member token (has 'sub' and 'role')
+    if (payload.sub && payload.role) {
+      const userId = payload.sub as string;
+      const role = payload.role as 'family_admin' | 'family_member';
+
+      const active = await isActiveUser(db, userId);
+      if (!active) {
+        return c.json({ error: 'Unauthorized', message: 'User account is inactive or deleted' }, 401);
+      }
+
+      c.set('userId', userId);
+      c.set('userRole', role);
+      await next();
+      return;
+    }
+
+    // Check if it's a caregiver token (has 'caregiverId')
+    if (payload.caregiverId) {
+      const caregiverId = payload.caregiverId as string;
+      const careRecipientId = payload.careRecipientId as string | undefined;
+
+      const active = await isActiveCaregiver(db, caregiverId);
+      if (!active) {
+        return c.json({ error: 'Unauthorized', message: 'Caregiver account is inactive' }, 401);
+      }
+
+      c.set('caregiverId', caregiverId);
+      if (careRecipientId) {
+        c.set('careRecipientId', careRecipientId);
+      }
+      await next();
+      return;
+    }
+
+    // Token doesn't match either format
+    return c.json({ error: 'Unauthorized', message: 'Invalid token format' }, 401);
+  } catch (error) {
+    console.error('Authentication failed:', error);
+    return c.json({ error: 'Unauthorized', message: 'Invalid or expired token' }, 401);
+  }
+});
+

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
-import { Heart, ArrowLeft, Plus, Edit2, UserCog } from 'lucide-react';
+import { Heart, ArrowLeft, Plus, Edit2, UserCog, Backpack } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { authenticatedApiCall, apiCall } from '@/lib/api';
 
@@ -254,6 +254,21 @@ function CareRecipientsSettingsComponent() {
                             </Link>
                           </div>
                         )}
+                      </div>
+
+                      {/* Pack List Section */}
+                      <div className="pt-3 border-t mt-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700">Hospital Emergency Bag</span>
+                        </div>
+                        <Link
+                          to="/family/settings/pack-list"
+                          search={{ recipientId: recipient.id, recipientName: recipient.name }}
+                          className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1 font-medium"
+                        >
+                          <Backpack className="h-4 w-4" />
+                          Manage Pack List →
+                        </Link>
                       </div>
                     </div>
                   </CardContent>
