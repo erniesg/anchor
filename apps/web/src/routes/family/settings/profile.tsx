@@ -75,13 +75,13 @@ function ProfileSettingsComponent() {
 
   // Initialize form when profile loads
   useEffect(() => {
-    if (profile) {
-      setName(profile.name);
-      setEmail(profile.email);
-      setPhone(profile.phone || '');
-      setTimezone(profile.timezone);
-      setEmailNotifications(profile.emailNotifications);
-      setSmsNotifications(profile.smsNotifications);
+    if (profile && typeof profile === 'object') {
+      setName((profile as any).name);
+      setEmail((profile as any).email);
+      setPhone((profile as any).phone || '');
+      setTimezone((profile as any).timezone);
+      setEmailNotifications((profile as any).emailNotifications);
+      setSmsNotifications((profile as any).smsNotifications);
     }
   }, [profile]);
 
@@ -134,13 +134,13 @@ function ProfileSettingsComponent() {
   };
 
   const handleCancel = () => {
-    if (profile) {
-      setName(profile.name);
-      setEmail(profile.email);
-      setPhone(profile.phone || '');
-      setTimezone(profile.timezone);
-      setEmailNotifications(profile.emailNotifications);
-      setSmsNotifications(profile.smsNotifications);
+    if (profile && typeof profile === 'object') {
+      setName((profile as any).name);
+      setEmail((profile as any).email);
+      setPhone((profile as any).phone || '');
+      setTimezone((profile as any).timezone);
+      setEmailNotifications((profile as any).emailNotifications);
+      setSmsNotifications((profile as any).smsNotifications);
     }
     setIsEditing(false);
   };
