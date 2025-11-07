@@ -12,6 +12,8 @@
     "moduleDetection": "force",
     "noEmit": true,
     "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
