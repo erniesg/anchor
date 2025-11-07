@@ -916,7 +916,7 @@ function CareLogFormComponent() {
                           const newMeds = [...medications];
                           newMeds[idx].given = e.target.checked;
                           if (e.target.checked && !newMeds[idx].time) {
-                            newMeds[idx].time = new Date().toTimeString().slice(0, 5);
+                            newMeds[idx].time = new Date().toTimeString().slice(0, 5) as any;
                           }
                           setMedications(newMeds);
                         }}
@@ -951,7 +951,7 @@ function CareLogFormComponent() {
                       value={med.time || ''}
                       onChange={(e) => {
                         const newMeds = [...medications];
-                        newMeds[idx].time = e.target.value;
+                        newMeds[idx].time = e.target.value as any;
                         setMedications(newMeds);
                       }}
                     />
