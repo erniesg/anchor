@@ -45,8 +45,8 @@ const afternoonRestSchema = z.object({
   notes: z.string().optional(),
 }).refine((data) => {
   // Validate start < end
-  const [startHour = 0, startMin = 0] = data.startTime.split(':').map(Number);
-  const [endHour = 0, endMin = 0] = data.endTime.split(':').map(Number);
+  const [startHour, startMin] = data.startTime.split(':').map(Number);
+  const [endHour, endMin] = data.endTime.split(':').map(Number);
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
   return startMinutes < endMinutes;
@@ -76,8 +76,8 @@ const unaccompaniedTimePeriodSchema = z.object({
   notes: z.string().optional(),
 }).refine((data) => {
   // Validate start < end
-  const [startHour = 0, startMin = 0] = data.startTime.split(':').map(Number);
-  const [endHour = 0, endMin = 0] = data.endTime.split(':').map(Number);
+  const [startHour, startMin] = data.startTime.split(':').map(Number);
+  const [endHour, endMin] = data.endTime.split(':').map(Number);
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
   return startMinutes < endMinutes;
