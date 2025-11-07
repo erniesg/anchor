@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PackList, PackListItem } from '@/components/PackList';
+import { PackList } from '@/components/PackList';
+import type { PackListItem } from '@/components/PackList';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { ArrowLeft, Backpack, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
