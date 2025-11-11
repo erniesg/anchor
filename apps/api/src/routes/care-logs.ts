@@ -344,30 +344,37 @@ const createCareLogSchema = z.object({
 });
 
 // Sprint 2 Day 1: Helper function to calculate total fluid intake
-function calculateTotalFluidIntake(fluids: any[]): number {
-  if (!fluids || fluids.length === 0) return 0;
-  return fluids.reduce((total, fluid) => total + (fluid.amountMl || 0), 0);
+function calculateTotalFluidIntake(fluids: unknown): number {
+  if (!fluids || !Array.isArray(fluids) || fluids.length === 0) return 0;
+  return fluids.reduce((total: number, fluid: Record<string, unknown>) => {
+    const amount = typeof fluid.amountMl === 'number' ? fluid.amountMl : 0;
+    return total + amount;
+  }, 0);
 }
 
 // Helper function to calculate total unaccompanied time
-function calculateTotalUnaccompaniedTime(periods: any[]): number {
-  if (!periods || periods.length === 0) return 0;
-  return periods.reduce((total, period) => total + (period.durationMinutes || 0), 0);
+function calculateTotalUnaccompaniedTime(periods: unknown): number {
+  if (!periods || !Array.isArray(periods) || periods.length === 0) return 0;
+  return periods.reduce((total: number, period: Record<string, unknown>) => {
+    const duration = typeof period.durationMinutes === 'number' ? period.durationMinutes :
+                    typeof period.duration === 'number' ? period.duration : 0;
+    return total + duration;
+  }, 0);
 }
 
 // Sprint 2 Day 4: Helper function to calculate medication adherence
-function calculateMedicationAdherence(medications: any[]): {
+function calculateMedicationAdherence(medications: unknown): {
   total: number;
   given: number;
   missed: number;
   percentage: number;
 } {
-  if (!medications || medications.length === 0) {
+  if (!medications || !Array.isArray(medications) || medications.length === 0) {
     return { total: 0, given: 0, missed: 0, percentage: 0 };
   }
 
   const total = medications.length;
-  const given = medications.filter(med => med.given === true).length;
+  const given = medications.filter((med: Record<string, unknown>) => med.given === true).length;
   const missed = total - given;
   const percentage = total > 0 ? Math.round((given / total) * 100) : 0;
 
@@ -375,13 +382,13 @@ function calculateMedicationAdherence(medications: any[]): {
 }
 
 // Sprint 3 Day 5: Helper function to check for high-priority concerns
-function checkHighPriorityConcerns(specialConcerns: any): boolean {
+function checkHighPriorityConcerns(specialConcerns: { priorityLevel?: string } | null | undefined): boolean {
   if (!specialConcerns) return false;
   return specialConcerns.priorityLevel === 'emergency';
 }
 
 // Helper function to safely parse JSON (handles double-stringified data)
-function safeJsonParse(value: any): any {
+function safeJsonParse(value: unknown): unknown {
   if (!value) return null;
   // If already an object (drizzle with mode: 'json' auto-parses), return as-is
   if (typeof value === 'object' && value !== null) return value;
@@ -403,7 +410,7 @@ function safeJsonParse(value: any): any {
 }
 
 // Helper function to parse JSON fields in care log responses
-function parseJsonFields(log: any): any {
+function parseJsonFields(log: Record<string, unknown>): Record<string, unknown> {
   if (!log) return log;
   return {
     ...log,
@@ -470,50 +477,50 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         mood: data.mood,
         showerTime: data.showerTime,
         hairWash: data.hairWash,
-        medications: data.medications ? JSON.stringify(data.medications) as any : null,
-        meals: data.meals ? JSON.stringify(data.meals) as any : null,
+        medications: data.medications ? JSON.stringify(data.medications) as string : null,
+        meals: data.meals ? JSON.stringify(data.meals) as string : null,
         // Sprint 2 Day 1: Fluid Intake
-        fluids: fluids.length > 0 ? JSON.stringify(fluids) as any : null,
+        fluids: fluids.length > 0 ? JSON.stringify(fluids) as string : null,
         totalFluidIntake,
         // Sprint 2 Day 3: Sleep Tracking
-        afternoonRest: data.afternoonRest ? JSON.stringify(data.afternoonRest) as any : null,
-        nightSleep: data.nightSleep ? JSON.stringify(data.nightSleep) as any : null,
+        afternoonRest: data.afternoonRest ? JSON.stringify(data.afternoonRest) as string : null,
+        nightSleep: data.nightSleep ? JSON.stringify(data.nightSleep) as string : null,
         bloodPressure: data.bloodPressure,
         pulseRate: data.pulseRate,
         oxygenLevel: data.oxygenLevel,
         bloodSugar: data.bloodSugar,
         vitalsTime: data.vitalsTime,
         // Sprint 2 Day 5: Toileting & Hygiene
-        bowelMovements: data.bowelMovements ? JSON.stringify(data.bowelMovements) as any : null,
-        urination: data.urination ? JSON.stringify(data.urination) as any : null,
+        bowelMovements: data.bowelMovements ? JSON.stringify(data.bowelMovements) as string : null,
+        urination: data.urination ? JSON.stringify(data.urination) as string : null,
         // Sprint 1: Fall Risk & Safety fields
         balanceIssues: data.balanceIssues,
         nearFalls: data.nearFalls,
         actualFalls: data.actualFalls,
-        walkingPattern: data.walkingPattern ? JSON.stringify(data.walkingPattern) as any : null,
+        walkingPattern: data.walkingPattern ? JSON.stringify(data.walkingPattern) as string : null,
         freezingEpisodes: data.freezingEpisodes,
-        unaccompaniedTime: data.unaccompaniedTime ? JSON.stringify(data.unaccompaniedTime) as any : null,
+        unaccompaniedTime: data.unaccompaniedTime ? JSON.stringify(data.unaccompaniedTime) as string : null,
         unaccompaniedIncidents: data.unaccompaniedIncidents,
-        safetyChecks: data.safetyChecks ? JSON.stringify(data.safetyChecks) as any : null,
-        emergencyPrep: data.emergencyPrep ? JSON.stringify(data.emergencyPrep) as any : null,
+        safetyChecks: data.safetyChecks ? JSON.stringify(data.safetyChecks) as string : null,
+        emergencyPrep: data.emergencyPrep ? JSON.stringify(data.emergencyPrep) as string : null,
         emergencyFlag: data.emergencyFlag,
         emergencyNote: data.emergencyNote,
         // Sprint 3 Day 1: Spiritual & Emotional Well-Being
-        spiritualEmotional: data.spiritualEmotional ? JSON.stringify(data.spiritualEmotional) as any : null,
+        spiritualEmotional: data.spiritualEmotional ? JSON.stringify(data.spiritualEmotional) as string : null,
         // Sprint 3 Day 2: Physical Activity & Exercise (simplified)
-        physicalActivity: data.physicalActivity ? JSON.stringify(data.physicalActivity) as any : null,
+        physicalActivity: data.physicalActivity ? JSON.stringify(data.physicalActivity) as string : null,
         // Sprint 3 Day 4: Detailed Exercise Sessions
-        morningExerciseSession: data.morningExerciseSession ? JSON.stringify(data.morningExerciseSession) as any : null,
-        afternoonExerciseSession: data.afternoonExerciseSession ? JSON.stringify(data.afternoonExerciseSession) as any : null,
-        movementDifficulties: data.movementDifficulties ? JSON.stringify(data.movementDifficulties) as any : null,
+        morningExerciseSession: data.morningExerciseSession ? JSON.stringify(data.morningExerciseSession) as string : null,
+        afternoonExerciseSession: data.afternoonExerciseSession ? JSON.stringify(data.afternoonExerciseSession) as string : null,
+        movementDifficulties: data.movementDifficulties ? JSON.stringify(data.movementDifficulties) as string : null,
         // Sprint 3 Day 3: Oral Care & Hygiene
-        oralCare: data.oralCare ? JSON.stringify(data.oralCare) as any : null,
+        oralCare: data.oralCare ? JSON.stringify(data.oralCare) as string : null,
         // Sprint 3 Day 5: Special Concerns & Incidents
-        specialConcerns: data.specialConcerns ? JSON.stringify(data.specialConcerns) as any : null,
+        specialConcerns: data.specialConcerns ? JSON.stringify(data.specialConcerns) as string : null,
         notes: data.notes,
         createdAt: now,
         updatedAt: now,
-      } as any)
+      } as typeof careLogs.$inferInsert)
       .returning()
       .get();
 

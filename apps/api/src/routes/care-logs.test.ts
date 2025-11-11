@@ -2068,7 +2068,7 @@ describe('Care Logs API', () => {
         caregiverId,
         logDate: new Date().toISOString(),
         spiritualEmotional: {
-          prayerExpression: 'invalid_expression' as any,
+          prayerExpression: 'invalid_expression' as unknown as 'speaking_out_loud' | 'whispering' | 'mumbling' | 'silent_worship',
         },
       };
 
@@ -2134,7 +2134,7 @@ describe('Care Logs API', () => {
         caregiverId,
         logDate: new Date().toISOString(),
         spiritualEmotional: {
-          socialInteraction: 'invalid_interaction' as any,
+          socialInteraction: 'invalid_interaction' as unknown as 'engaged' | 'responsive' | 'withdrawn' | 'aggressive_hostile',
         },
       };
 
