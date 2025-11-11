@@ -233,7 +233,7 @@ caregiversRoute.put('/:id', ...familyAdminOnly, async (c) => {
     const db = c.get('db');
 
     // Build update object with only provided fields
-    const updateData: any = { updatedAt: new Date() };
+    const updateData: Partial<typeof caregivers.$inferInsert> & { updatedAt: Date } = { updatedAt: new Date() };
     if (data.name !== undefined) updateData.name = data.name;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.email !== undefined) updateData.email = data.email;

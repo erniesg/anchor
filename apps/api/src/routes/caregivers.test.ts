@@ -559,7 +559,7 @@ describe('Caregivers API', () => {
       }, mockEnv);
 
       const data = await res.json();
-      const plainPin = data.pin;
+      expect(data.pin).toBeDefined(); // Verify PIN is returned on creation
 
       // Fetch caregiver
       const fetchRes = await app.request(`/caregivers/recipient/${careRecipientId}`, {
@@ -568,7 +568,7 @@ describe('Caregivers API', () => {
       const caregivers = await fetchRes.json();
 
       // PIN should not be returned in list
-      caregivers.forEach((c: any) => {
+      caregivers.forEach((c: { pin?: string; pinCode?: string }) => {
         expect(c.pin).toBeUndefined();
         expect(c.pinCode).toBeUndefined();
       });
@@ -609,7 +609,7 @@ describe('Caregivers API', () => {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
       }, mockEnv);
       const caregivers = await fetchRes.json();
-      const audited = caregivers.find((c: any) => c.id === caregiver.id);
+      const audited = caregivers.find((c: { id: string }) => c.id === caregiver.id);
 
       expect(audited.createdBy).toBeDefined();
       expect(audited.deactivatedBy).toBeDefined();

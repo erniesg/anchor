@@ -14,8 +14,8 @@ import { createTestDb, runMigrations, seedTestData } from './test/db-helper';
  */
 
 // Global test database instance
-let testDb: any;
-let testSqlite: any;
+let testDb: unknown;
+let testSqlite: { close: () => void } | null;
 
 // Mock Cloudflare environment (for D1 interface compatibility)
 const mockEnv = {
@@ -70,7 +70,7 @@ afterEach(() => {
 });
 
 // Mock fetch for external API calls
-global.fetch = vi.fn() as any;
+global.fetch = vi.fn() as typeof fetch;
 
 // Mock crypto.randomUUID with incremental IDs for test predictability
 let mockIdCounter = 0;
@@ -116,7 +116,7 @@ vi.mock('hono/jwt', () => ({
     }
     throw new Error('Invalid JWT token');
   }),
-  sign: vi.fn(async (_payload: any, _secret: string) => {
+  sign: vi.fn(async (_payload: Record<string, unknown>, _secret: string) => {
     return 'mock-jwt-token';
   }),
 }));
@@ -127,16 +127,16 @@ vi.mock('./lib/access-control', () => ({
   isActiveCaregiver: vi.fn(async () => true),
   caregiverHasAccess: vi.fn(async () => true),
   // Context-aware: reject if different caregiver (caregiver-999)
-  caregiverOwnsCareLog: vi.fn(async (_db: any, caregiverId: string, _logId: string) => {
+  caregiverOwnsCareLog: vi.fn(async (_db: unknown, caregiverId: string, _logId: string) => {
     return caregiverId !== 'caregiver-999';
   }),
   // Context-aware: reject if recipientId is 'other-recipient-123'
-  canAccessCareRecipient: vi.fn(async (_db: any, _userId: string, recipientId: string) => {
+  canAccessCareRecipient: vi.fn(async (_db: unknown, _userId: string, recipientId: string) => {
     return recipientId !== 'other-recipient-123';
   }),
   canInvalidateCareLog: vi.fn(async () => true),
   canManageCaregivers: vi.fn(async () => true),
-  getAccessibleCareRecipients: vi.fn(async (_db: any, _userId: string) => [
+  getAccessibleCareRecipients: vi.fn(async (_db: unknown, _userId: string) => [
     { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Test Recipient' }
   ]),
   canGrantAccess: vi.fn(async () => true),
