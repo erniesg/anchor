@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import app from '../index';
 import { createDbClient } from '@anchor/database';
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import type { Env } from '../index';
 
 /**
@@ -10,7 +10,6 @@ import type { Env } from '../index';
  */
 
 describe('Authentication API', () => {
-  let db: ReturnType<typeof createDbClient>;
   let mockD1: D1Database;
   let mockEnv: Env;
 
@@ -20,17 +19,15 @@ describe('Authentication API', () => {
       batch: vi.fn(),
       exec: vi.fn(),
       dump: vi.fn(),
-    } as any;
+    } as Partial<D1Database> as D1Database;
 
     mockEnv = {
       DB: mockD1,
-      STORAGE: {} as any,
+      STORAGE: {} as R2Bucket,
       ENVIRONMENT: 'dev',
       JWT_SECRET: 'test-secret',
       LOGTO_APP_SECRET: 'test-logto-secret',
     };
-
-    db = createDbClient(mockD1);
   });
 
   describe('POST /auth/signup - Family Signup', () => {

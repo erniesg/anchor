@@ -176,7 +176,7 @@ export const optionalAuth = createMiddleware<AppContext>(async (c, next) => {
           c.set('caregiverId', caregiverId);
         }
       }
-    } catch (error) {
+    } catch {
       // Ignore auth errors for optional auth
     }
   } else if (authHeader.startsWith('Bearer ')) {
@@ -195,7 +195,7 @@ export const optionalAuth = createMiddleware<AppContext>(async (c, next) => {
           c.set('userRole', payload.role as 'family_admin' | 'family_member');
         }
       }
-    } catch (error) {
+    } catch {
       // Ignore auth errors for optional auth
     }
   }

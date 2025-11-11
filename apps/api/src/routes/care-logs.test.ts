@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import app from '../index';
 import { createDbClient } from '@anchor/database';
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import type { Env } from '../index';
 
 /**
@@ -10,7 +10,6 @@ import type { Env } from '../index';
  */
 
 describe('Care Logs API', () => {
-  let db: ReturnType<typeof createDbClient>;
   let mockD1: D1Database;
   let mockEnv: Env;
   let familyAdminToken: string;
@@ -29,17 +28,15 @@ describe('Care Logs API', () => {
       batch: vi.fn(),
       exec: vi.fn(),
       dump: vi.fn(),
-    } as any;
+    } as Partial<D1Database> as D1Database;
 
     mockEnv = {
       DB: mockD1,
-      STORAGE: {} as any,
+      STORAGE: {} as R2Bucket,
       ENVIRONMENT: 'dev',
       JWT_SECRET: 'test-secret',
       LOGTO_APP_SECRET: 'test-logto-secret',
     };
-
-    db = createDbClient(mockD1); // Returns testDb from test-setup.ts
 
     // Setup test data references (actual data seeded in test-setup.ts)
     familyAdminToken = 'mock-token-family-admin';
@@ -403,7 +400,7 @@ describe('Care Logs API', () => {
       expect(res.status).toBe(200);
       const logs = await res.json();
       expect(Array.isArray(logs)).toBe(true);
-      logs.forEach((log: any) => {
+      logs.forEach((log: { status: string }) => {
         expect(log.status).toBe('submitted');
       });
     });
@@ -429,7 +426,7 @@ describe('Care Logs API', () => {
       }, mockEnv);
 
       const logs = await res.json();
-      const draftLogs = logs.filter((log: any) => log.status === 'draft');
+      const draftLogs = logs.filter((log: { status: string }) => log.status === 'draft');
       expect(draftLogs.length).toBe(0);
     });
 
