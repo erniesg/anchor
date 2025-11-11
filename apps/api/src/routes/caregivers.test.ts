@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import app from '../index';
-import { createDbClient } from '@anchor/database';
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import type { Env } from '../index';
 
 /**
@@ -10,7 +9,6 @@ import type { Env } from '../index';
  */
 
 describe('Caregivers API', () => {
-  let db: ReturnType<typeof createDbClient>;
   let mockD1: D1Database;
   let mockEnv: Env;
   let familyAdminToken: string;
@@ -25,17 +23,15 @@ describe('Caregivers API', () => {
       batch: vi.fn(),
       exec: vi.fn(),
       dump: vi.fn(),
-    } as any;
+    } as Partial<D1Database> as D1Database;
 
     mockEnv = {
       DB: mockD1,
-      STORAGE: {} as any,
+      STORAGE: {} as R2Bucket,
       ENVIRONMENT: 'dev',
       JWT_SECRET: 'test-secret',
       LOGTO_APP_SECRET: 'test-logto-secret',
     };
-
-    db = createDbClient(mockD1); // Returns testDb from test-setup.ts
 
     familyAdminToken = 'mock-token-family-admin';
     familyMemberToken = 'mock-token-family-member';
@@ -234,7 +230,7 @@ describe('Caregivers API', () => {
       }, mockEnv);
 
       const caregivers = await res.json();
-      caregivers.forEach((c: any) => {
+      caregivers.forEach((c: { active: boolean }) => {
         expect(c.active).toBeDefined();
         expect(typeof c.active).toBe('boolean');
       });
@@ -256,7 +252,7 @@ describe('Caregivers API', () => {
       }, mockEnv);
 
       const caregivers = await res.json();
-      caregivers.forEach((c: any) => {
+      caregivers.forEach((c: { pinCode?: string; pin?: string }) => {
         expect(c.pinCode).toBeUndefined();
         expect(c.pin).toBeUndefined();
       });
@@ -338,7 +334,7 @@ describe('Caregivers API', () => {
       }, mockEnv);
 
       const caregivers = await res.json();
-      const deactivated = caregivers.find((c: any) => c.id === caregiverId);
+      const deactivated = caregivers.find((c: { id: string }) => c.id === caregiverId);
 
       expect(deactivated.deactivatedBy).toBeDefined();
       expect(deactivated.deactivatedAt).toBeDefined();
@@ -360,7 +356,7 @@ describe('Caregivers API', () => {
       }, mockEnv);
 
       const caregivers = await res.json();
-      const deactivated = caregivers.find((c: any) => c.id === caregiverId);
+      const deactivated = caregivers.find((c: { id: string; active: boolean }) => c.id === caregiverId);
 
       expect(deactivated.active).toBe(false);
     });
@@ -446,7 +442,7 @@ describe('Caregivers API', () => {
       }, mockEnv);
 
       const caregivers = await res.json();
-      const resetCaregiver = caregivers.find((c: any) => c.id === caregiverId);
+      const resetCaregiver = caregivers.find((c: { id: string }) => c.id === caregiverId);
 
       expect(resetCaregiver.lastPinResetAt).toBeDefined();
       expect(resetCaregiver.lastPinResetBy).toBeDefined();
@@ -528,7 +524,7 @@ describe('Caregivers API', () => {
     });
 
     it('should not allow PIN update via PUT', async () => {
-      const res = await app.request(`/caregivers/${caregiverId}`, {
+      await app.request(`/caregivers/${caregiverId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -542,7 +538,7 @@ describe('Caregivers API', () => {
         headers: { Authorization: `Bearer ${familyAdminToken}` },
       }, mockEnv);
       const caregivers = await fetchRes.json();
-      const caregiver = caregivers.find((c: any) => c.id === caregiverId);
+      const caregiver = caregivers.find((c: { id: string; pinCode?: string }) => c.id === caregiverId);
 
       expect(caregiver.pinCode).not.toBe('999999');
     });
