@@ -48,19 +48,15 @@ const PRIORITY_OPTIONS = [
 ] as const;
 
 const TEMPLATE_ITEMS: Omit<PackListItem, 'id'>[] = [
-  { name: 'IC / Passport', packed: false, category: 'documents', priority: 'essential' },
-  { name: 'Medical records / Care plan', packed: false, category: 'documents', priority: 'essential' },
-  { name: 'Insurance cards', packed: false, category: 'documents', priority: 'important' },
-  { name: 'Medication list', packed: false, category: 'medications', priority: 'essential' },
-  { name: '1 week medication supply', packed: false, category: 'medications', priority: 'essential', quantity: '7 days' },
-  { name: 'Comfortable clothing', packed: false, category: 'clothing', priority: 'important', quantity: '3-4 sets' },
-  { name: 'Underwear', packed: false, category: 'clothing', priority: 'essential', quantity: '5-7' },
+  // Based on Daily Care Report Template (Page 14: Hospital Bag Preparedness)
+  { name: 'Kaftans/loose front-button clothes', packed: false, category: 'clothing', priority: 'essential', quantity: '2' },
+  { name: 'Panties', packed: false, category: 'clothing', priority: 'essential', quantity: '2' },
+  { name: 'Diapers', packed: false, category: 'clothing', priority: 'essential', quantity: '2' },
+  { name: 'Comfortable footwear', packed: false, category: 'clothing', priority: 'essential' },
+  { name: 'Small towel', packed: false, category: 'toiletries', priority: 'essential' },
+  { name: 'Large towel', packed: false, category: 'toiletries', priority: 'essential' },
+  { name: 'Hairbrush', packed: false, category: 'toiletries', priority: 'essential' },
   { name: 'Toothbrush & toothpaste', packed: false, category: 'toiletries', priority: 'essential' },
-  { name: 'Soap / Body wash', packed: false, category: 'toiletries', priority: 'essential' },
-  { name: 'Towels', packed: false, category: 'toiletries', priority: 'important', quantity: '2-3' },
-  { name: 'Wheelchair', packed: false, category: 'medical_equipment', priority: 'essential' },
-  { name: 'Walking stick / Walker', packed: false, category: 'medical_equipment', priority: 'important' },
-  { name: 'Phone charger', packed: false, category: 'other', priority: 'important' },
 ];
 
 export function PackList({
@@ -108,10 +104,17 @@ export function PackList({
   };
 
   const addAllTemplates = () => {
-    const newItems = TEMPLATE_ITEMS.map(item => ({
+    // Filter out templates that already exist (by name)
+    const existingNames = new Set(items.map(item => item.name.toLowerCase()));
+    const newTemplates = TEMPLATE_ITEMS.filter(
+      template => !existingNames.has(template.name.toLowerCase())
+    );
+
+    const newItems = newTemplates.map(item => ({
       ...item,
       id: crypto.randomUUID(),
     }));
+
     setItems([...items, ...newItems]);
     setShowTemplates(false);
   };
