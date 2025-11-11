@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import app from '../index';
-import { createDbClient } from '@anchor/database';
 import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import type { Env } from '../index';
 
@@ -579,7 +578,7 @@ describe('Care Logs API', () => {
       }, mockEnv);
 
       const log = await createRes.json();
-      const submitRes = await app.request(`/care-logs/${log.id}/submit`, {
+      await app.request(`/care-logs/${log.id}/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${caregiverToken}` },
       }, mockEnv);
@@ -589,7 +588,7 @@ describe('Care Logs API', () => {
       }, mockEnv);
 
       const logs = await fetchRes.json();
-      const fetchedLog = logs.find((l: any) => l.id === log.id);
+      const fetchedLog = logs.find((l: { id: string }) => l.id === log.id);
       expect(fetchedLog.medications).toEqual(medications);
     });
 
@@ -859,7 +858,7 @@ describe('Care Logs API', () => {
       expect(res.status).toBe(400);
       const error = await res.json();
       expect(error.error).toBe('Validation failed');
-      const errorMessage = error.details.map((d: any) => d.message).join(' ');
+      const errorMessage = error.details.map((d: { message: string }) => d.message).join(' ');
       expect(errorMessage).toContain('Start time must be before end time');
     });
 
@@ -892,7 +891,7 @@ describe('Care Logs API', () => {
       expect(res.status).toBe(400);
       const error = await res.json();
       expect(error.error).toBe('Validation failed');
-      const errorMessage = error.details.map((d: any) => d.message).join(' ');
+      const errorMessage = error.details.map((d: { message: string }) => d.message).join(' ');
       expect(errorMessage).toContain('Duration must be positive');
     });
 
@@ -925,7 +924,7 @@ describe('Care Logs API', () => {
       expect(res.status).toBe(400);
       const error = await res.json();
       expect(error.error).toBe('Validation failed');
-      const errorMessage = error.details.map((d: any) => d.message).join(' ');
+      const errorMessage = error.details.map((d: { message: string }) => d.message).join(' ');
       expect(errorMessage).toContain('Reason');
     });
 
@@ -1357,7 +1356,7 @@ describe('Care Logs API', () => {
         afternoonRest: {
           startTime: '14:00',
           endTime: '15:30',
-          quality: 'invalid' as any,
+          quality: 'invalid' as unknown as 'deep' | 'light' | 'restless' | 'no_sleep',
         },
       };
 
@@ -1850,7 +1849,7 @@ describe('Care Logs API', () => {
         logDate: new Date().toISOString(),
         bowelMovements: {
           frequency: 1,
-          consistency: 'invalid_value' as any,
+          consistency: 'invalid_value' as unknown as 'normal' | 'hard' | 'soft' | 'diarrhea',
         },
       };
 
@@ -1873,7 +1872,7 @@ describe('Care Logs API', () => {
         logDate: new Date().toISOString(),
         urination: {
           frequency: 3,
-          urineColor: 'invalid_color' as any,
+          urineColor: 'invalid_color' as unknown as 'light_clear' | 'yellow' | 'dark',
         },
       };
 
@@ -1896,7 +1895,7 @@ describe('Care Logs API', () => {
         logDate: new Date().toISOString(),
         bowelMovements: {
           frequency: 1,
-          accidents: 'invalid' as any,
+          accidents: 'invalid' as unknown as 'none' | 'minor' | 'major',
         },
       };
 

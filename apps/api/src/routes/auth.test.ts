@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import app from '../index';
-import { createDbClient } from '@anchor/database';
 import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import type { Env } from '../index';
 
