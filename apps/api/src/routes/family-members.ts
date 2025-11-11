@@ -61,7 +61,7 @@ familyMembers.get('/', async (c) => {
       .from(careRecipientAccess)
       .where(
         and(
-          eq(careRecipientAccess.revokedAt, null as any)
+          eq(careRecipientAccess.revokedAt, null as unknown as Date)
         )
       )
       .all();
@@ -74,7 +74,7 @@ familyMembers.get('/', async (c) => {
         .where(
           and(
             eq(careRecipientAccess.userId, record.userId),
-            eq(careRecipientAccess.revokedAt, null as any)
+            eq(careRecipientAccess.revokedAt, null as unknown as Date)
           )
         )
         .get();
@@ -195,7 +195,7 @@ familyMembers.get('/:userId/access', async (c) => {
     .where(
       and(
         eq(careRecipientAccess.userId, targetUserId),
-        eq(careRecipientAccess.revokedAt, null as any) // Active access only
+        eq(careRecipientAccess.revokedAt, null as unknown as Date) // Active access only
       )
     )
     .all();
@@ -285,7 +285,7 @@ familyMembers.post('/revoke-access', async (c) => {
       and(
         eq(careRecipientAccess.careRecipientId, data.careRecipientId),
         eq(careRecipientAccess.userId, data.userId),
-        eq(careRecipientAccess.revokedAt, null as any)
+        eq(careRecipientAccess.revokedAt, null as unknown as Date)
       )
     )
     .get();

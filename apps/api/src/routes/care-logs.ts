@@ -616,43 +616,43 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
         mood: data.mood,
         showerTime: data.showerTime,
         hairWash: data.hairWash,
-        medications: data.medications as any,
-        meals: data.meals as any,
+        medications: data.medications,
+        meals: data.meals,
         bloodPressure: data.bloodPressure,
         pulseRate: data.pulseRate,
         oxygenLevel: data.oxygenLevel,
         bloodSugar: data.bloodSugar,
         vitalsTime: data.vitalsTime,
         // Sprint 2 Day 5: Toileting & Hygiene
-        bowelMovements: data.bowelMovements as any,
-        urination: data.urination as any,
+        bowelMovements: data.bowelMovements,
+        urination: data.urination,
         // Sprint 1: Fall Risk & Safety fields
         balanceIssues: data.balanceIssues,
         nearFalls: data.nearFalls,
         actualFalls: data.actualFalls,
-        walkingPattern: data.walkingPattern as any,
+        walkingPattern: data.walkingPattern,
         freezingEpisodes: data.freezingEpisodes,
-        unaccompaniedTime: data.unaccompaniedTime as any,
+        unaccompaniedTime: data.unaccompaniedTime,
         unaccompaniedIncidents: data.unaccompaniedIncidents,
-        safetyChecks: data.safetyChecks as any,
-        emergencyPrep: data.emergencyPrep as any,
+        safetyChecks: data.safetyChecks,
+        emergencyPrep: data.emergencyPrep,
         emergencyFlag: data.emergencyFlag,
         emergencyNote: data.emergencyNote,
         // Sprint 3 Day 1: Spiritual & Emotional Well-Being
-        spiritualEmotional: data.spiritualEmotional as any,
+        spiritualEmotional: data.spiritualEmotional,
         // Sprint 3 Day 2: Physical Activity & Exercise
-        physicalActivity: data.physicalActivity as any,
+        physicalActivity: data.physicalActivity,
         // Sprint 3 Day 4: Detailed Exercise Sessions
-        morningExerciseSession: data.morningExerciseSession as any,
-        afternoonExerciseSession: data.afternoonExerciseSession as any,
-        movementDifficulties: data.movementDifficulties as any,
+        morningExerciseSession: data.morningExerciseSession,
+        afternoonExerciseSession: data.afternoonExerciseSession,
+        movementDifficulties: data.movementDifficulties,
         // Sprint 3 Day 3: Oral Care & Hygiene
-        oralCare: data.oralCare as any,
+        oralCare: data.oralCare,
         // Sprint 3 Day 5: Special Concerns & Incidents
-        specialConcerns: data.specialConcerns as any,
+        specialConcerns: data.specialConcerns,
         notes: data.notes,
         updatedAt: new Date(),
-      } as any)
+      } as Partial<typeof careLogs.$inferInsert>)
       .where(eq(careLogs.id, logId))
       .returning()
       .get();
@@ -714,23 +714,24 @@ careLogsRoute.get('/recipient/:recipientId', ...familyMemberAccess, requireCareR
 
 // Get today's care log for a recipient (family members only)
 // Helper to normalize meals data format
-const normalizeMealsData = (mealsData: any): any => {
+const normalizeMealsData = (mealsData: unknown): unknown => {
   if (!mealsData) return null;
   try {
     // Handle both string (from DB) and already parsed object
-    let meals = mealsData;
+    let meals: unknown = mealsData;
     if (typeof mealsData === 'string') {
       meals = JSON.parse(mealsData);
     }
 
     // If it's already an object with breakfast key, return as is
-    if (meals.breakfast) return meals;
+    if (typeof meals === 'object' && meals !== null && 'breakfast' in meals) return meals;
 
     // If it's an array, convert to object format
     if (Array.isArray(meals)) {
-      const normalized: any = {};
-      meals.forEach((meal: any) => {
-        normalized[meal.meal] = {
+      const normalized: Record<string, unknown> = {};
+      meals.forEach((meal: Record<string, unknown>) => {
+        const mealType = meal.meal as string;
+        normalized[mealType] = {
           time: meal.time,
           appetite: meal.appetite,
           amountEaten: meal.amount || meal.amountEaten,
@@ -773,7 +774,7 @@ careLogsRoute.get('/recipient/:recipientId/today', ...familyMemberAccess, requir
 
     return c.json({
       ...parsedLog,
-      meals: normalizeMealsData(log.meals as any),
+      meals: normalizeMealsData(log.meals),
       totalUnaccompaniedMinutes: log.unaccompaniedTime
         ? calculateTotalUnaccompaniedTime(log.unaccompaniedTime)
         : 0,
@@ -829,7 +830,7 @@ careLogsRoute.get('/recipient/:recipientId/date/:date', ...familyMemberAccess, r
 
     return c.json({
       ...parsedLog,
-      meals: normalizeMealsData(matchingLog.meals as any),
+      meals: normalizeMealsData(matchingLog.meals),
       totalUnaccompaniedMinutes: matchingLog.unaccompaniedTime
         ? calculateTotalUnaccompaniedTime(matchingLog.unaccompaniedTime)
         : 0,
