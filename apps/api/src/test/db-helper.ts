@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as schema from '@anchor/database/schema';
 
 /**
@@ -212,7 +212,7 @@ export function runMigrations(sqlite: Database.Database) {
   `);
 }
 
-export function seedTestData(db: any) {
+export function seedTestData(db: BetterSQLite3Database<typeof schema>) {
   const now = Date.now();
 
   // Insert test users
