@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/toast';
+import { useToast } from '@/lib/toast';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Heart, ArrowLeft, Plus, Edit2, UserCog, Backpack } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';

@@ -157,10 +157,17 @@ function CareLogFormComponent() {
   const [hairWash, setHairWash] = useState(false);
 
   // Medications (Sprint 2 Day 4: Added purpose and notes)
-  const [medications, setMedications] = useState([
-    { name: 'Glucophage 500mg', given: false, time: null, timeSlot: 'before_breakfast' as const, purpose: '', notes: '' },
-    { name: 'Forxiga 10mg', given: false, time: null, timeSlot: 'after_breakfast' as const, purpose: '', notes: '' },
-    { name: 'Ozempic 0.5mg', given: false, time: null, timeSlot: 'afternoon' as const, purpose: '', notes: '' },
+  const [medications, setMedications] = useState<Array<{
+    name: string;
+    given: boolean;
+    time: string | null;
+    timeSlot: 'before_breakfast' | 'after_breakfast' | 'afternoon';
+    purpose: string;
+    notes: string;
+  }>>([
+    { name: 'Glucophage 500mg', given: false, time: null, timeSlot: 'before_breakfast', purpose: '', notes: '' },
+    { name: 'Forxiga 10mg', given: false, time: null, timeSlot: 'after_breakfast', purpose: '', notes: '' },
+    { name: 'Ozempic 0.5mg', given: false, time: null, timeSlot: 'afternoon', purpose: '', notes: '' },
   ]);
 
   // Meals
@@ -373,7 +380,7 @@ function CareLogFormComponent() {
     }
 
     // Helper to omit empty strings and null/undefined values
-    const omitEmpty = (value: any) => {
+    const omitEmpty = (value: unknown) => {
       if (value === '' || value === null || value === undefined) return undefined;
       return value;
     };
@@ -532,19 +539,21 @@ function CareLogFormComponent() {
       // Sprint 3 Day 1: Spiritual & Emotional
       prayerStartTime, prayerEndTime, prayerExpression, overallMood, communicationScale, socialInteraction,
       // Sprint 3 Day 2: Physical Activity
+      afternoonRest, nightSleep,
       exerciseDuration, exerciseType, walkingDistance, assistanceLevel, painDuringActivity, energyAfterActivity, participationWillingness, equipmentUsed, mobilityNotes,
       // Sprint 3 Day 4: Detailed Exercise Sessions
       morningExerciseStart, morningExerciseEnd, morningExercises, morningExerciseNotes,
       afternoonExerciseStart, afternoonExerciseEnd, afternoonExercises, afternoonExerciseNotes,
       movementDifficulties,
-      // Sprint 3 Day 3: Oral Care
-      teethBrushed, timesBrushed, denturesCleaned, mouthRinsed, oralAssistanceLevel, oralHealthIssues, painOrBleeding, oralCareNotes,
+      // Sprint 3 Day 3: Oral Care - Dependencies removed because section is commented out
+      // teethBrushed, timesBrushed, denturesCleaned, mouthRinsed, oralAssistanceLevel, oralHealthIssues, painOrBleeding, oralCareNotes,
       // Sprint 3 Day 5: Special Concerns
       priorityLevel, behaviouralChanges, physicalChanges, incidentDescription, actionsTaken, specialConcernsNotes,
       emergencyFlag, emergencyNote, notes, careRecipient]);
 
   // Create/Update mutation (for auto-save)
   const saveDraftMutation = useMutation({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mutationFn: async (data: any) => {
       const url = careLogId ? `/care-logs/${careLogId}` : '/care-logs';
       const method = careLogId ? 'PATCH' : 'POST';
@@ -701,7 +710,7 @@ function CareLogFormComponent() {
       },
     };
   }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite, breakfastAmount,
-      bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime, bowelFreq, urineFreq, diaperChanges,
+      bloodPressure, pulseRate, oxygenLevel, bloodSugar, bowelFreq, urineFreq,
       balanceIssues, nearFalls, actualFalls, walkingPattern, freezingEpisodes,
       unaccompaniedTime, unaccompaniedIncidents, safetyChecks, notes, emergencyFlag]);
 
@@ -929,7 +938,7 @@ function CareLogFormComponent() {
                           const newMeds = [...medications];
                           newMeds[idx].given = e.target.checked;
                           if (e.target.checked && !newMeds[idx].time) {
-                            newMeds[idx].time = new Date().toTimeString().slice(0, 5) as any;
+                            newMeds[idx].time = new Date().toTimeString().slice(0, 5);
                           }
                           setMedications(newMeds);
                         }}
@@ -964,7 +973,7 @@ function CareLogFormComponent() {
                       value={med.time || ''}
                       onChange={(e) => {
                         const newMeds = [...medications];
-                        newMeds[idx].time = e.target.value as any;
+                        newMeds[idx].time = e.target.value;
                         setMedications(newMeds);
                       }}
                     />
@@ -1350,7 +1359,7 @@ function CareLogFormComponent() {
                           <button
                             key={option.value}
                             type="button"
-                            onClick={() => setAfternoonRest({ ...afternoonRest, quality: option.value as any })}
+                            onClick={() => setAfternoonRest({ ...afternoonRest, quality: option.value as 'deep' | 'light' | 'restless' | 'no_sleep' })}
                             className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
                               afternoonRest.quality === option.value
                                 ? `${option.color} border-2`
@@ -1427,7 +1436,7 @@ function CareLogFormComponent() {
                           <button
                             key={option.value}
                             type="button"
-                            onClick={() => setNightSleep({ ...nightSleep, quality: option.value as any })}
+                            onClick={() => setNightSleep({ ...nightSleep, quality: option.value as 'deep' | 'light' | 'restless' | 'no_sleep' })}
                             className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
                               nightSleep.quality === option.value
                                 ? `${option.color} border-2`
@@ -1686,7 +1695,7 @@ function CareLogFormComponent() {
                           <button
                             key={option.value}
                             type="button"
-                            onClick={() => setBowelDiaperStatus(option.value as any)}
+                            onClick={() => setBowelDiaperStatus(option.value as 'dry' | 'wet' | 'soiled')}
                             className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                               bowelDiaperStatus === option.value
                                 ? 'bg-amber-500 text-white'
@@ -1703,7 +1712,7 @@ function CareLogFormComponent() {
                       <label className="block text-sm font-medium mb-2">Consistency</label>
                       <select
                         value={bowelConsistency || ''}
-                        onChange={(e) => setBowelConsistency(e.target.value as any || null)}
+                        onChange={(e) => setBowelConsistency(e.target.value ? e.target.value as 'normal' | 'hard' | 'soft' | 'loose' | 'diarrhea' : null)}
                         className="w-full p-2 border rounded-lg"
                       >
                         <option value="">Select...</option>

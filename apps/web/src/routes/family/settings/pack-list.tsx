@@ -7,7 +7,7 @@ import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { ArrowLeft, Backpack } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { authenticatedApiCall } from '@/lib/api';
-import { useToast } from '@/components/ui/toast';
+import { useToast } from '@/lib/toast';
 
 export const Route = createFileRoute('/family/settings/pack-list')({
   component: PackListManagementComponent,
