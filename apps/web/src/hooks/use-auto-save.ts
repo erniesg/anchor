@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 
-interface UseAutoSaveOptions {
-  data: any;
-  onSave: (data: any) => Promise<void>;
+interface UseAutoSaveOptions<T> {
+  data: T;
+  onSave: (data: T) => Promise<void>;
   interval?: number; // milliseconds
   enabled?: boolean;
   isDraft?: boolean;
 }
 
-export function useAutoSave({
+export function useAutoSave<T>({
   data,
   onSave,
   interval = 30000, // 30 seconds default
   enabled = true,
   isDraft = true,
-}: UseAutoSaveOptions) {
+}: UseAutoSaveOptions<T>) {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);

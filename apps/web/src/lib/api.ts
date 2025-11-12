@@ -9,6 +9,7 @@
 // In dev, use proxy via /api
 const API_URL = (import.meta.env?.VITE_API_URL as string | undefined) || '/api';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiCall<T = any>(
   endpoint: string,
   options?: RequestInit
@@ -28,7 +29,7 @@ export async function apiCall<T = any>(
     // Include validation details if present
     if (error.details) {
       console.error('Validation errors:', JSON.stringify(error.details, null, 2));
-      error.details.forEach((detail: any) => {
+      error.details.forEach((detail: { path: string[]; message: string }) => {
         console.error(`  - ${detail.path.join('.')}: ${detail.message}`);
       });
     }

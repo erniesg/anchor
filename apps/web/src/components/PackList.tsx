@@ -60,7 +60,7 @@ const TEMPLATE_ITEMS: Omit<PackListItem, 'id'>[] = [
 ];
 
 export function PackList({
-  careRecipientId,
+  careRecipientId: _careRecipientId,
   initialData,
   onSave,
   onVerify,
@@ -95,7 +95,7 @@ export function PackList({
     setIsAddingItem(false);
   };
 
-  const addFromTemplate = (templateItem: Omit<PackListItem, 'id'>) => {
+  const _addFromTemplate = (templateItem: Omit<PackListItem, 'id'>) => {
     const newItem: PackListItem = {
       ...templateItem,
       id: crypto.randomUUID(),
@@ -129,7 +129,7 @@ export function PackList({
     ));
   };
 
-  const updateItem = (id: string, updates: Partial<PackListItem>) => {
+  const _updateItem = (id: string, updates: Partial<PackListItem>) => {
     setItems(items.map(item =>
       item.id === id ? { ...item, ...updates } : item
     ));

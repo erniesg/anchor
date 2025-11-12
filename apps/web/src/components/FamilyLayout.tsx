@@ -15,8 +15,8 @@ interface FamilyLayoutProps {
 export function FamilyLayout({ children }: FamilyLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const [careRecipient, setCareRecipient] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email: string; name: string; role: string } | null>(null);
+  const [careRecipient, setCareRecipient] = useState<{ id: string; name: string } | null>(null);
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
