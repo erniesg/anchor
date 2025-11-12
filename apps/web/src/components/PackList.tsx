@@ -95,13 +95,14 @@ export function PackList({
     setIsAddingItem(false);
   };
 
-  const _addFromTemplate = (templateItem: Omit<PackListItem, 'id'>) => {
-    const newItem: PackListItem = {
-      ...templateItem,
-      id: crypto.randomUUID(),
-    };
-    setItems([...items, newItem]);
-  };
+  // Template functionality for future use
+  // const addFromTemplate = (templateItem: Omit<PackListItem, 'id'>) => {
+  //   const newItem: PackListItem = {
+  //     ...templateItem,
+  //     id: crypto.randomUUID(),
+  //   };
+  //   setItems([...items, newItem]);
+  // };
 
   const addAllTemplates = () => {
     // Filter out templates that already exist (by name)
@@ -129,11 +130,12 @@ export function PackList({
     ));
   };
 
-  const _updateItem = (id: string, updates: Partial<PackListItem>) => {
-    setItems(items.map(item =>
-      item.id === id ? { ...item, ...updates } : item
-    ));
-  };
+  // Update functionality for future use
+  // const updateItem = (id: string, updates: Partial<PackListItem>) => {
+  //   setItems(items.map(item =>
+  //     item.id === id ? { ...item, ...updates } : item
+  //   ));
+  // };
 
   const handleSave = async () => {
     setIsSaving(true);

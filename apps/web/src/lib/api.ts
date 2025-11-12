@@ -42,6 +42,7 @@ export async function apiCall<T = any>(
 /**
  * Helper for authenticated requests
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function authenticatedApiCall<T = any>(
   endpoint: string,
   token: string,
