@@ -1,10 +1,10 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Users, ArrowLeft, UserPlus, Shield, ShieldOff, Trash2, Mail } from 'lucide-react';
+import { Users, UserPlus, Shield, ShieldOff, Trash2, Mail } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { authenticatedApiCall } from '@/lib/api';
 
@@ -33,7 +33,7 @@ function FamilyMembersSettingsComponent() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteName, setInviteName] = useState('');
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
-  const [showAccessModal, setShowAccessModal] = useState(false);
+  const [_showAccessModal, setShowAccessModal] = useState(false); void _showAccessModal;
   const [showRemoveModal, setShowRemoveModal] = useState(false);
 
   const queryClient = useQueryClient();

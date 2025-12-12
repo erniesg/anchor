@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Debug Care Log Submission', () => {
   test('capture detailed error info', async ({ page }) => {
     const errors: string[] = [];
-    const apiCalls: any[] = [];
+    const apiCalls: { url: string; status: number; body: string }[] = [];
 
     // Capture all console messages
     page.on('console', msg => {
@@ -36,7 +36,7 @@ test.describe('Debug Care Log Submission', () => {
             status,
             body: body
           });
-        } catch (e) {
+        } catch {
           console.log('[RESPONSE] Could not read body');
         }
       }

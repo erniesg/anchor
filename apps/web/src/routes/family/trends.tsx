@@ -28,10 +28,30 @@ interface User {
   role: string;
 }
 
+interface CareRecipient {
+  id: string;
+  name: string;
+  condition?: string;
+}
+
+interface TrendLog {
+  logDate: string;
+  bloodPressure?: string;
+  pulseRate?: number;
+  oxygenLevel?: number;
+  bloodSugar?: number;
+  meals?: {
+    breakfast?: {
+      appetite?: number;
+      amountEaten?: number;
+    };
+  };
+}
+
 function TrendsComponent() {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [careRecipient, setCareRecipient] = useState<any>(null);
+  const [careRecipient, setCareRecipient] = useState<CareRecipient | null>(null);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -77,7 +97,7 @@ function TrendsComponent() {
 
   // Transform week data for charts
   const chartData =
-    weekLogs?.map((log: any) => ({
+    weekLogs?.map((log: TrendLog) => ({
       date: format(new Date(log.logDate), 'MMM dd'),
       systolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[0]) : null,
       diastolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[1]) : null,

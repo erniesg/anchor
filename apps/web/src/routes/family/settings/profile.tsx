@@ -1,10 +1,10 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { User, ArrowLeft, Save, Lock, Check } from 'lucide-react';
+import { User, Save, Lock } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
 
 export const Route = createFileRoute('/family/settings/profile')({
@@ -32,7 +32,7 @@ const timezones = [
 ];
 
 function ProfileSettingsComponent() {
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient(); void _queryClient;
   const [userId, setUserId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -76,12 +76,13 @@ function ProfileSettingsComponent() {
   // Initialize form when profile loads
   useEffect(() => {
     if (profile && typeof profile === 'object') {
-      setName((profile as any).name);
-      setEmail((profile as any).email);
-      setPhone((profile as any).phone || '');
-      setTimezone((profile as any).timezone);
-      setEmailNotifications((profile as any).emailNotifications);
-      setSmsNotifications((profile as any).smsNotifications);
+      const p = profile as UserProfile;
+      setName(p.name);
+      setEmail(p.email);
+      setPhone(p.phone || '');
+      setTimezone(p.timezone);
+      setEmailNotifications(p.emailNotifications);
+      setSmsNotifications(p.smsNotifications);
     }
   }, [profile]);
 
@@ -106,7 +107,7 @@ function ProfileSettingsComponent() {
 
   // Change password mutation (disabled - no API endpoint yet)
   const changePasswordMutation = useMutation({
-    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+    mutationFn: async (_data: { currentPassword: string; newPassword: string }) => {
       // TODO: Implement users API endpoint for password change
       throw new Error('Password change is not yet implemented. Please contact support.');
     },
@@ -135,12 +136,13 @@ function ProfileSettingsComponent() {
 
   const handleCancel = () => {
     if (profile && typeof profile === 'object') {
-      setName((profile as any).name);
-      setEmail((profile as any).email);
-      setPhone((profile as any).phone || '');
-      setTimezone((profile as any).timezone);
-      setEmailNotifications((profile as any).emailNotifications);
-      setSmsNotifications((profile as any).smsNotifications);
+      const p = profile as UserProfile;
+      setName(p.name);
+      setEmail(p.email);
+      setPhone(p.phone || '');
+      setTimezone(p.timezone);
+      setEmailNotifications(p.emailNotifications);
+      setSmsNotifications(p.smsNotifications);
     }
     setIsEditing(false);
   };

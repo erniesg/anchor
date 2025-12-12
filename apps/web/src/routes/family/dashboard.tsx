@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Settings, ExternalLink, Copy, Check, Heart } from 'lucide-react';
+import { ExternalLink, Copy, Check, Heart } from 'lucide-react';
 import { authenticatedApiCall } from '@/lib/api';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import {
@@ -19,7 +19,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks } from 'date-fns';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks } from 'date-fns';
 
 export const Route = createFileRoute('/family/dashboard')({
   component: DashboardComponent,
@@ -30,6 +30,125 @@ interface User {
   email: string;
   name: string;
   role: string;
+}
+
+interface CareRecipient {
+  id: string;
+  name: string;
+  condition?: string;
+}
+
+interface FluidEntry {
+  time?: string;
+  name?: string;
+  amount?: number;
+  amountMl?: number;
+  swallowingIssues?: string[];
+}
+
+interface SleepData {
+  quality?: 'deep' | 'light' | 'restless' | 'none';
+  wakings?: number;
+}
+
+interface ChartDataItem {
+  date: string;
+  afternoonRest?: SleepData;
+  nightSleep?: SleepData;
+  [key: string]: unknown;
+}
+
+interface MedicationEntry {
+  name?: string;
+  given?: boolean;
+  time?: string;
+  purpose?: string;
+  notes?: string;
+}
+
+interface ExerciseEntry {
+  type?: string;
+  duration?: number;
+  participation?: number;
+}
+
+interface ExerciseSession {
+  startTime?: string;
+  endTime?: string;
+  exercises?: ExerciseEntry[];
+  notes?: string;
+}
+
+interface MovementDifficultyData {
+  level?: 'canDoAlone' | 'needsSomeHelp' | 'needsFullHelp' | 'fallsOrDrops';
+  notes?: string;
+}
+
+interface UnaccompaniedPeriod {
+  startTime?: string;
+  endTime?: string;
+  reason?: string;
+  replacementPerson?: string;
+}
+
+interface SafetyCheckItem {
+  checked?: boolean;
+  action?: string;
+}
+
+interface PersonalItemCheckItem {
+  checked?: boolean;
+  status?: string;
+  notes?: string;
+}
+
+interface MealsData {
+  breakfast?: {
+    appetite?: number;
+    amountEaten?: number;
+  };
+}
+
+interface MedicationAdherenceData {
+  percentage?: number;
+  given?: number;
+  missed?: number;
+}
+
+interface CareLog {
+  id: string;
+  logDate: string;
+  status?: string;
+  bloodPressure?: string;
+  pulseRate?: number;
+  oxygenLevel?: number;
+  bloodSugar?: number;
+  totalFluidIntake?: number;
+  totalUnaccompaniedMinutes?: number;
+  balanceIssues?: boolean;
+  nearFalls?: string;
+  actualFalls?: string;
+  fluids?: FluidEntry[];
+  medications?: MedicationEntry[];
+  meals?: MealsData;
+  medicationAdherence?: MedicationAdherenceData;
+  morningExerciseSession?: ExerciseSession;
+  afternoonExerciseSession?: ExerciseSession;
+  movementDifficulties?: Record<string, MovementDifficultyData>;
+  unaccompaniedTime?: UnaccompaniedPeriod[];
+  unaccompaniedIncidents?: string;
+  safetyChecks?: Record<string, SafetyCheckItem>;
+  emergencyPrep?: Record<string, boolean>;
+  roomMaintenance?: {
+    cleaningStatus?: string;
+    roomComfort?: string;
+  };
+  personalItemsCheck?: Record<string, PersonalItemCheckItem>;
+  hospitalBagStatus?: {
+    lastChecked?: string;
+    bagReady?: boolean;
+  };
+  [key: string]: unknown;
 }
 
 // Status Badge Component
@@ -58,7 +177,7 @@ function StatusBadge({ status }: { status?: string }) {
 function DashboardComponent() {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [careRecipient, setCareRecipient] = useState<any>(null);
+  const [careRecipient, setCareRecipient] = useState<CareRecipient | null>(null);
   const [token, setToken] = useState<string>('');
   const [viewMode, setViewMode] = useState<'today' | 'week' | 'month'>('today');
   const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, -1 = last week, etc.
@@ -145,7 +264,7 @@ function DashboardComponent() {
 
   // Transform week data for charts
   const chartData =
-    weekLogs?.map((log: any) => ({
+    weekLogs?.map((log: CareLog) => ({
       date: format(new Date(log.logDate), 'MMM dd'),
       systolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[0]) : null,
       diastolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[1]) : null,
@@ -423,10 +542,10 @@ function DashboardComponent() {
               }
 
               // Swallowing issues alert
-              if (todayLog.fluids?.some((f: any) => f.swallowingIssues && f.swallowingIssues.length > 0)) {
+              if (todayLog.fluids?.some((f: FluidEntry) => f.swallowingIssues && f.swallowingIssues.length > 0)) {
                 const swallowingDetails = todayLog.fluids
-                  .filter((f: any) => f.swallowingIssues && f.swallowingIssues.length > 0)
-                  .map((f: any) => `${f.time} - ${f.name}: ${f.swallowingIssues.join(', ')}`)
+                  .filter((f: FluidEntry) => f.swallowingIssues && f.swallowingIssues.length > 0)
+                  .map((f: FluidEntry) => `${f.time} - ${f.name}: ${f.swallowingIssues?.join(', ')}`)
                   .join('; ');
                 alerts.push({
                   id: 'swallowing',
@@ -767,7 +886,7 @@ function DashboardComponent() {
                       </CardHeader>
                       <CardContent>
                         <ResponsiveContainer width="100%" height={250}>
-                          <BarChart data={chartData.map((day: any) => {
+                          <BarChart data={chartData.map((day: ChartDataItem) => {
                             // Convert sleep quality to numeric score for visualization
                             const afternoonScore = day.afternoonRest ? (
                               day.afternoonRest.quality === 'deep' ? 4 :
@@ -798,7 +917,7 @@ function DashboardComponent() {
                             }} />
                             <Legend />
                             <Bar dataKey="afternoonSleep" fill="#60a5fa" name="Afternoon Rest">
-                              {chartData.map((entry: any, index: number) => {
+                              {chartData.map((entry: ChartDataItem, index: number) => {
                                 const quality = entry.afternoonRest?.quality;
                                 const color = quality === 'deep' ? '#22c55e' :
                                              quality === 'light' ? '#60a5fa' :
@@ -807,7 +926,7 @@ function DashboardComponent() {
                               })}
                             </Bar>
                             <Bar dataKey="nightSleep" fill="#8b5cf6" name="Night Sleep">
-                              {chartData.map((entry: any, index: number) => {
+                              {chartData.map((entry: ChartDataItem, index: number) => {
                                 const quality = entry.nightSleep?.quality;
                                 const color = quality === 'deep' ? '#22c55e' :
                                              quality === 'light' ? '#8b5cf6' :
@@ -923,7 +1042,7 @@ function DashboardComponent() {
                     {/* Medication List */}
                     {todayLog.medications && todayLog.medications.length > 0 ? (
                       <div className="space-y-2">
-                        {todayLog.medications.map((med: any, idx: number) => (
+                        {todayLog.medications.map((med: MedicationEntry, idx: number) => (
                           <div key={idx} className="border-b pb-2 last:border-b-0">
                             <div className="flex items-center justify-between text-sm">
                               <span className="text-gray-700 font-medium">{med.name}</span>
@@ -1048,7 +1167,7 @@ function DashboardComponent() {
 
                           {showFluidDetails && (
                             <div className="mt-3 space-y-2">
-                              {todayLog.fluids.map((fluid: any, idx: number) => (
+                              {todayLog.fluids.map((fluid: FluidEntry, idx: number) => (
                                 <div
                                   key={idx}
                                   data-testid={`fluid-entry-${idx}`}
@@ -1594,7 +1713,7 @@ function DashboardComponent() {
                             </div>
                             {todayLog.morningExerciseSession.exercises && todayLog.morningExerciseSession.exercises.length > 0 && (
                               <div className="space-y-1 text-xs">
-                                {todayLog.morningExerciseSession.exercises.map((exercise: any, idx: number) => (
+                                {todayLog.morningExerciseSession.exercises.map((exercise: ExerciseEntry, idx: number) => (
                                   <div key={idx} className="flex justify-between">
                                     <span>{exercise.type} ({exercise.duration} min)</span>
                                     <span className="text-gray-600">Participation: {exercise.participation}/5</span>
@@ -1616,7 +1735,7 @@ function DashboardComponent() {
                             </div>
                             {todayLog.afternoonExerciseSession.exercises && todayLog.afternoonExerciseSession.exercises.length > 0 && (
                               <div className="space-y-1 text-xs">
-                                {todayLog.afternoonExerciseSession.exercises.map((exercise: any, idx: number) => (
+                                {todayLog.afternoonExerciseSession.exercises.map((exercise: ExerciseEntry, idx: number) => (
                                   <div key={idx} className="flex justify-between">
                                     <span>{exercise.type} ({exercise.duration} min)</span>
                                     <span className="text-gray-600">Participation: {exercise.participation}/5</span>
@@ -1641,7 +1760,7 @@ function DashboardComponent() {
                                   ...(todayLog.afternoonExerciseSession?.exercises || [])
                                 ];
                                 if (allExercises.length === 0) return '';
-                                const avgParticipation = allExercises.reduce((sum: number, ex: any) => sum + ex.participation, 0) / allExercises.length;
+                                const avgParticipation = allExercises.reduce((sum: number, ex: ExerciseEntry) => sum + (ex.participation || 0), 0) / allExercises.length;
                                 return avgParticipation >= 4 ? 'text-green-600' : avgParticipation >= 3 ? 'text-yellow-600' : 'text-red-600';
                               })()
                             }`}>
@@ -1651,7 +1770,7 @@ function DashboardComponent() {
                                   ...(todayLog.afternoonExerciseSession?.exercises || [])
                                 ];
                                 if (allExercises.length === 0) return 'No exercises';
-                                const avgParticipation = allExercises.reduce((sum: number, ex: any) => sum + ex.participation, 0) / allExercises.length;
+                                const avgParticipation = allExercises.reduce((sum: number, ex: ExerciseEntry) => sum + (ex.participation || 0), 0) / allExercises.length;
                                 return avgParticipation >= 4 ? 'Good' : avgParticipation >= 3 ? 'Fair' : 'Poor';
                               })()}
                             </span>
@@ -1670,7 +1789,7 @@ function DashboardComponent() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2 text-sm">
-                        {Object.entries(todayLog.movementDifficulties).map(([activity, data]: [string, any]) => (
+                        {(Object.entries(todayLog.movementDifficulties) as [string, MovementDifficultyData][]).map(([activity, data]) => (
                           <div key={activity} className="flex justify-between items-center">
                             <span className="text-gray-600 text-xs">
                               {activity.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()}:
@@ -1939,7 +2058,7 @@ function DashboardComponent() {
                   {todayLog.unaccompaniedTime && todayLog.unaccompaniedTime.length > 0 && (
                     <div className="mt-3 space-y-2">
                       <p className="text-xs font-semibold text-gray-700">Time periods:</p>
-                      {todayLog.unaccompaniedTime.map((period: any, index: number) => (
+                      {todayLog.unaccompaniedTime.map((period: UnaccompaniedPeriod, index: number) => (
                         <div key={index} className="text-xs text-gray-700 bg-white p-2 rounded border border-yellow-200">
                           <span className="font-medium">{period.startTime} - {period.endTime}</span>
                           {period.reason && <span className="ml-2">({period.reason})</span>}
@@ -1959,17 +2078,17 @@ function DashboardComponent() {
             {/* Sprint 1 Day 3: Safety Status */}
             {todayLog?.safetyChecks && (
               <Card className={
-                Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length === 6
+                (Object.values(todayLog.safetyChecks) as SafetyCheckItem[]).filter((c) => c.checked).length === 6
                   ? 'border-2 border-green-300'
                   : 'border border-yellow-400'
               }>
                 <CardHeader className={`rounded-t-lg ${
-                  Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length === 6
+                  (Object.values(todayLog.safetyChecks) as SafetyCheckItem[]).filter((c) => c.checked).length === 6
                     ? 'bg-green-50'
                     : 'bg-yellow-50'
                 }`}>
                   <h3 className={`font-semibold ${
-                    Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length === 6
+                    (Object.values(todayLog.safetyChecks) as SafetyCheckItem[]).filter((c) => c.checked).length === 6
                       ? 'text-green-800'
                       : 'text-yellow-800'
                   }`}>
@@ -1979,10 +2098,10 @@ function DashboardComponent() {
                 <CardContent className="pt-4">
                   <div className="mb-3">
                     <p className="text-sm font-medium text-gray-700">
-                      Safety Checks: {Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length}/6 Complete
-                      ({Math.round((Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length / 6) * 100)}%)
+                      Safety Checks: {(Object.values(todayLog.safetyChecks) as SafetyCheckItem[]).filter((c) => c.checked).length}/6 Complete
+                      ({Math.round(((Object.values(todayLog.safetyChecks) as SafetyCheckItem[]).filter((c) => c.checked).length / 6) * 100)}%)
                     </p>
-                    {Object.values(todayLog.safetyChecks).filter((c: any) => c.checked).length < 6 && (
+                    {(Object.values(todayLog.safetyChecks) as SafetyCheckItem[]).filter((c) => c.checked).length < 6 && (
                       <p className="text-xs text-yellow-700 mt-1">
                         ⚠️ Not all safety checks completed today
                       </p>
@@ -1991,7 +2110,7 @@ function DashboardComponent() {
 
                   {/* List completed checks */}
                   <div className="space-y-2">
-                    {Object.entries(todayLog.safetyChecks).map(([key, value]: [string, any]) => {
+                    {(Object.entries(todayLog.safetyChecks) as [string, SafetyCheckItem][]).map(([key, value]) => {
                       if (!value.checked) return null;
 
                       const labels: Record<string, string> = {
@@ -2030,7 +2149,7 @@ function DashboardComponent() {
                   </p>
 
                   <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(todayLog.emergencyPrep).map(([key, available]: [string, any]) => {
+                    {(Object.entries(todayLog.emergencyPrep) as [string, boolean][]).map(([key, available]) => {
                       const labels: Record<string, string> = {
                         icePack: 'Ice Pack',
                         wheelchair: 'Wheelchair',
@@ -2093,7 +2212,7 @@ function DashboardComponent() {
             )}
 
             {/* Personal Items Check */}
-            {todayLog?.personalItemsCheck && Object.values(todayLog.personalItemsCheck).some((item: any) => item.checked) && (
+            {todayLog?.personalItemsCheck && (Object.values(todayLog.personalItemsCheck) as PersonalItemCheckItem[]).some((item) => item.checked) && (
               <Card>
                 <CardHeader>
                   <h3 className="font-semibold">👓 Personal Items Check</h3>
@@ -2127,7 +2246,7 @@ function DashboardComponent() {
                       </div>
                     )}
                     <p className="text-xs text-gray-600 mt-2">
-                      {Object.values(todayLog.personalItemsCheck).filter((item: any) => item.checked).length}/3 items checked
+                      {(Object.values(todayLog.personalItemsCheck) as PersonalItemCheckItem[]).filter((item) => item.checked).length}/3 items checked
                     </p>
                   </div>
                 </CardContent>

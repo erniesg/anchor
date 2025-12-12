@@ -2,8 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PackList } from '@/components/PackList';
 import type { PackListItem } from '@/components/PackList';
-import { Breadcrumb } from '@/components/ui/breadcrumb';
-import { ArrowLeft, Backpack, Home } from 'lucide-react';
+import { ArrowLeft, Backpack } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { authenticatedApiCall } from '@/lib/api';
 import { useToast } from '@/lib/toast';
@@ -18,7 +17,6 @@ function CaregiverPackListComponent() {
   const { addToast } = useToast();
 
   // Get caregiver info from localStorage
-  const caregiverId = localStorage.getItem('caregiverId');
   const careRecipientId = localStorage.getItem('careRecipientId');
   const careRecipientName = localStorage.getItem('careRecipientName');
 

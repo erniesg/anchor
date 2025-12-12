@@ -16,7 +16,7 @@ test.describe('Caregiver Form Submission', () => {
         try {
           const body = await response.text();
           console.log('Response body:', body);
-        } catch (e) {
+        } catch {
           // Ignore if can't read body
         }
       } else if (response.url().includes('care-logs')) {
@@ -334,7 +334,7 @@ test.describe('Caregiver Form Submission', () => {
           const responseBody = await response.json();
           console.log('Care log ID:', responseBody.id || 'unknown');
           console.log('Status:', responseBody.status || 'unknown');
-        } catch (e) {
+        } catch {
           console.log('Could not parse response body');
         }
       } else {
@@ -358,7 +358,7 @@ test.describe('Caregiver Form Submission', () => {
 
     // Look for success/error indicators
     const successMessage = await page.locator('text=/success|submitted|thank you/i').count();
-    const errorMessage = await page.locator('text=/error|failed/i').count();
+    const _errorMessage = await page.locator('text=/error|failed/i').count(); void _errorMessage;
 
     if (successMessage > 0) {
       console.log('✅ SUCCESS: Found success message on page');

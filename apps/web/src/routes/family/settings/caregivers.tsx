@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/lib/toast';
-import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal, Edit, Plus, Heart, ExternalLink } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { authenticatedApiCall } from '@/lib/api';
@@ -63,7 +62,7 @@ function CaregiversSettingsComponent() {
   const [deactivationReason, setDeactivationReason] = useState('');
   const [copiedPin, setCopiedPin] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null); // Track which ID was copied
-  const [userRole, setUserRole] = useState<'family_admin' | 'family_member' | null>(getUserRole);
+  const [userRole, _setUserRole] = useState<'family_admin' | 'family_member' | null>(getUserRole); void _setUserRole;
 
   // Add caregiver form state
   const [addForm, setAddForm] = useState({
@@ -144,7 +143,7 @@ function CaregiversSettingsComponent() {
   });
 
   const isLoading = recipientsLoading || caregiversLoading;
-  const selectedRecipient = careRecipients?.find(r => r.id === selectedRecipientId);
+  const _selectedRecipient = careRecipients?.find(r => r.id === selectedRecipientId); void _selectedRecipient;
 
   // Reset PIN mutation
   const resetPinMutation = useMutation({

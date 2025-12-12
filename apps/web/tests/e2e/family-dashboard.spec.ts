@@ -1,5 +1,27 @@
 import { test, expect } from '@playwright/test';
 
+interface CareRecipient {
+  id: string;
+  name?: string;
+}
+
+interface CareLog {
+  id: string;
+  logDate: string;
+  bloodPressure?: string;
+  pulseRate?: number;
+  bloodSugar?: number;
+  mood?: string;
+}
+
+interface VitalsData {
+  date: string;
+  bp?: string;
+  pulse?: number;
+  bloodSugar?: number;
+  mood?: string;
+}
+
 test.describe('Family Dashboard', () => {
   const BASE_URL = 'https://anchor-dev.erniesg.workers.dev';
   const API_URL = 'https://anchor-dev-api.erniesg.workers.dev';
@@ -53,7 +75,7 @@ test.describe('Family Dashboard', () => {
     expect(recipientResponse.ok()).toBeTruthy();
     const recipients = await recipientResponse.json();
     const careRecipient = Array.isArray(recipients)
-      ? recipients.find((r: any) => r.id === CARE_RECIPIENT_ID)
+      ? recipients.find((r: CareRecipient) => r.id === CARE_RECIPIENT_ID)
       : null;
 
     console.log('✅ Care recipient fetched:', careRecipient?.name || 'Not found');
@@ -181,9 +203,9 @@ test.describe('Family Dashboard', () => {
     console.log(`📊 Analyzing ${careLogs.length} logs for trends...`);
 
     // Extract vital signs for trend analysis
-    const vitalsData = careLogs
-      .filter((log: any) => log.bloodPressure && log.pulseRate)
-      .map((log: any) => ({
+    const vitalsData: VitalsData[] = careLogs
+      .filter((log: CareLog) => log.bloodPressure && log.pulseRate)
+      .map((log: CareLog) => ({
         date: log.logDate,
         bp: log.bloodPressure,
         pulse: log.pulseRate,
@@ -192,7 +214,7 @@ test.describe('Family Dashboard', () => {
       }));
 
     console.log('\nVitals Trend Summary:');
-    vitalsData.slice(0, 5).forEach((v: any) => {
+    vitalsData.slice(0, 5).forEach((v: VitalsData) => {
       console.log(`  Date: ${v.date} | BP: ${v.bp} | Pulse: ${v.pulse} | Sugar: ${v.bloodSugar} | Mood: ${v.mood}`);
     });
 
@@ -201,12 +223,12 @@ test.describe('Family Dashboard', () => {
     console.log(`\n✅ Sufficient data for trends (${vitalsData.length} data points)`);
 
     // Check for data variation (indicates realistic trends)
-    const bloodPressures = vitalsData.map((v: any) => v.bp).filter(Boolean);
+    const bloodPressures = vitalsData.map((v: VitalsData) => v.bp).filter(Boolean);
     const uniqueBPs = new Set(bloodPressures);
     expect(uniqueBPs.size).toBeGreaterThan(1);
     console.log(`✅ Blood pressure shows variation (${uniqueBPs.size} unique values)`);
 
-    const moods = vitalsData.map((v: any) => v.mood).filter(Boolean);
+    const moods = vitalsData.map((v: VitalsData) => v.mood).filter(Boolean);
     const uniqueMoods = new Set(moods);
     expect(uniqueMoods.size).toBeGreaterThan(1);
     console.log(`✅ Mood shows variation (${uniqueMoods.size} unique values: ${Array.from(uniqueMoods).join(', ')})`);

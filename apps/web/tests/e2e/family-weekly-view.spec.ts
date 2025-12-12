@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 
 test.describe('Family Weekly View', () => {
   test('should show care logs in weekly view', async ({ page }) => {

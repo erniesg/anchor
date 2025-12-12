@@ -164,7 +164,7 @@ test.describe('Onboarding Flow - API Endpoint Tests', () => {
     });
 
     expect(signupResponse.ok()).toBeTruthy();
-    const { user, token } = await signupResponse.json();
+    const { user, token: _token } = await signupResponse.json(); void _token;
 
     console.log('✅ User created via API');
 

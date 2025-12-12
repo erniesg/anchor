@@ -20,7 +20,7 @@ interface CareRecipientData {
 
 function OnboardingComponent() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const [_step, _setStep] = useState(1); void _step; void _setStep;
   const [name, setName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [condition, setCondition] = useState('');

@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/lib/toast';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
-import { Heart, ArrowLeft, Plus, Edit2, UserCog, Backpack } from 'lucide-react';
+import { Heart, Plus, Edit2, UserCog, Backpack } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
-import { authenticatedApiCall, apiCall } from '@/lib/api';
+import { authenticatedApiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/family/settings/care-recipients')({
   component: CareRecipientsSettingsComponent,
@@ -34,7 +34,7 @@ interface CareRecipient {
 function CareRecipientsSettingsComponent() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedRecipient, setSelectedRecipient] = useState<CareRecipient | null>(null);
+  const [_selectedRecipient, setSelectedRecipient] = useState<CareRecipient | null>(null); void _selectedRecipient;
   const [formData, setFormData] = useState({
     name: '',
     dateOfBirth: '',

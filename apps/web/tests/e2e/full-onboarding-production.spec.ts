@@ -270,7 +270,7 @@ test.describe('Full Production Onboarding Flow', () => {
     console.log(`✅ API returned ${recipients.length} care recipient(s)`);
 
     // Find our test recipient
-    const testRecipient = recipients.find((r: any) => r.id === careRecipientId);
+    const testRecipient = recipients.find((r: { id: string }) => r.id === careRecipientId);
     expect(testRecipient).toBeTruthy();
 
     console.log('✅ Care recipient data verified in database:');

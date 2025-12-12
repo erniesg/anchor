@@ -3289,7 +3289,7 @@ function CareLogFormComponent() {
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => setPriorityLevel(option.value as any)}
+                      onClick={() => setPriorityLevel(option.value as 'emergency' | 'urgent' | 'routine')}
                       className={`p-4 border-2 rounded-lg text-center font-medium transition-colors ${
                         priorityLevel === option.value
                           ? option.color + ' ring-2 ring-offset-2 ring-primary-500'
