@@ -2059,6 +2059,129 @@ function DashboardComponent() {
               </Card>
             )}
 
+            {/* Room Maintenance */}
+            {todayLog?.roomMaintenance && (todayLog.roomMaintenance.cleaningStatus || todayLog.roomMaintenance.roomComfort) && (
+              <Card>
+                <CardHeader>
+                  <h3 className="font-semibold">🏠 Room Maintenance</h3>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    {todayLog.roomMaintenance.cleaningStatus && (
+                      <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span className="text-gray-700">Cleaning Status:</span>
+                        <span className="font-medium text-gray-900">
+                          {todayLog.roomMaintenance.cleaningStatus === 'completed_by_maid' && '✅ Completed by maid'}
+                          {todayLog.roomMaintenance.cleaningStatus === 'caregiver_assisted' && '👤 Caregiver assisted'}
+                          {todayLog.roomMaintenance.cleaningStatus === 'not_done' && '⏳ Not done'}
+                        </span>
+                      </div>
+                    )}
+                    {todayLog.roomMaintenance.roomComfort && (
+                      <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span className="text-gray-700">Room Comfort:</span>
+                        <span className="font-medium text-gray-900">
+                          {todayLog.roomMaintenance.roomComfort === 'good_temperature' && '🌡️ Good temperature'}
+                          {todayLog.roomMaintenance.roomComfort === 'too_hot' && '🔥 Too hot'}
+                          {todayLog.roomMaintenance.roomComfort === 'too_cold' && '❄️ Too cold'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Personal Items Check */}
+            {todayLog?.personalItemsCheck && Object.values(todayLog.personalItemsCheck).some((item: any) => item.checked) && (
+              <Card>
+                <CardHeader>
+                  <h3 className="font-semibold">👓 Personal Items Check</h3>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {todayLog.personalItemsCheck.spectaclesCleaned?.checked && (
+                      <div className="text-xs p-2 bg-purple-50 border border-purple-200 rounded">
+                        <span className="font-medium text-purple-900">✓ Spectacles:</span>
+                        <span className="text-purple-700 ml-2">
+                          {todayLog.personalItemsCheck.spectaclesCleaned.status === 'clean' ? 'Clean' : 'Need cleaning'}
+                        </span>
+                      </div>
+                    )}
+                    {todayLog.personalItemsCheck.jewelryAccountedFor?.checked && (
+                      <div className="text-xs p-2 bg-purple-50 border border-purple-200 rounded">
+                        <span className="font-medium text-purple-900">✓ Jewelry:</span>
+                        <span className="text-purple-700 ml-2">
+                          {todayLog.personalItemsCheck.jewelryAccountedFor.status === 'all_present'
+                            ? 'All present'
+                            : `Missing item${todayLog.personalItemsCheck.jewelryAccountedFor.notes ? `: ${todayLog.personalItemsCheck.jewelryAccountedFor.notes}` : ''}`}
+                        </span>
+                      </div>
+                    )}
+                    {todayLog.personalItemsCheck.handbagOrganized?.checked && (
+                      <div className="text-xs p-2 bg-purple-50 border border-purple-200 rounded">
+                        <span className="font-medium text-purple-900">✓ Handbag:</span>
+                        <span className="text-purple-700 ml-2">
+                          {todayLog.personalItemsCheck.handbagOrganized.status === 'organized' ? 'Organized' : 'Need organizing'}
+                        </span>
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-600 mt-2">
+                      {Object.values(todayLog.personalItemsCheck).filter((item: any) => item.checked).length}/3 items checked
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Hospital Bag Status */}
+            {todayLog?.hospitalBagStatus && todayLog.hospitalBagStatus.lastChecked && (
+              <Card className={
+                todayLog.hospitalBagStatus.bagReady
+                  ? 'border-2 border-green-300'
+                  : 'border border-yellow-400'
+              }>
+                <CardHeader className={`rounded-t-lg ${
+                  todayLog.hospitalBagStatus.bagReady
+                    ? 'bg-green-50'
+                    : 'bg-yellow-50'
+                }`}>
+                  <h3 className={`font-semibold ${
+                    todayLog.hospitalBagStatus.bagReady
+                      ? 'text-green-800'
+                      : 'text-yellow-800'
+                  }`}>
+                    🏥 Hospital Emergency Bag
+                  </h3>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="space-y-3">
+                    <div className={`text-sm p-3 rounded-lg ${
+                      todayLog.hospitalBagStatus.bagReady
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {todayLog.hospitalBagStatus.bagReady
+                        ? '✅ Bag is fully packed and ready'
+                        : '⚠️ Bag not ready - attention needed'}
+                    </div>
+                    {todayLog.hospitalBagStatus.location && (
+                      <div className="text-xs p-2 bg-gray-50 rounded border">
+                        <span className="font-medium text-gray-700">📍 Location:</span>
+                        <span className="text-gray-600 ml-2">{todayLog.hospitalBagStatus.location}</span>
+                      </div>
+                    )}
+                    {todayLog.hospitalBagStatus.notes && (
+                      <div className="text-xs p-2 bg-blue-50 rounded border border-blue-200">
+                        <span className="font-medium text-blue-900">📝 Notes:</span>
+                        <span className="text-blue-700 ml-2">{todayLog.hospitalBagStatus.notes}</span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {todayLog?.notes && (
               <Card>
                 <CardHeader>

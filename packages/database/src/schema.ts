@@ -314,6 +314,30 @@ export const careLogs = sqliteTable('care_logs', {
       antiseptic?: boolean;
     }>(),
 
+  // Environment & Safety - Room Maintenance (Template page 13)
+  roomMaintenance: text('room_maintenance', { mode: 'json' })
+    .$type<{
+      cleaningStatus?: 'completed_by_maid' | 'caregiver_assisted' | 'not_done';
+      roomComfort?: 'good_temperature' | 'too_hot' | 'too_cold';
+    }>(),
+
+  // Environment & Safety - Personal Items Check (Template page 14)
+  personalItemsCheck: text('personal_items_check', { mode: 'json' })
+    .$type<{
+      spectaclesCleaned?: { checked: boolean; status: 'clean' | 'need_cleaning' };
+      jewelryAccountedFor?: { checked: boolean; status: 'all_present' | 'missing_item'; notes?: string };
+      handbagOrganized?: { checked: boolean; status: 'organized' | 'need_organizing' };
+    }>(),
+
+  // Environment & Safety - Hospital Bag Status (Template page 14)
+  hospitalBagStatus: text('hospital_bag_status', { mode: 'json' })
+    .$type<{
+      bagReady?: boolean;
+      location?: string;
+      lastChecked?: boolean;
+      notes?: string;
+    }>(),
+
   // Sprint 3 Day 1: Spiritual & Emotional Well-Being (Template page 12)
   spiritualEmotional: text('spiritual_emotional', { mode: 'json' })
     .$type<{

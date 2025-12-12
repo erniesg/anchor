@@ -339,6 +339,37 @@ const createCareLogSchema = z.object({
     notes: z.string().optional(), // Additional notes
   }).optional(),
 
+  // Environment & Safety - Room Maintenance (Template page 13)
+  roomMaintenance: z.object({
+    cleaningStatus: z.enum(['completed_by_maid', 'caregiver_assisted', 'not_done']).optional(),
+    roomComfort: z.enum(['good_temperature', 'too_hot', 'too_cold']).optional(),
+  }).optional(),
+
+  // Environment & Safety - Personal Items Check (Template page 14)
+  personalItemsCheck: z.object({
+    spectaclesCleaned: z.object({
+      checked: z.boolean(),
+      status: z.enum(['clean', 'need_cleaning']).optional(),
+    }).optional(),
+    jewelryAccountedFor: z.object({
+      checked: z.boolean(),
+      status: z.enum(['all_present', 'missing_item']).optional(),
+      notes: z.string().optional(),
+    }).optional(),
+    handbagOrganized: z.object({
+      checked: z.boolean(),
+      status: z.enum(['organized', 'need_organizing']).optional(),
+    }).optional(),
+  }).optional(),
+
+  // Environment & Safety - Hospital Bag Status (Template page 14)
+  hospitalBagStatus: z.object({
+    bagReady: z.boolean().optional(),
+    location: z.string().optional(),
+    lastChecked: z.boolean().optional(),
+    notes: z.string().optional(),
+  }).optional(),
+
   // Notes
   notes: z.string().optional(),
 });
@@ -437,6 +468,10 @@ function parseJsonFields(log: Record<string, unknown>): Record<string, unknown> 
     oralCare: safeJsonParse(log.oralCare || log.oral_care),
     // Sprint 3 Day 5: Parse special concerns
     specialConcerns: safeJsonParse(log.specialConcerns || log.special_concerns),
+    // Environment & Safety fields
+    roomMaintenance: safeJsonParse(log.roomMaintenance || log.room_maintenance),
+    personalItemsCheck: safeJsonParse(log.personalItemsCheck || log.personal_items_check),
+    hospitalBagStatus: safeJsonParse(log.hospitalBagStatus || log.hospital_bag_status),
   };
 }
 
@@ -517,6 +552,10 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         oralCare: data.oralCare ? JSON.stringify(data.oralCare) as string : null,
         // Sprint 3 Day 5: Special Concerns & Incidents
         specialConcerns: data.specialConcerns ? JSON.stringify(data.specialConcerns) as string : null,
+        // Environment & Safety fields
+        roomMaintenance: data.roomMaintenance ? JSON.stringify(data.roomMaintenance) as string : null,
+        personalItemsCheck: data.personalItemsCheck ? JSON.stringify(data.personalItemsCheck) as string : null,
+        hospitalBagStatus: data.hospitalBagStatus ? JSON.stringify(data.hospitalBagStatus) as string : null,
         notes: data.notes,
         createdAt: now,
         updatedAt: now,
@@ -650,6 +689,10 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
         oralCare: data.oralCare,
         // Sprint 3 Day 5: Special Concerns & Incidents
         specialConcerns: data.specialConcerns,
+        // Environment & Safety fields
+        roomMaintenance: data.roomMaintenance ? JSON.stringify(data.roomMaintenance) : undefined,
+        personalItemsCheck: data.personalItemsCheck ? JSON.stringify(data.personalItemsCheck) : undefined,
+        hospitalBagStatus: data.hospitalBagStatus ? JSON.stringify(data.hospitalBagStatus) : undefined,
         notes: data.notes,
         updatedAt: new Date(),
       } as Partial<typeof careLogs.$inferInsert>)

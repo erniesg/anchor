@@ -354,6 +354,30 @@ function CareLogFormComponent() {
     firstAidKit: false,
   });
 
+  // Environment & Safety: Room Maintenance
+  const [roomMaintenance, setRoomMaintenance] = useState<{
+    cleaningStatus: 'completed_by_maid' | 'caregiver_assisted' | 'not_done' | '';
+    roomComfort: 'good_temperature' | 'too_hot' | 'too_cold' | '';
+  }>({
+    cleaningStatus: '',
+    roomComfort: '',
+  });
+
+  // Environment & Safety: Personal Items Check
+  const [personalItems, setPersonalItems] = useState({
+    spectaclesCleaned: { checked: false, status: '' as 'clean' | 'need_cleaning' | '' },
+    jewelryAccountedFor: { checked: false, status: '' as 'all_present' | 'missing_item' | '', notes: '' },
+    handbagOrganized: { checked: false, status: '' as 'organized' | 'need_organizing' | '' },
+  });
+
+  // Environment & Safety: Hospital Bag Status
+  const [hospitalBagStatus, setHospitalBagStatus] = useState({
+    bagReady: false,
+    location: '',
+    lastChecked: false,
+    notes: '',
+  });
+
   // Get care recipient ID (mock for now - should come from caregiver session)
   // Care recipient ID from localStorage (for future use)
   // const careRecipientId = localStorage.getItem('careRecipientId') || '';
@@ -454,6 +478,10 @@ function CareLogFormComponent() {
       unaccompaniedIncidents: omitEmpty(unaccompaniedIncidents),
       safetyChecks: Object.values(safetyChecks).some(v => v.checked) ? safetyChecks : undefined,
       emergencyPrep: Object.values(emergencyPrep).some(v => v) ? emergencyPrep : undefined,
+      // Environment & Safety: Additional fields
+      roomMaintenance: (roomMaintenance.cleaningStatus || roomMaintenance.roomComfort) ? roomMaintenance : undefined,
+      personalItemsCheck: Object.values(personalItems).some(v => v.checked) ? personalItems : undefined,
+      hospitalBagStatus: (hospitalBagStatus.bagReady || hospitalBagStatus.lastChecked || hospitalBagStatus.location || hospitalBagStatus.notes) ? hospitalBagStatus : undefined,
       // Sprint 3 Day 1: Spiritual & Emotional Well-Being
       spiritualEmotional: (prayerStartTime || prayerEndTime || prayerExpression || overallMood || communicationScale || socialInteraction) ? {
         prayerTime: (prayerStartTime && prayerEndTime) ? { start: prayerStartTime, end: prayerEndTime } : undefined,
@@ -536,6 +564,8 @@ function CareLogFormComponent() {
       urineAssistance, urinePain, urineColor, urineConcerns,
       balanceIssues, nearFalls, actualFalls,
       walkingPattern, freezingEpisodes, unaccompaniedTime, unaccompaniedIncidents, safetyChecks, emergencyPrep,
+      // Environment & Safety: Additional fields
+      roomMaintenance, personalItems, hospitalBagStatus,
       // Sprint 3 Day 1: Spiritual & Emotional
       prayerStartTime, prayerEndTime, prayerExpression, overallMood, communicationScale, socialInteraction,
       // Sprint 3 Day 2: Physical Activity
@@ -712,7 +742,7 @@ function CareLogFormComponent() {
   }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite, breakfastAmount,
       bloodPressure, pulseRate, oxygenLevel, bloodSugar, bowelFreq, urineFreq,
       balanceIssues, nearFalls, actualFalls, walkingPattern, freezingEpisodes,
-      unaccompaniedTime, unaccompaniedIncidents, safetyChecks, notes, emergencyFlag]);
+      unaccompaniedTime, unaccompaniedIncidents, safetyChecks, emergencyPrep, roomMaintenance, personalItems, hospitalBagStatus, notes, emergencyFlag]);
 
   const allSectionsComplete = Object.values(sectionValidation).every(s => s.complete);
   const sectionsWithData = Object.values(sectionValidation).filter(s => s.hasData).length;
@@ -2490,6 +2520,296 @@ function CareLogFormComponent() {
                       ({Math.round((Object.values(emergencyPrep).filter((v) => v).length / 7) * 100)}%)
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Room Maintenance */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Room Maintenance</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cleaning Status
+                    </label>
+                    <select
+                      value={roomMaintenance.cleaningStatus}
+                      onChange={(e) => setRoomMaintenance({ ...roomMaintenance, cleaningStatus: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="">Select...</option>
+                      <option value="completed_by_maid">Completed by maid</option>
+                      <option value="caregiver_assisted">Caregiver assisted</option>
+                      <option value="not_done">Not done</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Room Comfort
+                    </label>
+                    <select
+                      value={roomMaintenance.roomComfort}
+                      onChange={(e) => setRoomMaintenance({ ...roomMaintenance, roomComfort: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="">Select...</option>
+                      <option value="good_temperature">Good temperature</option>
+                      <option value="too_hot">Too hot</option>
+                      <option value="too_cold">Too cold</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Personal Items Check */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Personal Items Check (Daily)</h3>
+                <div className="space-y-4">
+                  {/* Spectacles */}
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={personalItems.spectaclesCleaned.checked}
+                        onChange={(e) => setPersonalItems({
+                          ...personalItems,
+                          spectaclesCleaned: { ...personalItems.spectaclesCleaned, checked: e.target.checked }
+                        })}
+                        className="w-5 h-5 mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <label className="font-medium text-gray-900">Spectacles cleaned</label>
+                        {personalItems.spectaclesCleaned.checked && (
+                          <div className="mt-2 flex gap-2">
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="spectaclesStatus"
+                                value="clean"
+                                checked={personalItems.spectaclesCleaned.status === 'clean'}
+                                onChange={() => setPersonalItems({
+                                  ...personalItems,
+                                  spectaclesCleaned: { ...personalItems.spectaclesCleaned, status: 'clean' }
+                                })}
+                              />
+                              <span className="text-sm">Clean</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="spectaclesStatus"
+                                value="need_cleaning"
+                                checked={personalItems.spectaclesCleaned.status === 'need_cleaning'}
+                                onChange={() => setPersonalItems({
+                                  ...personalItems,
+                                  spectaclesCleaned: { ...personalItems.spectaclesCleaned, status: 'need_cleaning' }
+                                })}
+                              />
+                              <span className="text-sm">Need cleaning</span>
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Jewelry */}
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={personalItems.jewelryAccountedFor.checked}
+                        onChange={(e) => setPersonalItems({
+                          ...personalItems,
+                          jewelryAccountedFor: { ...personalItems.jewelryAccountedFor, checked: e.target.checked }
+                        })}
+                        className="w-5 h-5 mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <label className="font-medium text-gray-900">Jewelry accounted for</label>
+                        {personalItems.jewelryAccountedFor.checked && (
+                          <div className="mt-2 space-y-2">
+                            <div className="flex gap-2">
+                              <label className="flex items-center gap-2">
+                                <input
+                                  type="radio"
+                                  name="jewelryStatus"
+                                  value="all_present"
+                                  checked={personalItems.jewelryAccountedFor.status === 'all_present'}
+                                  onChange={() => setPersonalItems({
+                                    ...personalItems,
+                                    jewelryAccountedFor: { ...personalItems.jewelryAccountedFor, status: 'all_present' }
+                                  })}
+                                />
+                                <span className="text-sm">All present</span>
+                              </label>
+                              <label className="flex items-center gap-2">
+                                <input
+                                  type="radio"
+                                  name="jewelryStatus"
+                                  value="missing_item"
+                                  checked={personalItems.jewelryAccountedFor.status === 'missing_item'}
+                                  onChange={() => setPersonalItems({
+                                    ...personalItems,
+                                    jewelryAccountedFor: { ...personalItems.jewelryAccountedFor, status: 'missing_item' }
+                                  })}
+                                />
+                                <span className="text-sm">Missing item</span>
+                              </label>
+                            </div>
+                            {personalItems.jewelryAccountedFor.status === 'missing_item' && (
+                              <input
+                                type="text"
+                                placeholder="Which item is missing?"
+                                value={personalItems.jewelryAccountedFor.notes}
+                                onChange={(e) => setPersonalItems({
+                                  ...personalItems,
+                                  jewelryAccountedFor: { ...personalItems.jewelryAccountedFor, notes: e.target.value }
+                                })}
+                                className="w-full px-3 py-2 border rounded-lg text-sm"
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Handbag */}
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={personalItems.handbagOrganized.checked}
+                        onChange={(e) => setPersonalItems({
+                          ...personalItems,
+                          handbagOrganized: { ...personalItems.handbagOrganized, checked: e.target.checked }
+                        })}
+                        className="w-5 h-5 mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <label className="font-medium text-gray-900">Handbag organized</label>
+                        {personalItems.handbagOrganized.checked && (
+                          <div className="mt-2 flex gap-2">
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="handbagStatus"
+                                value="organized"
+                                checked={personalItems.handbagOrganized.status === 'organized'}
+                                onChange={() => setPersonalItems({
+                                  ...personalItems,
+                                  handbagOrganized: { ...personalItems.handbagOrganized, status: 'organized' }
+                                })}
+                              />
+                              <span className="text-sm">Organized</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="handbagStatus"
+                                value="need_organizing"
+                                checked={personalItems.handbagOrganized.status === 'need_organizing'}
+                                onChange={() => setPersonalItems({
+                                  ...personalItems,
+                                  handbagOrganized: { ...personalItems.handbagOrganized, status: 'need_organizing' }
+                                })}
+                              />
+                              <span className="text-sm">Need organizing</span>
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-purple-900">
+                        Personal Items Checked:
+                      </span>
+                      <span className="text-sm font-bold text-purple-900">
+                        {Object.values(personalItems).filter((v) => v.checked).length}/3
+                        ({Math.round((Object.values(personalItems).filter((v) => v.checked).length / 3) * 100)}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hospital Bag Preparedness */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>🏥</span>
+                  Hospital Bag Preparedness (Daily Check)
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Quick daily check that emergency bag is ready. For detailed bag setup, use Pack List.
+                </p>
+
+                <div className="space-y-4">
+                  <div className="border rounded-lg p-4 bg-blue-50">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={hospitalBagStatus.lastChecked}
+                        onChange={(e) => setHospitalBagStatus({ ...hospitalBagStatus, lastChecked: e.target.checked })}
+                        className="w-5 h-5"
+                      />
+                      <span className="font-medium text-gray-900">I have checked the hospital bag today</span>
+                    </label>
+                  </div>
+
+                  {hospitalBagStatus.lastChecked && (
+                    <>
+                      <div className="border rounded-lg p-4 bg-white">
+                        <label className="flex items-center gap-3 mb-3">
+                          <input
+                            type="checkbox"
+                            checked={hospitalBagStatus.bagReady}
+                            onChange={(e) => setHospitalBagStatus({ ...hospitalBagStatus, bagReady: e.target.checked })}
+                            className="w-5 h-5"
+                          />
+                          <span className="font-medium text-gray-900">✅ Bag is fully packed and ready</span>
+                        </label>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Bag Location
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Top shelf in bedroom closet"
+                            value={hospitalBagStatus.location}
+                            onChange={(e) => setHospitalBagStatus({ ...hospitalBagStatus, location: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-lg"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Notes (optional)
+                        </label>
+                        <textarea
+                          placeholder="Any concerns or items that need attention..."
+                          value={hospitalBagStatus.notes}
+                          onChange={(e) => setHospitalBagStatus({ ...hospitalBagStatus, notes: e.target.value })}
+                          className="w-full px-3 py-2 border rounded-lg"
+                          rows={2}
+                        />
+                      </div>
+
+                      {!hospitalBagStatus.bagReady && (
+                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <p className="text-sm text-yellow-800">
+                            ⚠️ Bag not ready! Please update the bag or notify family.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
