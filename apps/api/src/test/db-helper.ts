@@ -169,6 +169,11 @@ export function runMigrations(sqlite: Database.Database) {
       -- Sprint 3 Day 1: Spiritual & Emotional Well-Being
       spiritual_emotional TEXT,
 
+      -- Sprint 3 Day 2: Environment & Safety
+      room_maintenance TEXT,
+      personal_items_check TEXT,
+      hospital_bag_status TEXT,
+
       -- Notes
       notes TEXT,
 

@@ -293,15 +293,19 @@ function CareLogFormComponent() {
     gettingOutOfCar: { level: '', notes: '' },
   });
 
-  // Sprint 3 Day 3: Oral Care & Hygiene
-  const [teethBrushed] = useState(false);
-  const [timesBrushed] = useState<number | null>(null);
-  const [denturesCleaned] = useState(false);
-  const [mouthRinsed] = useState(false);
-  const [oralAssistanceLevel] = useState<'none' | 'minimal' | 'moderate' | 'full' | ''>('');
-  const [oralHealthIssues] = useState<string[]>([]);
-  const [painOrBleeding] = useState(false);
-  const [oralCareNotes] = useState('');
+  // Sprint 3 Day 3: Oral Care & Hygiene (placeholder - not yet implemented)
+  // These will be used when Oral Care section is added to the form
+  const [_teethBrushed] = useState(false);
+  const [_timesBrushed] = useState<number | null>(null);
+  const [_denturesCleaned] = useState(false);
+  const [_mouthRinsed] = useState(false);
+  const [_oralAssistanceLevel] = useState<'none' | 'minimal' | 'moderate' | 'full' | ''>('');
+  const [_oralHealthIssues] = useState<string[]>([]);
+  const [_painOrBleeding] = useState(false);
+  const [_oralCareNotes] = useState('');
+  // Suppress unused variable warnings - these are intentionally unused placeholders
+  void _teethBrushed; void _timesBrushed; void _denturesCleaned; void _mouthRinsed;
+  void _oralAssistanceLevel; void _oralHealthIssues; void _painOrBleeding; void _oralCareNotes;
 
   // Sprint 3 Day 5: Special Concerns & Incidents
   const [priorityLevel, setPriorityLevel] = useState<'emergency' | 'urgent' | 'routine' | ''>('');
@@ -742,7 +746,7 @@ function CareLogFormComponent() {
   }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite, breakfastAmount,
       bloodPressure, pulseRate, oxygenLevel, bloodSugar, bowelFreq, urineFreq,
       balanceIssues, nearFalls, actualFalls, walkingPattern, freezingEpisodes,
-      unaccompaniedTime, unaccompaniedIncidents, safetyChecks, emergencyPrep, roomMaintenance, personalItems, hospitalBagStatus, notes, emergencyFlag]);
+      unaccompaniedTime, unaccompaniedIncidents, safetyChecks, notes, emergencyFlag]);
 
   const allSectionsComplete = Object.values(sectionValidation).every(s => s.complete);
   const sectionsWithData = Object.values(sectionValidation).filter(s => s.hasData).length;
@@ -1765,7 +1769,7 @@ function CareLogFormComponent() {
                           <button
                             key={option.value}
                             type="button"
-                            onClick={() => setBowelAccidents(option.value as any)}
+                            onClick={() => setBowelAccidents(option.value as 'none' | 'minor' | 'major')}
                             className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                               bowelAccidents === option.value
                                 ? 'bg-amber-500 text-white'
@@ -1789,7 +1793,7 @@ function CareLogFormComponent() {
                           <button
                             key={option.value}
                             type="button"
-                            onClick={() => setBowelAssistance(option.value as any)}
+                            onClick={() => setBowelAssistance(option.value as 'none' | 'partial' | 'full')}
                             className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                               bowelAssistance === option.value
                                 ? 'bg-amber-500 text-white'
@@ -1813,7 +1817,7 @@ function CareLogFormComponent() {
                           <button
                             key={option.value}
                             type="button"
-                            onClick={() => setBowelPain(option.value as any)}
+                            onClick={() => setBowelPain(option.value as 'no_pain' | 'some_pain' | 'very_painful')}
                             className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                               bowelPain === option.value
                                 ? 'bg-amber-500 text-white'
@@ -2533,7 +2537,7 @@ function CareLogFormComponent() {
                     </label>
                     <select
                       value={roomMaintenance.cleaningStatus}
-                      onChange={(e) => setRoomMaintenance({ ...roomMaintenance, cleaningStatus: e.target.value as any })}
+                      onChange={(e) => setRoomMaintenance({ ...roomMaintenance, cleaningStatus: e.target.value as 'completed_by_maid' | 'caregiver_assisted' | 'not_done' | '' })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     >
                       <option value="">Select...</option>
@@ -2549,7 +2553,7 @@ function CareLogFormComponent() {
                     </label>
                     <select
                       value={roomMaintenance.roomComfort}
-                      onChange={(e) => setRoomMaintenance({ ...roomMaintenance, roomComfort: e.target.value as any })}
+                      onChange={(e) => setRoomMaintenance({ ...roomMaintenance, roomComfort: e.target.value as 'good_temperature' | 'too_hot' | 'too_cold' | '' })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     >
                       <option value="">Select...</option>
