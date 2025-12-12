@@ -1894,7 +1894,7 @@ function CareLogFormComponent() {
                           <button
                             key={option.value}
                             type="button"
-                            onClick={() => setUrineDiaperStatus(option.value as any)}
+                            onClick={() => setUrineDiaperStatus(option.value as 'dry' | 'wet' | 'soiled')}
                             className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                               urineDiaperStatus === option.value
                                 ? 'bg-blue-500 text-white'
@@ -1911,7 +1911,7 @@ function CareLogFormComponent() {
                       <label className="block text-sm font-medium mb-2">Urine Color</label>
                       <select
                         value={urineColor || ''}
-                        onChange={(e) => setUrineColor(e.target.value as any || null)}
+                        onChange={(e) => setUrineColor(e.target.value as 'light_clear' | 'yellow' | 'dark_yellow' | 'brown' | 'dark' || null)}
                         className="w-full p-2 border rounded-lg"
                       >
                         <option value="">Select...</option>
@@ -1934,7 +1934,7 @@ function CareLogFormComponent() {
                           <button
                             key={option.value}
                             type="button"
-                            onClick={() => setUrineAccidents(option.value as any)}
+                            onClick={() => setUrineAccidents(option.value as 'none' | 'minor' | 'major')}
                             className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                               urineAccidents === option.value
                                 ? 'bg-blue-500 text-white'
@@ -1958,7 +1958,7 @@ function CareLogFormComponent() {
                           <button
                             key={option.value}
                             type="button"
-                            onClick={() => setUrineAssistance(option.value as any)}
+                            onClick={() => setUrineAssistance(option.value as 'none' | 'partial' | 'full')}
                             className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                               urineAssistance === option.value
                                 ? 'bg-blue-500 text-white'
@@ -1982,7 +1982,7 @@ function CareLogFormComponent() {
                           <button
                             key={option.value}
                             type="button"
-                            onClick={() => setUrinePain(option.value as any)}
+                            onClick={() => setUrinePain(option.value as 'no_pain' | 'some_pain' | 'very_painful')}
                             className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                               urinePain === option.value
                                 ? 'bg-blue-500 text-white'
@@ -2069,7 +2069,7 @@ function CareLogFormComponent() {
                 </label>
                 <select
                   value={nearFalls}
-                  onChange={(e) => setNearFalls(e.target.value as any)}
+                  onChange={(e) => setNearFalls(e.target.value as 'none' | 'once_or_twice' | 'multiple')}
                   className="w-full px-4 py-2 border rounded-lg"
                 >
                   <option value="none">None</option>
@@ -2086,7 +2086,7 @@ function CareLogFormComponent() {
                 </label>
                 <select
                   value={actualFalls}
-                  onChange={(e) => setActualFalls(e.target.value as any)}
+                  onChange={(e) => setActualFalls(e.target.value as 'none' | 'minor' | 'major')}
                   className={`w-full px-4 py-2 border rounded-lg ${actualFalls === 'major' ? 'border-2 border-red-500' : ''}`}
                 >
                   <option value="none">None</option>
@@ -2140,7 +2140,7 @@ function CareLogFormComponent() {
                 </p>
                 <select
                   value={freezingEpisodes}
-                  onChange={(e) => setFreezingEpisodes(e.target.value as any)}
+                  onChange={(e) => setFreezingEpisodes(e.target.value as 'none' | 'mild' | 'severe')}
                   className="w-full px-4 py-2 border rounded-lg"
                 >
                   <option value="none">None</option>
@@ -2875,7 +2875,7 @@ function CareLogFormComponent() {
                   ].map((option) => (
                     <button
                       key={option.value}
-                      onClick={() => setPrayerExpression(option.value as any)}
+                      onClick={() => setPrayerExpression(option.value as 'speaking_out_loud' | 'whispering' | 'mumbling' | 'silent_worship')}
                       className={`px-4 py-3 rounded-lg border-2 transition-all ${
                         prayerExpression === option.value
                           ? 'bg-primary-100 border-primary-500 text-primary-900'
@@ -2942,7 +2942,7 @@ function CareLogFormComponent() {
                   ].map((option) => (
                     <button
                       key={option.value}
-                      onClick={() => setSocialInteraction(option.value as any)}
+                      onClick={() => setSocialInteraction(option.value as 'engaged' | 'responsive' | 'withdrawn' | 'aggressive_hostile')}
                       className={`px-4 py-3 rounded-lg border-2 transition-all ${
                         socialInteraction === option.value
                           ? 'bg-primary-100 border-primary-500 text-primary-900'
