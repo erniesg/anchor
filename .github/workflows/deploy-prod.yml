@@ -44,9 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    environment:
-      name: production
-      url: https://anchor.erniesg.workers.dev
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
