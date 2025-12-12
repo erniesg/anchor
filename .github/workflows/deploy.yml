@@ -1,9 +1,10 @@
-name: Deploy to Development
+name: Deploy
 
 on:
   push:
     branches:
-      - dev
+      - master
+      - main  # Support both naming conventions
 
 jobs:
   test:
@@ -33,6 +34,9 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      - name: Run integration tests
+        run: pnpm test:integration
 
   deploy:
     name: Deploy to Dev Environment
