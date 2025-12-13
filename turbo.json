@@ -38,11 +38,13 @@
     },
     "deploy:dev": {
       "dependsOn": ["build", "test"],
-      "outputs": []
+      "outputs": [],
+      "passThroughEnv": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
     },
     "deploy:prod": {
       "dependsOn": ["build", "test"],
-      "outputs": []
+      "outputs": [],
+      "passThroughEnv": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
     }
   }
 }
