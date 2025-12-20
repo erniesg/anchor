@@ -774,12 +774,10 @@ function CareLogFormComponent() {
         hasData: restSleepData,
         missing: [],
       },
-      7: { // Fall Risk & Safety - if started, complete the key fields
-        complete: !(balanceIssues !== null && (nearFalls === 'none' && actualFalls === 'none')),
+      7: { // Fall Risk & Safety - all fields optional
+        complete: true,
         hasData: fallRiskData,
-        missing: balanceIssues !== null && nearFalls === 'none' && actualFalls === 'none'
-          ? ['⚠️ Near Falls frequency', '⚠️ Actual Falls status']
-          : [],
+        missing: [],
       },
       8: { // Unaccompanied Time - optional
         complete: true,
@@ -959,6 +957,7 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">🌅 Morning Routine</h2>
+              <p className="text-sm text-gray-500 mt-1">All fields in this section are optional</p>
             </CardHeader>
             <CardContent className="space-y-4">
               {isLocked && (
@@ -1001,7 +1000,7 @@ function CareLogFormComponent() {
               </div>
 
               <Input
-                label="Shower Time (optional)"
+                label="Shower Time"
                 type="time"
                 value={showerTime}
                 onChange={(e) => setShowerTime(e.target.value)}
@@ -1033,6 +1032,7 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">💊 Medications</h2>
+              <p className="text-sm text-gray-500 mt-1">Mark medications as given. Time is required when medication is given.</p>
             </CardHeader>
             <CardContent className="space-y-4">
               {medications.map((med, idx) => (
@@ -1125,6 +1125,7 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">🍽️ Meals & Nutrition</h2>
+              <p className="text-sm text-gray-500 mt-1">All fields are optional. If you enter a meal time, please also enter appetite and amount.</p>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -1400,7 +1401,7 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">😴 Rest & Sleep</h2>
-              <p className="text-sm text-gray-600">Track afternoon rest and night sleep quality</p>
+              <p className="text-sm text-gray-500 mt-1">Optional. If rest/sleep occurred, complete the required time and quality fields.</p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Afternoon Rest */}
@@ -1669,6 +1670,7 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">❤️ Vital Signs</h2>
+              <p className="text-sm text-gray-500 mt-1">All fields are optional. Record any measurements taken today.</p>
             </CardHeader>
             <CardContent className="space-y-4">
               {(() => {
@@ -1758,7 +1760,7 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">🚽 Toileting & Hygiene</h2>
-              <p className="text-sm text-gray-600 mt-1">Track bowel movements and urination separately</p>
+              <p className="text-sm text-gray-500 mt-1">All fields are optional. Track bowel movements and urination separately.</p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Bowel Movements Section */}
@@ -2111,12 +2113,13 @@ function CareLogFormComponent() {
                 <AlertCircle className="h-5 w-5 text-orange-500" />
                 Fall Risk & Safety Assessment
               </h2>
+              <p className="text-sm text-gray-500 mt-1">All fields are optional. Complete any relevant assessments.</p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Balance Issues Scale */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Balance Issues (1-5) <span className="text-gray-500 font-normal text-xs">(optional, but if selected, please complete Near Falls and Actual Falls below)</span>
+                  Balance Issues (1-5)
                 </label>
                 <div className="bg-gray-50 p-3 rounded-lg mb-2 text-xs">
                   <p><strong>1</strong> = No balance problems</p>
@@ -2146,8 +2149,7 @@ function CareLogFormComponent() {
               {/* Near Falls */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Near Falls {balanceIssues !== null && <span className="text-orange-600">*</span>}
-                  {balanceIssues !== null && <span className="text-gray-500 font-normal text-xs ml-1">(required when Balance Issues is filled)</span>}
+                  Near Falls
                 </label>
                 <select
                   value={nearFalls}
@@ -2163,8 +2165,7 @@ function CareLogFormComponent() {
               {/* Actual Falls */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Actual Falls 🚨 {balanceIssues !== null && <span className="text-orange-600">*</span>}
-                  {balanceIssues !== null && <span className="text-gray-500 font-normal text-xs ml-1">(required when Balance Issues is filled)</span>}
+                  Actual Falls 🚨
                 </label>
                 <select
                   value={actualFalls}
@@ -2251,8 +2252,8 @@ function CareLogFormComponent() {
                 <Clock className="h-5 w-5 text-blue-500" />
                 Unaccompanied Time Tracking
               </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Record any periods when the care recipient was left alone
+              <p className="text-sm text-gray-500 mt-1">
+                Optional. If adding time periods, start time, end time, and reason are required.
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -2482,8 +2483,8 @@ function CareLogFormComponent() {
                 <CheckCircle className="h-5 w-5 text-green-500" />
                 Daily Safety Checks
               </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Complete daily safety checklist and emergency preparedness
+              <p className="text-sm text-gray-500 mt-1">
+                All fields are optional. Check items you've verified today.
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -2923,7 +2924,7 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">🙏 Spiritual & Emotional Well-Being</h2>
-              <p className="text-sm text-gray-600">Track prayer, mood, and social interactions</p>
+              <p className="text-sm text-gray-500 mt-1">All fields are optional. Track prayer, mood, and social interactions.</p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Prayer Time */}
@@ -3061,7 +3062,7 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">🏃 Physical Activity & Exercise</h2>
-              <p className="text-sm text-gray-600">Track detailed exercise sessions and movement assessment</p>
+              <p className="text-sm text-gray-500 mt-1">All fields are optional. Track exercise sessions and movement assessment.</p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Morning Exercise Session */}
@@ -3362,7 +3363,7 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">⚠️ Special Concerns & Incidents</h2>
-              <p className="text-sm text-gray-600">Document any concerns, behavioral changes, or incidents</p>
+              <p className="text-sm text-gray-500 mt-1">All fields are optional. Document any concerns, behavioral changes, or incidents.</p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Priority Level */}
@@ -3506,6 +3507,7 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">📝 Notes & Submit</h2>
+              <p className="text-sm text-gray-500 mt-1">Add any final notes and submit your care report.</p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 flex items-start gap-3">
