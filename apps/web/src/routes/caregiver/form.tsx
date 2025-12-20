@@ -438,8 +438,9 @@ function CareLogFormComponent() {
       } : undefined,
       // Sprint 2 Day 2: Fluid Intake
       fluids: fluids.length > 0 ? fluids : undefined,
-      // Sprint 2 Day 3: Sleep Tracking
-      afternoonRest: afternoonRest,
+      // Sprint 2 Day 3: Sleep Tracking - only send if times are valid (start < end)
+      afternoonRest: afternoonRest && afternoonRest.startTime && afternoonRest.endTime &&
+        afternoonRest.startTime < afternoonRest.endTime ? afternoonRest : undefined,
       nightSleep: nightSleep,
       bloodPressure: omitEmpty(bloodPressure),
       pulseRate: pulseRate ? parseInt(pulseRate) : undefined,
@@ -475,16 +476,35 @@ function CareLogFormComponent() {
       actualFalls: actualFalls !== 'none' ? actualFalls : undefined,
       walkingPattern: walkingPattern.length > 0 ? walkingPattern : undefined,
       freezingEpisodes: freezingEpisodes !== 'none' ? freezingEpisodes : undefined,
-      unaccompaniedTime: unaccompaniedTime.length > 0 ? unaccompaniedTime.map(p => ({
-        ...p,
-        durationMinutes: calculateDuration(p.startTime, p.endTime),
-      })) : undefined,
+      unaccompaniedTime: (() => {
+        // Filter out entries with missing required fields (reason, valid times)
+        const validEntries = unaccompaniedTime.filter(p =>
+          p.startTime && p.endTime && p.reason && p.startTime < p.endTime
+        ).map(p => ({
+          ...p,
+          durationMinutes: calculateDuration(p.startTime, p.endTime),
+        }));
+        return validEntries.length > 0 ? validEntries : undefined;
+      })(),
       unaccompaniedIncidents: omitEmpty(unaccompaniedIncidents),
       safetyChecks: Object.values(safetyChecks).some(v => v.checked) ? safetyChecks : undefined,
       emergencyPrep: Object.values(emergencyPrep).some(v => v) ? emergencyPrep : undefined,
       // Environment & Safety: Additional fields
       roomMaintenance: (roomMaintenance.cleaningStatus || roomMaintenance.roomComfort) ? roomMaintenance : undefined,
-      personalItemsCheck: Object.values(personalItems).some(v => v.checked) ? personalItems : undefined,
+      personalItemsCheck: (() => {
+        // Only include items where both checked=true AND status is a valid non-empty value
+        const validItems: Record<string, { checked: boolean; status: string; notes?: string }> = {};
+        if (personalItems.spectaclesCleaned.checked && personalItems.spectaclesCleaned.status) {
+          validItems.spectaclesCleaned = personalItems.spectaclesCleaned;
+        }
+        if (personalItems.jewelryAccountedFor.checked && personalItems.jewelryAccountedFor.status) {
+          validItems.jewelryAccountedFor = personalItems.jewelryAccountedFor;
+        }
+        if (personalItems.handbagOrganized.checked && personalItems.handbagOrganized.status) {
+          validItems.handbagOrganized = personalItems.handbagOrganized;
+        }
+        return Object.keys(validItems).length > 0 ? validItems : undefined;
+      })(),
       hospitalBagStatus: (hospitalBagStatus.bagReady || hospitalBagStatus.lastChecked || hospitalBagStatus.location || hospitalBagStatus.notes) ? hospitalBagStatus : undefined,
       // Sprint 3 Day 1: Spiritual & Emotional Well-Being
       spiritualEmotional: (prayerStartTime || prayerEndTime || prayerExpression || overallMood || communicationScale || socialInteraction) ? {
@@ -683,10 +703,26 @@ function CareLogFormComponent() {
     // Vital signs: only count as hasData if at least ONE actual measurement is entered (not just time)
     const vitalsData = bloodPressure || pulseRate || oxygenLevel || bloodSugar;
     const toiletingData = bowelFreq > 0 || urineFreq > 0;
+    // Section 6: Rest & Sleep
+    const restSleepData = afternoonRest !== null || nightSleep !== null;
+    // Section 7: Fall Risk & Safety
     const fallRiskData = balanceIssues !== null || nearFalls !== 'none' || actualFalls !== 'none' ||
                          walkingPattern.length > 0 || freezingEpisodes !== 'none';
+    // Section 8: Unaccompanied Time
     const unaccompaniedData = unaccompaniedTime.length > 0 || unaccompaniedIncidents;
+    // Section 9: Safety Checks
     const safetyChecksData = Object.values(safetyChecks).some(v => v.checked);
+    // Section 10: Spiritual & Emotional
+    const spiritualEmotionalData = prayerStartTime || prayerEndTime || prayerExpression ||
+                                   overallMood !== null || communicationScale !== null || socialInteraction;
+    // Section 11: Physical Activity
+    const physicalActivityData = exerciseDuration !== null || exerciseType.length > 0 || walkingDistance ||
+                                 assistanceLevel || painDuringActivity || energyAfterActivity ||
+                                 participationWillingness || equipmentUsed.length > 0 || mobilityNotes;
+    // Section 12: Special Concerns & Incidents
+    const specialConcernsData = priorityLevel || behaviouralChanges.length > 0 || physicalChanges ||
+                                incidentDescription || actionsTaken || specialConcernsNotes;
+    // Section 13: Notes & Submit
     const notesData = notes || emergencyFlag;
 
     return {
@@ -720,24 +756,44 @@ function CareLogFormComponent() {
         hasData: toiletingData,
         missing: [],
       },
-      6: { // Fall Risk & Safety - if started, complete the key fields
+      6: { // Rest & Sleep - optional
+        complete: true,
+        hasData: restSleepData,
+        missing: [],
+      },
+      7: { // Fall Risk & Safety - if started, complete the key fields
         complete: !(balanceIssues !== null && (nearFalls === 'none' && actualFalls === 'none')),
         hasData: fallRiskData,
         missing: balanceIssues !== null && nearFalls === 'none' && actualFalls === 'none'
           ? ['⚠️ Near Falls frequency', '⚠️ Actual Falls status']
           : [],
       },
-      7: { // Unaccompanied Time - optional
+      8: { // Unaccompanied Time - optional
         complete: true,
         hasData: unaccompaniedData,
         missing: [],
       },
-      8: { // Safety Checks - optional
+      9: { // Safety Checks - optional
         complete: true,
         hasData: safetyChecksData,
         missing: [],
       },
-      9: { // Notes & Submit - optional
+      10: { // Spiritual & Emotional - optional
+        complete: true,
+        hasData: spiritualEmotionalData,
+        missing: [],
+      },
+      11: { // Physical Activity - optional
+        complete: true,
+        hasData: physicalActivityData,
+        missing: [],
+      },
+      12: { // Special Concerns (Oral Care, etc.) - optional
+        complete: true,
+        hasData: specialConcernsData,
+        missing: [],
+      },
+      13: { // Notes & Submit - optional
         complete: true,
         hasData: notesData,
         missing: [],
@@ -745,8 +801,14 @@ function CareLogFormComponent() {
     };
   }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite, breakfastAmount,
       bloodPressure, pulseRate, oxygenLevel, bloodSugar, bowelFreq, urineFreq,
+      afternoonRest, nightSleep,
       balanceIssues, nearFalls, actualFalls, walkingPattern, freezingEpisodes,
-      unaccompaniedTime, unaccompaniedIncidents, safetyChecks, notes, emergencyFlag]);
+      unaccompaniedTime, unaccompaniedIncidents, safetyChecks,
+      prayerStartTime, prayerEndTime, prayerExpression, overallMood, communicationScale, socialInteraction,
+      exerciseDuration, exerciseType, walkingDistance, assistanceLevel, painDuringActivity, energyAfterActivity,
+      participationWillingness, equipmentUsed, mobilityNotes,
+      priorityLevel, behaviouralChanges, physicalChanges, incidentDescription, actionsTaken, specialConcernsNotes,
+      notes, emergencyFlag]);
 
   const allSectionsComplete = Object.values(sectionValidation).every(s => s.complete);
   const sectionsWithData = Object.values(sectionValidation).filter(s => s.hasData).length;
