@@ -490,18 +490,31 @@ function CareLogFormComponent() {
       safetyChecks: Object.values(safetyChecks).some(v => v.checked) ? safetyChecks : undefined,
       emergencyPrep: Object.values(emergencyPrep).some(v => v) ? emergencyPrep : undefined,
       // Environment & Safety: Additional fields
-      roomMaintenance: (roomMaintenance.cleaningStatus || roomMaintenance.roomComfort) ? roomMaintenance : undefined,
+      roomMaintenance: (roomMaintenance.cleaningStatus || roomMaintenance.roomComfort) ? {
+        ...(roomMaintenance.cleaningStatus ? { cleaningStatus: roomMaintenance.cleaningStatus } : {}),
+        ...(roomMaintenance.roomComfort ? { roomComfort: roomMaintenance.roomComfort } : {}),
+      } : undefined,
       personalItemsCheck: (() => {
-        // Only include items where both checked=true AND status is a valid non-empty value
-        const validItems: Record<string, { checked: boolean; status: string; notes?: string }> = {};
-        if (personalItems.spectaclesCleaned.checked && personalItems.spectaclesCleaned.status) {
-          validItems.spectaclesCleaned = personalItems.spectaclesCleaned;
+        // Include items where checked=true, but omit empty status values (backend accepts undefined status)
+        const validItems: Record<string, { checked: boolean; status?: string; notes?: string }> = {};
+        if (personalItems.spectaclesCleaned.checked) {
+          validItems.spectaclesCleaned = {
+            checked: true,
+            ...(personalItems.spectaclesCleaned.status ? { status: personalItems.spectaclesCleaned.status } : {}),
+          };
         }
-        if (personalItems.jewelryAccountedFor.checked && personalItems.jewelryAccountedFor.status) {
-          validItems.jewelryAccountedFor = personalItems.jewelryAccountedFor;
+        if (personalItems.jewelryAccountedFor.checked) {
+          validItems.jewelryAccountedFor = {
+            checked: true,
+            ...(personalItems.jewelryAccountedFor.status ? { status: personalItems.jewelryAccountedFor.status } : {}),
+            ...(personalItems.jewelryAccountedFor.notes ? { notes: personalItems.jewelryAccountedFor.notes } : {}),
+          };
         }
-        if (personalItems.handbagOrganized.checked && personalItems.handbagOrganized.status) {
-          validItems.handbagOrganized = personalItems.handbagOrganized;
+        if (personalItems.handbagOrganized.checked) {
+          validItems.handbagOrganized = {
+            checked: true,
+            ...(personalItems.handbagOrganized.status ? { status: personalItems.handbagOrganized.status } : {}),
+          };
         }
         return Object.keys(validItems).length > 0 ? validItems : undefined;
       })(),
@@ -1418,33 +1431,40 @@ function CareLogFormComponent() {
                   <div className="space-y-4 pl-6 border-l-2 border-blue-200">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium mb-1">Start Time</label>
+                        <label className="block text-sm font-medium mb-1">Start Time <span className="text-red-500">*</span></label>
                         <Input
                           type="time"
                           value={afternoonRest.startTime}
                           onChange={(e) => setAfternoonRest({ ...afternoonRest, startTime: e.target.value })}
                           required
+                          className={!afternoonRest.startTime ? 'border-red-300' : ''}
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">End Time</label>
+                        <label className="block text-sm font-medium mb-1">End Time <span className="text-red-500">*</span></label>
                         <Input
                           type="time"
                           value={afternoonRest.endTime}
                           onChange={(e) => setAfternoonRest({ ...afternoonRest, endTime: e.target.value })}
                           required
+                          className={!afternoonRest.endTime ? 'border-red-300' : ''}
                         />
                       </div>
                     </div>
 
-                    {afternoonRest.startTime && afternoonRest.endTime && (
+                    {afternoonRest.startTime && afternoonRest.endTime && afternoonRest.startTime >= afternoonRest.endTime && (
+                      <p className="text-sm text-red-600 font-medium">
+                        ⚠️ End time must be after start time
+                      </p>
+                    )}
+                    {afternoonRest.startTime && afternoonRest.endTime && afternoonRest.startTime < afternoonRest.endTime && (
                       <p className="text-sm text-gray-600">
                         Duration: {calculateDuration(afternoonRest.startTime, afternoonRest.endTime)} minutes
                       </p>
                     )}
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">Sleep Quality</label>
+                      <label className="block text-sm font-medium mb-2">Sleep Quality <span className="text-red-500">*</span></label>
                       <div className="grid grid-cols-2 gap-2">
                         {[
                           { value: 'deep', label: '💤 Deep Sleep', color: 'bg-green-100 border-green-300' },
@@ -2276,7 +2296,7 @@ function CareLogFormComponent() {
                         <div className="grid grid-cols-2 gap-3 mb-3">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Start Time
+                              Start Time <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="time"
@@ -2287,13 +2307,14 @@ function CareLogFormComponent() {
                                 newPeriods[index].startTime = e.target.value;
                                 setUnaccompaniedTime(newPeriods);
                               }}
-                              className="w-full px-3 py-2 border rounded-lg"
+                              className={`w-full px-3 py-2 border rounded-lg ${!period.startTime ? 'border-red-300' : ''}`}
+                              required
                             />
                           </div>
 
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              End Time
+                              End Time <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="time"
@@ -2304,7 +2325,8 @@ function CareLogFormComponent() {
                                 newPeriods[index].endTime = e.target.value;
                                 setUnaccompaniedTime(newPeriods);
                               }}
-                              className="w-full px-3 py-2 border rounded-lg"
+                              className={`w-full px-3 py-2 border rounded-lg ${!period.endTime ? 'border-red-300' : ''}`}
+                              required
                             />
                           </div>
                         </div>
@@ -2330,7 +2352,7 @@ function CareLogFormComponent() {
                         <div className="space-y-3">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Reason for absence
+                              Reason for absence <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="text"
@@ -2341,8 +2363,12 @@ function CareLogFormComponent() {
                                 newPeriods[index].reason = e.target.value;
                                 setUnaccompaniedTime(newPeriods);
                               }}
-                              className="w-full px-3 py-2 border rounded-lg"
+                              className={`w-full px-3 py-2 border rounded-lg ${!period.reason ? 'border-red-300' : ''}`}
+                              required
                             />
+                            {!period.reason && (
+                              <p className="text-xs text-red-500 mt-1">Reason is required</p>
+                            )}
                           </div>
 
                           <div>
