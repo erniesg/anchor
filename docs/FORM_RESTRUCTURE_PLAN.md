@@ -181,23 +181,20 @@ These can be logged at any time, from any screen:
 
 ## Implementation Phases
 
-### Phase 1: Dashboard + Routing ⏳ NEXT
+### Phase 1: Dashboard + Routing ✅ DONE
 **Goal**: Create the dashboard landing page and route structure
 
 **Tasks**:
-- [ ] 1.1 Create `/caregiver/form` dashboard component
-- [ ] 1.2 Add route for dashboard (modify existing form route)
-- [ ] 1.3 Create time-period card components with status
-- [ ] 1.4 Link cards to sub-routes (morning/afternoon/evening/summary)
-- [ ] 1.5 Show progress based on `completedSections` from API
+- [x] 1.1 Create `/caregiver/form` dashboard component
+- [x] 1.2 Add route for dashboard (layout + index)
+- [x] 1.3 Create time-period card components with status
+- [x] 1.4 Link cards to legacy form (to be updated to sub-routes)
+- [x] 1.5 Show progress based on `completedSections` from API
 
-**Files to Create/Modify**:
-- `apps/web/src/routes/caregiver/form.tsx` → becomes dashboard
-- `apps/web/src/routes/caregiver/form/morning.tsx` (new)
-- `apps/web/src/routes/caregiver/form/afternoon.tsx` (new)
-- `apps/web/src/routes/caregiver/form/evening.tsx` (new)
-- `apps/web/src/routes/caregiver/form/summary.tsx` (new)
-- `apps/web/src/components/caregiver/TimePeriodCard.tsx` (new)
+**Files Created/Modified**:
+- `apps/web/src/routes/caregiver/form.tsx` → layout with auth check
+- `apps/web/src/routes/caregiver/form/index.tsx` → dashboard component
+- `apps/web/src/routes/caregiver/form-legacy.tsx` → full form (moved)
 
 ### Phase 2: Morning Form
 **Goal**: Extract morning-specific fields into standalone form
@@ -273,12 +270,12 @@ These can be logged at any time, from any screen:
 
 ## Progress Tracking
 
-### Overall Progress: 0%
+### Overall Progress: 14% (1/7 phases complete)
 
 | Phase | Status | Progress |
 |-------|--------|----------|
-| Phase 1: Dashboard + Routing | ⏳ Next | 0/5 |
-| Phase 2: Morning Form | Pending | 0/7 |
+| Phase 1: Dashboard + Routing | ✅ Done | 5/5 |
+| Phase 2: Morning Form | ⏳ Next | 0/7 |
 | Phase 3: Afternoon Form | Pending | 0/6 |
 | Phase 4: Evening Form | Pending | 0/5 |
 | Phase 5: Summary Form | Pending | 0/8 |
@@ -293,6 +290,7 @@ These can be logged at any time, from any screen:
 - [x] Audit history implemented
 - [x] E2E tests updated to use BASE_URL
 - [x] Family auth working on production
+- [x] **Phase 1: Dashboard with time-period cards** (2024-12-24)
 
 ---
 
