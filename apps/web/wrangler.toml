@@ -23,4 +23,4 @@ name = "anchor"
 
 [env.production.vars]
 ENVIRONMENT = "production"
-VITE_API_URL = "https://anchor-api.erniesg.workers.dev"
+VITE_API_URL = "https://anchor-prod-api.erniesg.workers.dev"

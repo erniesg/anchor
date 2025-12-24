@@ -19,7 +19,7 @@ test.describe('Environment & Safety Fields', () => {
 
     console.log('\n=== PART 1: Caregiver Flow ===');
     console.log('STEP 1: Login as caregiver');
-    await page.goto('http://localhost:5173/caregiver/login');
+    await page.goto('/caregiver/login');
     await page.waitForLoadState('networkidle');
 
     // Use test caregiver credentials
@@ -209,7 +209,7 @@ test.describe('Environment & Safety Fields', () => {
 
     // Open new page for family login
     const familyPage = await context.newPage();
-    await familyPage.goto('http://localhost:5173/auth/login');
+    await familyPage.goto('/auth/login');
     await familyPage.waitForLoadState('networkidle');
 
     // Login as family - use freshly created test user

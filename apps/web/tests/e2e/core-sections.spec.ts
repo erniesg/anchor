@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Core Care Log Sections E2E', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to caregiver form
-    await page.goto('http://localhost:5173/caregiver/form');
+    await page.goto('/caregiver/form');
 
     // Wait for page to load
     await page.waitForSelector('h2', { timeout: 10000 });

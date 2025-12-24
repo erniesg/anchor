@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Detailed Exercise Sessions E2E', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to caregiver form
-    await page.goto('http://localhost:5173/caregiver/form');
+    await page.goto('/caregiver/form');
 
     // Navigate to Physical Activity section (id: 11)
     await page.getByRole('button', { name: /Physical Activity/i }).click();
@@ -158,7 +158,7 @@ test.describe('Detailed Exercise Sessions E2E', () => {
     await expect(page.locator('text=Report submitted successfully')).toBeVisible({ timeout: 10000 });
 
     // Navigate to family dashboard
-    await page.goto('http://localhost:5173/family/dashboard');
+    await page.goto('/family/dashboard');
 
     // Check exercise card is displayed
     await expect(page.locator('h3:has-text("Exercise Sessions")')).toBeVisible();

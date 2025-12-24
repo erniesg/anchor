@@ -29,6 +29,7 @@ vars = { ENVIRONMENT = "production" }
 binding = "DB"
 database_name = "anchor-prod-db"
 database_id = "df69ea4c-71f6-45db-bd47-3f1e3f3bdaee"
+migrations_dir = "../../packages/database/drizzle/migrations"
 
 [[env.production.r2_buckets]]
 binding = "STORAGE"
