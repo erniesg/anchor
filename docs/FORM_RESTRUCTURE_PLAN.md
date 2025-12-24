@@ -196,17 +196,21 @@ These can be logged at any time, from any screen:
 - `apps/web/src/routes/caregiver/form/index.tsx` → dashboard component
 - `apps/web/src/routes/caregiver/form-legacy.tsx` → full form (moved)
 
-### Phase 2: Morning Form
+### Phase 2: Morning Form ⏳ SIMPLIFIED
 **Goal**: Extract morning-specific fields into standalone form
 
+**Current Approach**: Section navigation via query params to legacy form.
+Dashboard cards navigate directly to relevant sections, providing time-based workflow
+without requiring full form extraction.
+
 **Tasks**:
-- [ ] 2.1 Create morning form component
+- [x] 2.7 Handle navigation to morning sections via dashboard
+- [ ] 2.1 Create morning form component (future - full extraction)
 - [ ] 2.2 Move wake/mood/shower fields from current form
 - [ ] 2.3 Move morning medications section
 - [ ] 2.4 Move breakfast section
 - [ ] 2.5 Move morning vitals (optional)
 - [ ] 2.6 Add "Submit Morning" button (calls submit-section API)
-- [ ] 2.7 Handle navigation back to dashboard
 
 ### Phase 3: Afternoon Form
 **Goal**: Extract afternoon-specific fields
