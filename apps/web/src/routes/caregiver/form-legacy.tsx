@@ -27,6 +27,9 @@ const OptionalLabel = ({ children }: { children: React.ReactNode }) => (
 
 export const Route = createFileRoute('/caregiver/form-legacy')({
   component: CareLogFormComponent,
+  validateSearch: (search: Record<string, unknown>) => ({
+    section: typeof search.section === 'number' ? search.section : 1,
+  }),
 });
 
 // Vital signs validation ranges
@@ -167,8 +170,9 @@ type CompletedSections = Partial<Record<SectionName, { submittedAt: string; subm
 
 function CareLogFormComponent() {
   const navigate = useNavigate();
+  const { section: initialSection } = Route.useSearch();
   const { token: caregiverToken, careRecipient: authCareRecipient } = useAuth();
-  const [currentSection, setCurrentSection] = useState(1);
+  const [currentSection, setCurrentSection] = useState(initialSection || 1);
   const [careLogId, setCareLogId] = useState<string | null>(null);
   const [logStatus, setLogStatus] = useState<'draft' | 'submitted' | 'invalidated'>('draft');
 
@@ -1350,6 +1354,17 @@ function CareLogFormComponent() {
 
             {/* Auto-save status and Quick Links */}
             <div className="flex items-center gap-3">
+              {/* Dashboard Quick Link */}
+              <Button
+                onClick={() => navigate({ to: '/caregiver/form' })}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <span className="text-lg">🏠</span>
+                <span className="hidden sm:inline">Dashboard</span>
+              </Button>
+
               {/* Pack List Quick Link */}
               <Button
                 onClick={() => navigate({ to: '/caregiver/pack-list' })}

@@ -141,16 +141,33 @@ function FormDashboardComponent() {
   ];
 
   const handleTimePeriodClick = (periodId: string) => {
-    // For now, navigate to legacy form
-    // TODO: Navigate to specific time-based form
-    navigate({ to: '/caregiver/form-legacy' });
+    // Navigate to legacy form with section param
+    // Morning: sections 1-3 (Morning Routine, Medications, Breakfast)
+    // Afternoon: sections 3-6 (Lunch, Tea, Vitals, Rest)
+    // Evening: sections 3, 6 (Dinner, Night Sleep)
+    // Summary: sections 7-13 (Fall Risk, Unaccompanied, Safety, etc.)
+    const sectionMap: Record<string, number> = {
+      morning: 1,
+      afternoon: 3, // Start at meals for lunch
+      evening: 3, // Start at meals for dinner
+      summary: 7, // Start at Fall Risk
+    };
+    const section = sectionMap[periodId] || 1;
+    navigate({ to: '/caregiver/form-legacy', search: { section } });
   };
 
   const handleQuickAction = (actionId: string) => {
     // TODO: Open quick action modal/drawer
     console.log('Quick action:', actionId);
-    // For now, navigate to legacy form
-    navigate({ to: '/caregiver/form-legacy' });
+    // For now, navigate to legacy form based on action
+    const sectionMap: Record<string, number> = {
+      toileting: 5, // Toileting section
+      fluid: 3, // Meals section has fluid intake
+      exercise: 11, // Physical Activity section
+      incident: 12, // Special Concerns section
+    };
+    const section = sectionMap[actionId] || 1;
+    navigate({ to: '/caregiver/form-legacy', search: { section } });
   };
 
   const formatSubmittedTime = (isoString: string) => {
@@ -279,7 +296,7 @@ function FormDashboardComponent() {
       {/* Go to Full Form Link */}
       <div className="max-w-lg mx-auto px-4 mt-8">
         <Button
-          onClick={() => navigate({ to: '/caregiver/form-legacy' })}
+          onClick={() => navigate({ to: '/caregiver/form-legacy', search: { section: 1 } })}
           variant="outline"
           className="w-full"
         >
