@@ -14,11 +14,13 @@ import { Route as FamilyTrendsRouteImport } from './routes/family/trends'
 import { Route as FamilyDashboardRouteImport } from './routes/family/dashboard'
 import { Route as CaregiverPackListRouteImport } from './routes/caregiver/pack-list'
 import { Route as CaregiverLoginRouteImport } from './routes/caregiver/login'
+import { Route as CaregiverFormLegacyRouteImport } from './routes/caregiver/form-legacy'
 import { Route as CaregiverFormRouteImport } from './routes/caregiver/form'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as FamilySettingsIndexRouteImport } from './routes/family/settings/index'
 import { Route as FamilyOnboardingIndexRouteImport } from './routes/family/onboarding/index'
+import { Route as CaregiverFormIndexRouteImport } from './routes/caregiver/form/index'
 import { Route as FamilySettingsProfileRouteImport } from './routes/family/settings/profile'
 import { Route as FamilySettingsPackListRouteImport } from './routes/family/settings/pack-list'
 import { Route as FamilySettingsFamilyMembersRouteImport } from './routes/family/settings/family-members'
@@ -51,6 +53,11 @@ const CaregiverLoginRoute = CaregiverLoginRouteImport.update({
   path: '/caregiver/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CaregiverFormLegacyRoute = CaregiverFormLegacyRouteImport.update({
+  id: '/caregiver/form-legacy',
+  path: '/caregiver/form-legacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CaregiverFormRoute = CaregiverFormRouteImport.update({
   id: '/caregiver/form',
   path: '/caregiver/form',
@@ -75,6 +82,11 @@ const FamilyOnboardingIndexRoute = FamilyOnboardingIndexRouteImport.update({
   id: '/family/onboarding/',
   path: '/family/onboarding/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CaregiverFormIndexRoute = CaregiverFormIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CaregiverFormRoute,
 } as any)
 const FamilySettingsProfileRoute = FamilySettingsProfileRouteImport.update({
   id: '/family/settings/profile',
@@ -115,7 +127,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/caregiver/form': typeof CaregiverFormRoute
+  '/caregiver/form': typeof CaregiverFormRouteWithChildren
+  '/caregiver/form-legacy': typeof CaregiverFormLegacyRoute
   '/caregiver/login': typeof CaregiverLoginRoute
   '/caregiver/pack-list': typeof CaregiverPackListRoute
   '/family/dashboard': typeof FamilyDashboardRoute
@@ -126,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/family/settings/family-members': typeof FamilySettingsFamilyMembersRoute
   '/family/settings/pack-list': typeof FamilySettingsPackListRoute
   '/family/settings/profile': typeof FamilySettingsProfileRoute
+  '/caregiver/form/': typeof CaregiverFormIndexRoute
   '/family/onboarding': typeof FamilyOnboardingIndexRoute
   '/family/settings': typeof FamilySettingsIndexRoute
 }
@@ -133,7 +147,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/caregiver/form': typeof CaregiverFormRoute
+  '/caregiver/form-legacy': typeof CaregiverFormLegacyRoute
   '/caregiver/login': typeof CaregiverLoginRoute
   '/caregiver/pack-list': typeof CaregiverPackListRoute
   '/family/dashboard': typeof FamilyDashboardRoute
@@ -144,6 +158,7 @@ export interface FileRoutesByTo {
   '/family/settings/family-members': typeof FamilySettingsFamilyMembersRoute
   '/family/settings/pack-list': typeof FamilySettingsPackListRoute
   '/family/settings/profile': typeof FamilySettingsProfileRoute
+  '/caregiver/form': typeof CaregiverFormIndexRoute
   '/family/onboarding': typeof FamilyOnboardingIndexRoute
   '/family/settings': typeof FamilySettingsIndexRoute
 }
@@ -152,7 +167,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/caregiver/form': typeof CaregiverFormRoute
+  '/caregiver/form': typeof CaregiverFormRouteWithChildren
+  '/caregiver/form-legacy': typeof CaregiverFormLegacyRoute
   '/caregiver/login': typeof CaregiverLoginRoute
   '/caregiver/pack-list': typeof CaregiverPackListRoute
   '/family/dashboard': typeof FamilyDashboardRoute
@@ -163,6 +179,7 @@ export interface FileRoutesById {
   '/family/settings/family-members': typeof FamilySettingsFamilyMembersRoute
   '/family/settings/pack-list': typeof FamilySettingsPackListRoute
   '/family/settings/profile': typeof FamilySettingsProfileRoute
+  '/caregiver/form/': typeof CaregiverFormIndexRoute
   '/family/onboarding/': typeof FamilyOnboardingIndexRoute
   '/family/settings/': typeof FamilySettingsIndexRoute
 }
@@ -173,6 +190,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/signup'
     | '/caregiver/form'
+    | '/caregiver/form-legacy'
     | '/caregiver/login'
     | '/caregiver/pack-list'
     | '/family/dashboard'
@@ -183,6 +201,7 @@ export interface FileRouteTypes {
     | '/family/settings/family-members'
     | '/family/settings/pack-list'
     | '/family/settings/profile'
+    | '/caregiver/form/'
     | '/family/onboarding'
     | '/family/settings'
   fileRoutesByTo: FileRoutesByTo
@@ -190,7 +209,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/login'
     | '/auth/signup'
-    | '/caregiver/form'
+    | '/caregiver/form-legacy'
     | '/caregiver/login'
     | '/caregiver/pack-list'
     | '/family/dashboard'
@@ -201,6 +220,7 @@ export interface FileRouteTypes {
     | '/family/settings/family-members'
     | '/family/settings/pack-list'
     | '/family/settings/profile'
+    | '/caregiver/form'
     | '/family/onboarding'
     | '/family/settings'
   id:
@@ -209,6 +229,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/signup'
     | '/caregiver/form'
+    | '/caregiver/form-legacy'
     | '/caregiver/login'
     | '/caregiver/pack-list'
     | '/family/dashboard'
@@ -219,6 +240,7 @@ export interface FileRouteTypes {
     | '/family/settings/family-members'
     | '/family/settings/pack-list'
     | '/family/settings/profile'
+    | '/caregiver/form/'
     | '/family/onboarding/'
     | '/family/settings/'
   fileRoutesById: FileRoutesById
@@ -227,7 +249,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSignupRoute: typeof AuthSignupRoute
-  CaregiverFormRoute: typeof CaregiverFormRoute
+  CaregiverFormRoute: typeof CaregiverFormRouteWithChildren
+  CaregiverFormLegacyRoute: typeof CaregiverFormLegacyRoute
   CaregiverLoginRoute: typeof CaregiverLoginRoute
   CaregiverPackListRoute: typeof CaregiverPackListRoute
   FamilyDashboardRoute: typeof FamilyDashboardRoute
@@ -279,6 +302,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CaregiverLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/caregiver/form-legacy': {
+      id: '/caregiver/form-legacy'
+      path: '/caregiver/form-legacy'
+      fullPath: '/caregiver/form-legacy'
+      preLoaderRoute: typeof CaregiverFormLegacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/caregiver/form': {
       id: '/caregiver/form'
       path: '/caregiver/form'
@@ -313,6 +343,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/family/onboarding'
       preLoaderRoute: typeof FamilyOnboardingIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/caregiver/form/': {
+      id: '/caregiver/form/'
+      path: '/'
+      fullPath: '/caregiver/form/'
+      preLoaderRoute: typeof CaregiverFormIndexRouteImport
+      parentRoute: typeof CaregiverFormRoute
     }
     '/family/settings/profile': {
       id: '/family/settings/profile'
@@ -359,11 +396,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CaregiverFormRouteChildren {
+  CaregiverFormIndexRoute: typeof CaregiverFormIndexRoute
+}
+
+const CaregiverFormRouteChildren: CaregiverFormRouteChildren = {
+  CaregiverFormIndexRoute: CaregiverFormIndexRoute,
+}
+
+const CaregiverFormRouteWithChildren = CaregiverFormRoute._addFileChildren(
+  CaregiverFormRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthSignupRoute: AuthSignupRoute,
-  CaregiverFormRoute: CaregiverFormRoute,
+  CaregiverFormRoute: CaregiverFormRouteWithChildren,
+  CaregiverFormLegacyRoute: CaregiverFormLegacyRoute,
   CaregiverLoginRoute: CaregiverLoginRoute,
   CaregiverPackListRoute: CaregiverPackListRoute,
   FamilyDashboardRoute: FamilyDashboardRoute,
