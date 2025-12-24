@@ -1,7 +1,8 @@
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { Home, Settings, ChevronRight } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface BreadcrumbItem {
   label: string;
@@ -15,27 +16,17 @@ interface FamilyLayoutProps {
 export function FamilyLayout({ children }: FamilyLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [user, setUser] = useState<{ id: string; email: string; name: string; role: string } | null>(null);
-  const [careRecipient, setCareRecipient] = useState<{ id: string; name: string } | null>(null);
-  const [isChecking, setIsChecking] = useState(true);
-
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    const recipientData = localStorage.getItem('careRecipient');
-    if (userData) setUser(JSON.parse(userData));
-    if (recipientData) setCareRecipient(JSON.parse(recipientData));
-    setIsChecking(false);
-  }, []);
+  const { user, careRecipient, isLoading } = useAuth();
 
   // Redirect to onboarding if no care recipient exists
   useEffect(() => {
-    if (!isChecking && user && !careRecipient && !location.pathname.includes('/onboarding')) {
+    if (!isLoading && user && !careRecipient && !location.pathname.includes('/onboarding')) {
       navigate({ to: '/family/onboarding' });
     }
-  }, [user, careRecipient, isChecking, navigate, location.pathname]);
+  }, [user, careRecipient, isLoading, navigate, location.pathname]);
 
-  // Show nothing while checking to avoid flash
-  if (isChecking) {
+  // Show nothing while loading to avoid flash
+  if (isLoading) {
     return null;
   }
 

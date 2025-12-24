@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { apiCall } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
 
 export const Route = createFileRoute('/auth/signup')({
@@ -20,6 +20,7 @@ interface SignupData {
 
 function SignupComponent() {
   const navigate = useNavigate();
+  const { signup } = useAuth();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -31,14 +32,9 @@ function SignupComponent() {
 
   const signupMutation = useMutation({
     mutationFn: async (data: SignupData) => {
-      return apiCall('/auth/signup', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      await signup(data.email, data.name, data.password, data.phone);
     },
-    onSuccess: (data) => {
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+    onSuccess: () => {
       navigate({ to: '/family/onboarding' });
     },
   });

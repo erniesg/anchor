@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { apiCall } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
 
 export const Route = createFileRoute('/caregiver/login')({
@@ -13,6 +13,7 @@ export const Route = createFileRoute('/caregiver/login')({
 
 function CaregiverLoginComponent() {
   const navigate = useNavigate();
+  const { loginCaregiver } = useAuth();
   const [caregiverId, setCaregiverId] = useState('');
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
@@ -20,21 +21,9 @@ function CaregiverLoginComponent() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: { caregiverId: string; pin: string }) => {
-      return apiCall('/auth/caregiver/login', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      await loginCaregiver(data.caregiverId, data.pin);
     },
-    onSuccess: (data) => {
-      localStorage.setItem('caregiverToken', data.token);
-      localStorage.setItem('caregiver', JSON.stringify(data.caregiver));
-      // Store full care recipient info including age/gender for personalized validation
-      if (data.careRecipient) {
-        localStorage.setItem('careRecipient', JSON.stringify(data.careRecipient));
-      } else {
-        // Fallback for backward compatibility
-        localStorage.setItem('careRecipient', JSON.stringify({ id: data.caregiver.careRecipientId }));
-      }
+    onSuccess: () => {
       navigate({ to: '/caregiver/form' });
     },
     onError: (err: Error) => {

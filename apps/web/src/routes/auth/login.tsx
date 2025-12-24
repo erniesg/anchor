@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { apiCall } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
 
 export const Route = createFileRoute('/auth/login')({
@@ -18,34 +18,16 @@ interface LoginData {
 
 function LoginComponent() {
   const navigate = useNavigate();
+  const { loginFamily } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginData) => {
-      return apiCall('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      await loginFamily(data.email, data.password);
     },
-    onSuccess: async (data) => {
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-
-      // Fetch care recipients for this family admin
-      try {
-        const recipients = await apiCall('/care-recipients', {
-          headers: { 'Authorization': `Bearer ${data.token}` }
-        });
-        if (recipients && recipients.length > 0) {
-          // Store first care recipient (can extend to support multiple later)
-          localStorage.setItem('careRecipient', JSON.stringify(recipients[0]));
-        }
-      } catch (error) {
-        console.error('Failed to fetch care recipients:', error);
-      }
-
+    onSuccess: () => {
       navigate({ to: '/family/dashboard' });
     },
   });

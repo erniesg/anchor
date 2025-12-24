@@ -1,12 +1,29 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMutation } from '@tanstack/react-query';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAutoSave } from '@/hooks/use-auto-save';
 import { Save, CheckCircle, AlertCircle, Clock, Backpack } from 'lucide-react';
 import { authenticatedApiCall } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+
+// Helper component for required field indicator
+const RequiredLabel = ({ children, required = false }: { children: React.ReactNode; required?: boolean }) => (
+  <span className="block text-sm font-medium text-gray-700 mb-1">
+    {children}
+    {required && <span className="text-red-500 ml-0.5">*</span>}
+  </span>
+);
+
+// Optional label helper
+const OptionalLabel = ({ children }: { children: React.ReactNode }) => (
+  <span className="block text-sm font-medium text-gray-700 mb-1">
+    {children}
+    <span className="text-gray-400 font-normal text-xs ml-1">(optional)</span>
+  </span>
+);
 
 export const Route = createFileRoute('/caregiver/form')({
   component: CareLogFormComponent,
@@ -144,11 +161,19 @@ const calculateDuration = (startTime: string, endTime: string): number => {
   return endMinutes - startMinutes;
 };
 
+// Section type for progressive submission
+type SectionName = 'morning' | 'afternoon' | 'evening' | 'dailySummary';
+type CompletedSections = Partial<Record<SectionName, { submittedAt: string; submittedBy: string }>>;
+
 function CareLogFormComponent() {
   const navigate = useNavigate();
+  const { token: caregiverToken, careRecipient: authCareRecipient } = useAuth();
   const [currentSection, setCurrentSection] = useState(1);
   const [careLogId, setCareLogId] = useState<string | null>(null);
   const [logStatus, setLogStatus] = useState<'draft' | 'submitted' | 'invalidated'>('draft');
+
+  // Progressive Section Submission - tracks which sections are shared with family
+  const [completedSections, setCompletedSections] = useState<CompletedSections>({});
 
   // Morning Routine
   const [wakeTime, setWakeTime] = useState('');
@@ -170,10 +195,36 @@ function CareLogFormComponent() {
     { name: 'Ozempic 0.5mg', given: false, time: null, timeSlot: 'afternoon', purpose: '', notes: '' },
   ]);
 
-  // Meals
+  // Meals - Breakfast
   const [breakfastTime, setBreakfastTime] = useState('');
   const [breakfastAppetite, setBreakfastAppetite] = useState(0);
   const [breakfastAmount, setBreakfastAmount] = useState(0);
+  const [breakfastAssistance, setBreakfastAssistance] = useState<'none' | 'some' | 'full'>('none');
+  const [breakfastSwallowing, setBreakfastSwallowing] = useState<string[]>([]);
+
+  // Meals - Lunch
+  const [lunchTime, setLunchTime] = useState('');
+  const [lunchAppetite, setLunchAppetite] = useState(0);
+  const [lunchAmount, setLunchAmount] = useState(0);
+  const [lunchAssistance, setLunchAssistance] = useState<'none' | 'some' | 'full'>('none');
+  const [lunchSwallowing, setLunchSwallowing] = useState<string[]>([]);
+
+  // Meals - Tea Break
+  const [teaBreakTime, setTeaBreakTime] = useState('');
+  const [teaBreakAppetite, setTeaBreakAppetite] = useState(0);
+  const [teaBreakAmount, setTeaBreakAmount] = useState(0);
+  const [teaBreakSwallowing, setTeaBreakSwallowing] = useState<string[]>([]);
+
+  // Meals - Dinner
+  const [dinnerTime, setDinnerTime] = useState('');
+  const [dinnerAppetite, setDinnerAppetite] = useState(0);
+  const [dinnerAmount, setDinnerAmount] = useState(0);
+  const [dinnerAssistance, setDinnerAssistance] = useState<'none' | 'some' | 'full'>('none');
+  const [dinnerSwallowing, setDinnerSwallowing] = useState<string[]>([]);
+
+  // Meals - Notes
+  const [foodPreferences, setFoodPreferences] = useState('');
+  const [foodRefusals, setFoodRefusals] = useState('');
 
   // Vitals
   const [bloodPressure, setBloodPressure] = useState('');
@@ -208,30 +259,28 @@ function CareLogFormComponent() {
   } | null>(null);
 
   // Sprint 2 Day 5: Complete Toileting & Hygiene Tracking
-  // Bowel Movements
+  // Toileting & Hygiene (Consolidated)
+  // Shared fields (asked once for the whole section)
+  const [toiletingDiaperChanges, setToiletingDiaperChanges] = useState<number | null>(null);
+  const [toiletingDiaperStatus, setToiletingDiaperStatus] = useState<'dry' | 'wet' | 'soiled' | null>(null);
+  const [toiletingAccidents, setToiletingAccidents] = useState<'none' | 'minor' | 'major'>('none');
+  const [toiletingAssistance, setToiletingAssistance] = useState<'none' | 'partial' | 'full'>('none');
+  const [toiletingPain, setToiletingPain] = useState<'no_pain' | 'some_pain' | 'very_painful'>('no_pain');
+
+  // Bowel-specific fields
   const [bowelFreq, setBowelFreq] = useState(0);
   const [bowelTimesUsedToilet, setBowelTimesUsedToilet] = useState<number | null>(null);
-  const [bowelDiaperChanges, setBowelDiaperChanges] = useState<number | null>(null);
-  const [bowelDiaperStatus, setBowelDiaperStatus] = useState<'dry' | 'wet' | 'soiled' | null>(null);
-  const [bowelAccidents, setBowelAccidents] = useState<'none' | 'minor' | 'major'>('none');
-  const [bowelAssistance, setBowelAssistance] = useState<'none' | 'partial' | 'full'>('none');
-  const [bowelPain, setBowelPain] = useState<'no_pain' | 'some_pain' | 'very_painful'>('no_pain');
   const [bowelConsistency, setBowelConsistency] = useState<'normal' | 'hard' | 'soft' | 'loose' | 'diarrhea' | null>(null);
   const [bowelConcerns, setBowelConcerns] = useState('');
 
-  // Urination
+  // Urination-specific fields
   const [urineFreq, setUrineFreq] = useState(0);
   const [urineTimesUsedToilet, setUrineTimesUsedToilet] = useState<number | null>(null);
-  const [urineDiaperChanges, setUrineDiaperChanges] = useState<number | null>(null);
-  const [urineDiaperStatus, setUrineDiaperStatus] = useState<'dry' | 'wet' | 'soiled' | null>(null);
-  const [urineAccidents, setUrineAccidents] = useState<'none' | 'minor' | 'major'>('none');
-  const [urineAssistance, setUrineAssistance] = useState<'none' | 'partial' | 'full'>('none');
-  const [urinePain, setUrinePain] = useState<'no_pain' | 'some_pain' | 'very_painful'>('no_pain');
   const [urineColor, setUrineColor] = useState<'light_clear' | 'yellow' | 'dark_yellow' | 'brown' | 'dark' | null>(null);
   const [urineConcerns, setUrineConcerns] = useState('');
 
-  // Legacy (to be removed after migration)
-  const [diaperChanges] = useState(0);
+  // Legacy compatibility aliases
+  const diaperChanges = toiletingDiaperChanges || 0;
 
   // Sprint 3 Day 1: Spiritual & Emotional Well-Being
   const [prayerStartTime, setPrayerStartTime] = useState('');
@@ -320,6 +369,24 @@ function CareLogFormComponent() {
   const [emergencyNote, setEmergencyNote] = useState('');
   const [notes, setNotes] = useState('');
 
+  // Sprint 3 Day 3: Caregiver Notes (structured daily summary)
+  const [whatWentWell, setWhatWentWell] = useState('');
+  const [challengesFaced, setChallengesFaced] = useState('');
+  const [recommendationsForTomorrow, setRecommendationsForTomorrow] = useState('');
+  const [importantInfoForFamily, setImportantInfoForFamily] = useState('');
+  const [caregiverSignature, setCaregiverSignature] = useState('');
+
+  // Sprint 3 Day 4: Activities & Social Interaction
+  const [phoneActivities, setPhoneActivities] = useState<('youtube' | 'texting' | 'calls' | 'none')[]>([]);
+  const [engagementLevel, setEngagementLevel] = useState<number | null>(null);
+  const [otherActivities, setOtherActivities] = useState<('phone' | 'conversation' | 'prayer' | 'reading' | 'watching_tv' | 'listening_music' | 'games' | 'none')[]>([]);
+  const [relaxationPeriods, setRelaxationPeriods] = useState<Array<{
+    startTime: string;
+    endTime: string;
+    activity: 'resting' | 'sleeping' | 'watching_tv' | 'listening_music' | 'quiet_time';
+    mood: 'happy' | 'calm' | 'restless' | 'bored' | 'engaged';
+  }>>([]);
+
   // Sprint 1: Fall Risk Assessment
   const [balanceIssues, setBalanceIssues] = useState<number | null>(null);
   const [nearFalls, setNearFalls] = useState<'none' | 'once_or_twice' | 'multiple'>('none');
@@ -382,29 +449,278 @@ function CareLogFormComponent() {
     notes: '',
   });
 
-  // Get care recipient ID (mock for now - should come from caregiver session)
-  // Care recipient ID from localStorage (for future use)
-  // const careRecipientId = localStorage.getItem('careRecipientId') || '';
-  const caregiverToken = localStorage.getItem('caregiverToken') || '';
-
-  // Get care recipient demographics for personalized validation
-  const careRecipient = useMemo(() => {
-    return JSON.parse(localStorage.getItem('careRecipient') || '{}');
-  }, []);
+  // Get care recipient demographics for personalized validation (from AuthContext)
+  const careRecipient = authCareRecipient;
 
   const recipientAge = useMemo(() => {
-    if (!careRecipient.dateOfBirth) return null;
+    if (!careRecipient?.dateOfBirth) return null;
     return calculateAge(new Date(careRecipient.dateOfBirth));
   }, [careRecipient]);
 
-  const recipientGender = careRecipient.gender || null;
+  const recipientGender = careRecipient?.gender || null;
+
+  // Load existing draft on mount
+  const [isLoadingDraft, setIsLoadingDraft] = useState(true);
+
+  useEffect(() => {
+    const loadDraft = async () => {
+      if (!caregiverToken) {
+        setIsLoadingDraft(false);
+        return;
+      }
+
+      try {
+        const response = await authenticatedApiCall('/care-logs/caregiver/today', caregiverToken);
+
+        if (response) {
+          console.log('📋 Loading existing draft:', response.id);
+
+          // Set the care log ID so auto-save updates this draft
+          setCareLogId(response.id);
+          setLogStatus(response.status || 'draft');
+
+          // Load completed sections
+          if (response.completedSections) {
+            setCompletedSections(response.completedSections);
+          }
+
+          // Morning Routine
+          if (response.wakeTime) setWakeTime(response.wakeTime);
+          if (response.mood) setMood(response.mood);
+          if (response.showerTime) setShowerTime(response.showerTime);
+          if (response.hairWash) setHairWash(response.hairWash);
+
+          // Medications
+          if (response.medications && Array.isArray(response.medications)) {
+            setMedications(prev => {
+              // Merge saved medications with default ones
+              return prev.map(defaultMed => {
+                const savedMed = response.medications.find(
+                  (m: { name: string }) => m.name === defaultMed.name
+                );
+                return savedMed ? { ...defaultMed, ...savedMed } : defaultMed;
+              });
+            });
+          }
+
+          // Meals - Breakfast
+          if (response.meals?.breakfast) {
+            const b = response.meals.breakfast;
+            if (b.time) setBreakfastTime(b.time);
+            if (b.appetite) setBreakfastAppetite(b.appetite);
+            if (b.amountEaten) setBreakfastAmount(b.amountEaten);
+            if (b.assistance) setBreakfastAssistance(b.assistance);
+            if (b.swallowingIssues) setBreakfastSwallowing(b.swallowingIssues);
+          }
+
+          // Meals - Lunch
+          if (response.meals?.lunch) {
+            const l = response.meals.lunch;
+            if (l.time) setLunchTime(l.time);
+            if (l.appetite) setLunchAppetite(l.appetite);
+            if (l.amountEaten) setLunchAmount(l.amountEaten);
+            if (l.assistance) setLunchAssistance(l.assistance);
+            if (l.swallowingIssues) setLunchSwallowing(l.swallowingIssues);
+          }
+
+          // Meals - Tea Break
+          if (response.meals?.teaBreak) {
+            const t = response.meals.teaBreak;
+            if (t.time) setTeaBreakTime(t.time);
+            if (t.appetite) setTeaBreakAppetite(t.appetite);
+            if (t.amountEaten) setTeaBreakAmount(t.amountEaten);
+            if (t.swallowingIssues) setTeaBreakSwallowing(t.swallowingIssues);
+          }
+
+          // Meals - Dinner
+          if (response.meals?.dinner) {
+            const d = response.meals.dinner;
+            if (d.time) setDinnerTime(d.time);
+            if (d.appetite) setDinnerAppetite(d.appetite);
+            if (d.amountEaten) setDinnerAmount(d.amountEaten);
+            if (d.assistance) setDinnerAssistance(d.assistance);
+            if (d.swallowingIssues) setDinnerSwallowing(d.swallowingIssues);
+          }
+
+          // Food Notes
+          if (response.meals?.foodPreferences) setFoodPreferences(response.meals.foodPreferences);
+          if (response.meals?.foodRefusals) setFoodRefusals(response.meals.foodRefusals);
+
+          // Vitals
+          if (response.bloodPressure) setBloodPressure(response.bloodPressure);
+          if (response.pulseRate) setPulseRate(response.pulseRate.toString());
+          if (response.oxygenLevel) setOxygenLevel(response.oxygenLevel.toString());
+          if (response.bloodSugar) setBloodSugar(response.bloodSugar.toString());
+          if (response.vitalsTime) setVitalsTime(response.vitalsTime);
+
+          // Fluids
+          if (response.fluids && Array.isArray(response.fluids)) {
+            setFluids(response.fluids);
+          }
+
+          // Sleep
+          if (response.afternoonRest) setAfternoonRest(response.afternoonRest);
+          if (response.nightSleep) setNightSleep(response.nightSleep);
+
+          // Fall Risk
+          if (response.balanceIssues !== undefined) setBalanceIssues(response.balanceIssues);
+          if (response.nearFalls) setNearFalls(response.nearFalls);
+          if (response.actualFalls) setActualFalls(response.actualFalls);
+          if (response.freezingEpisodes) setFreezingEpisodes(response.freezingEpisodes);
+          if (response.walkingPattern) setWalkingPattern(response.walkingPattern);
+
+          // Unaccompanied Time
+          if (response.unaccompaniedTime && Array.isArray(response.unaccompaniedTime)) {
+            setUnaccompaniedTime(response.unaccompaniedTime);
+          }
+          if (response.unaccompaniedIncidents) setUnaccompaniedIncidents(response.unaccompaniedIncidents);
+
+          // Safety Checks
+          if (response.safetyChecks) setSafetyChecks(response.safetyChecks);
+          if (response.emergencyPrep) setEmergencyPrep(response.emergencyPrep);
+
+          // Spiritual & Emotional
+          if (response.spiritualEmotional) {
+            const se = response.spiritualEmotional;
+            if (se.prayerTime?.start) setPrayerStartTime(se.prayerTime.start);
+            if (se.prayerTime?.end) setPrayerEndTime(se.prayerTime.end);
+            if (se.prayerExpression) setPrayerExpression(se.prayerExpression);
+            if (se.overallMood !== undefined) setOverallMood(se.overallMood);
+            if (se.communicationScale !== undefined) setCommunicationScale(se.communicationScale);
+            if (se.socialInteraction) setSocialInteraction(se.socialInteraction);
+          }
+
+          // Exercise
+          if (response.morningExerciseSession) {
+            const mes = response.morningExerciseSession;
+            if (mes.startTime) setMorningExerciseStart(mes.startTime);
+            if (mes.endTime) setMorningExerciseEnd(mes.endTime);
+            if (mes.notes) setMorningExerciseNotes(mes.notes);
+            if (mes.exercises && Array.isArray(mes.exercises)) {
+              // Convert exercises array back to the record format
+              const exercisesRecord: Record<string, { done: boolean; duration: number; participation: number }> = {
+                eyeExercises: { done: false, duration: 0, participation: 0 },
+                armShoulderStrengthening: { done: false, duration: 0, participation: 0 },
+                legStrengthening: { done: false, duration: 0, participation: 0 },
+                balanceTraining: { done: false, duration: 0, participation: 0 },
+                stretching: { done: false, duration: 0, participation: 0 },
+                armPedalling: { done: false, duration: 0, participation: 0 },
+                legPedalling: { done: false, duration: 0, participation: 0 },
+                physiotherapistExercises: { done: false, duration: 0, participation: 0 },
+              };
+              mes.exercises.forEach((ex: { type: string; done: boolean; duration: number; participation: number }) => {
+                // Convert "Eye Exercises" back to "eyeExercises"
+                const key = ex.type.replace(/\s+/g, '').replace(/^(.)/, (c: string) => c.toLowerCase());
+                if (exercisesRecord[key]) {
+                  exercisesRecord[key] = { done: ex.done, duration: ex.duration, participation: ex.participation };
+                }
+              });
+              setMorningExercises(exercisesRecord);
+            }
+          }
+          if (response.afternoonExerciseSession) {
+            const aes = response.afternoonExerciseSession;
+            if (aes.startTime) setAfternoonExerciseStart(aes.startTime);
+            if (aes.endTime) setAfternoonExerciseEnd(aes.endTime);
+            if (aes.notes) setAfternoonExerciseNotes(aes.notes);
+            if (aes.exercises && Array.isArray(aes.exercises)) {
+              const exercisesRecord: Record<string, { done: boolean; duration: number; participation: number }> = {
+                eyeExercises: { done: false, duration: 0, participation: 0 },
+                armShoulderStrengthening: { done: false, duration: 0, participation: 0 },
+                legStrengthening: { done: false, duration: 0, participation: 0 },
+                balanceTraining: { done: false, duration: 0, participation: 0 },
+                stretching: { done: false, duration: 0, participation: 0 },
+                armPedalling: { done: false, duration: 0, participation: 0 },
+                legPedalling: { done: false, duration: 0, participation: 0 },
+                physiotherapistExercises: { done: false, duration: 0, participation: 0 },
+              };
+              aes.exercises.forEach((ex: { type: string; done: boolean; duration: number; participation: number }) => {
+                const key = ex.type.replace(/\s+/g, '').replace(/^(.)/, (c: string) => c.toLowerCase());
+                if (exercisesRecord[key]) {
+                  exercisesRecord[key] = { done: ex.done, duration: ex.duration, participation: ex.participation };
+                }
+              });
+              setAfternoonExercises(exercisesRecord);
+            }
+          }
+          if (response.movementDifficulties) setMovementDifficulties(response.movementDifficulties);
+
+          // Toileting
+          if (response.toileting) {
+            const t = response.toileting;
+            // Shared fields
+            if (t.diaperChanges !== undefined) setToiletingDiaperChanges(t.diaperChanges);
+            if (t.diaperStatus) setToiletingDiaperStatus(t.diaperStatus);
+            if (t.accidents) setToiletingAccidents(t.accidents);
+            if (t.assistance) setToiletingAssistance(t.assistance);
+            if (t.pain) setToiletingPain(t.pain);
+            // Bowel movements
+            if (t.bowelMovements) {
+              if (t.bowelMovements.frequency) setBowelFreq(t.bowelMovements.frequency);
+              if (t.bowelMovements.timesUsedToilet !== undefined) setBowelTimesUsedToilet(t.bowelMovements.timesUsedToilet);
+              if (t.bowelMovements.consistency) setBowelConsistency(t.bowelMovements.consistency);
+              if (t.bowelMovements.concerns) setBowelConcerns(t.bowelMovements.concerns);
+            }
+            // Urination
+            if (t.urination) {
+              if (t.urination.frequency) setUrineFreq(t.urination.frequency);
+              if (t.urination.timesUsedToilet !== undefined) setUrineTimesUsedToilet(t.urination.timesUsedToilet);
+              if (t.urination.urineColor) setUrineColor(t.urination.urineColor);
+              if (t.urination.concerns) setUrineConcerns(t.urination.concerns);
+            }
+          }
+
+          // Special Concerns
+          if (response.specialConcerns) {
+            const sc = response.specialConcerns;
+            if (sc.priority) setPriorityLevel(sc.priority);
+            if (sc.behaviouralChanges) setBehaviouralChanges(sc.behaviouralChanges);
+            if (sc.physicalChanges) setPhysicalChanges(sc.physicalChanges);
+            if (sc.incident) setIncidentDescription(sc.incident);
+            if (sc.actionsTaken) setActionsTaken(sc.actionsTaken);
+            if (sc.notes) setSpecialConcernsNotes(sc.notes);
+          }
+
+          // Sprint 3 Day 3: Caregiver Notes
+          if (response.caregiverNotes) {
+            const cn = response.caregiverNotes;
+            if (cn.whatWentWell) setWhatWentWell(cn.whatWentWell);
+            if (cn.challengesFaced) setChallengesFaced(cn.challengesFaced);
+            if (cn.recommendationsForTomorrow) setRecommendationsForTomorrow(cn.recommendationsForTomorrow);
+            if (cn.importantInfoForFamily) setImportantInfoForFamily(cn.importantInfoForFamily);
+            if (cn.caregiverSignature) setCaregiverSignature(cn.caregiverSignature);
+          }
+
+          // Sprint 3 Day 4: Activities & Social Interaction
+          if (response.activities) {
+            const act = response.activities;
+            if (act.phoneActivities) setPhoneActivities(act.phoneActivities);
+            if (act.engagementLevel) setEngagementLevel(act.engagementLevel);
+            if (act.otherActivities) setOtherActivities(act.otherActivities);
+            if (act.relaxationPeriods) setRelaxationPeriods(act.relaxationPeriods);
+          }
+
+          // Emergency & Notes
+          if (response.emergencyFlag) setEmergencyFlag(response.emergencyFlag);
+          if (response.emergencyNote) setEmergencyNote(response.emergencyNote);
+          if (response.notes) setNotes(response.notes);
+        }
+      } catch (error) {
+        console.log('No existing draft found or error loading:', error);
+      } finally {
+        setIsLoadingDraft(false);
+      }
+    };
+
+    loadDraft();
+  }, [caregiverToken]); // Only run on mount
 
   // Prepare form data
   const formData = useMemo(() => {
-    const recipientId = careRecipient.id;
+    const recipientId = careRecipient?.id;
 
     if (!recipientId) {
-      console.error('No care recipient ID found in localStorage');
+      console.error('No care recipient ID found');
     }
 
     // Helper to omit empty strings and null/undefined values
@@ -429,12 +745,36 @@ function CareLogFormComponent() {
         }));
         return given.length > 0 ? given : undefined;
       })(),
-      meals: breakfastTime ? {
-        breakfast: {
+      meals: (breakfastTime || lunchTime || teaBreakTime || dinnerTime || foodPreferences || foodRefusals) ? {
+        breakfast: breakfastTime ? {
           time: breakfastTime,
           appetite: breakfastAppetite,
           amountEaten: breakfastAmount,
-        },
+          swallowingIssues: breakfastSwallowing.length > 0 ? breakfastSwallowing : undefined,
+          assistance: breakfastAssistance !== 'none' ? breakfastAssistance : undefined,
+        } : undefined,
+        lunch: lunchTime ? {
+          time: lunchTime,
+          appetite: lunchAppetite,
+          amountEaten: lunchAmount,
+          swallowingIssues: lunchSwallowing.length > 0 ? lunchSwallowing : undefined,
+          assistance: lunchAssistance !== 'none' ? lunchAssistance : undefined,
+        } : undefined,
+        teaBreak: teaBreakTime ? {
+          time: teaBreakTime,
+          appetite: teaBreakAppetite,
+          amountEaten: teaBreakAmount,
+          swallowingIssues: teaBreakSwallowing.length > 0 ? teaBreakSwallowing : undefined,
+        } : undefined,
+        dinner: dinnerTime ? {
+          time: dinnerTime,
+          appetite: dinnerAppetite,
+          amountEaten: dinnerAmount,
+          swallowingIssues: dinnerSwallowing.length > 0 ? dinnerSwallowing : undefined,
+          assistance: dinnerAssistance !== 'none' ? dinnerAssistance : undefined,
+        } : undefined,
+        foodPreferences: omitEmpty(foodPreferences),
+        foodRefusals: omitEmpty(foodRefusals),
       } : undefined,
       // Sprint 2 Day 2: Fluid Intake
       fluids: fluids.length > 0 ? fluids : undefined,
@@ -447,28 +787,28 @@ function CareLogFormComponent() {
       oxygenLevel: oxygenLevel ? parseInt(oxygenLevel) : undefined,
       bloodSugar: bloodSugar ? parseFloat(bloodSugar) : undefined,
       vitalsTime: omitEmpty(vitalsTime),
-      // Sprint 2 Day 5: Complete Toileting & Hygiene Tracking
-      bowelMovements: bowelFreq > 0 ? {
-        frequency: bowelFreq,
-        timesUsedToilet: bowelTimesUsedToilet !== null ? bowelTimesUsedToilet : undefined,
-        diaperChanges: bowelDiaperChanges !== null ? bowelDiaperChanges : undefined,
-        diaperStatus: bowelDiaperStatus || undefined,
-        accidents: bowelAccidents !== 'none' ? bowelAccidents : undefined,
-        assistance: bowelAssistance !== 'none' ? bowelAssistance : undefined,
-        pain: bowelPain !== 'no_pain' ? bowelPain : undefined,
-        consistency: bowelConsistency || undefined,
-        concerns: omitEmpty(bowelConcerns),
-      } : undefined,
-      urination: urineFreq > 0 ? {
-        frequency: urineFreq,
-        timesUsedToilet: urineTimesUsedToilet !== null ? urineTimesUsedToilet : undefined,
-        diaperChanges: urineDiaperChanges !== null ? urineDiaperChanges : undefined,
-        diaperStatus: urineDiaperStatus || undefined,
-        accidents: urineAccidents !== 'none' ? urineAccidents : undefined,
-        assistance: urineAssistance !== 'none' ? urineAssistance : undefined,
-        pain: urinePain !== 'no_pain' ? urinePain : undefined,
-        urineColor: urineColor || undefined,
-        concerns: omitEmpty(urineConcerns),
+      // Toileting & Hygiene (Consolidated structure)
+      toileting: (bowelFreq > 0 || urineFreq > 0 || toiletingDiaperChanges) ? {
+        // Shared fields (asked once)
+        diaperChanges: toiletingDiaperChanges !== null ? toiletingDiaperChanges : undefined,
+        diaperStatus: toiletingDiaperStatus || undefined,
+        accidents: toiletingAccidents !== 'none' ? toiletingAccidents : undefined,
+        assistance: toiletingAssistance !== 'none' ? toiletingAssistance : undefined,
+        pain: toiletingPain !== 'no_pain' ? toiletingPain : undefined,
+        // Bowel-specific
+        bowelMovements: bowelFreq > 0 ? {
+          frequency: bowelFreq,
+          timesUsedToilet: bowelTimesUsedToilet !== null ? bowelTimesUsedToilet : undefined,
+          consistency: bowelConsistency || undefined,
+          concerns: omitEmpty(bowelConcerns),
+        } : undefined,
+        // Urination-specific
+        urination: urineFreq > 0 ? {
+          frequency: urineFreq,
+          timesUsedToilet: urineTimesUsedToilet !== null ? urineTimesUsedToilet : undefined,
+          urineColor: urineColor || undefined,
+          concerns: omitEmpty(urineConcerns),
+        } : undefined,
       } : undefined,
       // Sprint 1: Fall Risk & Safety
       balanceIssues: balanceIssues !== null ? balanceIssues : undefined,
@@ -588,17 +928,37 @@ function CareLogFormComponent() {
         actionsTaken: omitEmpty(actionsTaken),
         notes: omitEmpty(specialConcernsNotes),
       } : undefined,
+      // Sprint 3 Day 3: Caregiver Notes (structured daily summary)
+      caregiverNotes: (whatWentWell || challengesFaced || recommendationsForTomorrow || importantInfoForFamily || caregiverSignature) ? {
+        whatWentWell: omitEmpty(whatWentWell),
+        challengesFaced: omitEmpty(challengesFaced),
+        recommendationsForTomorrow: omitEmpty(recommendationsForTomorrow),
+        importantInfoForFamily: omitEmpty(importantInfoForFamily),
+        caregiverSignature: omitEmpty(caregiverSignature),
+      } : undefined,
+      // Sprint 3 Day 4: Activities & Social Interaction
+      activities: (phoneActivities.length > 0 || engagementLevel !== null || otherActivities.length > 0 || relaxationPeriods.length > 0) ? {
+        phoneActivities: phoneActivities.length > 0 ? phoneActivities : undefined,
+        engagementLevel: engagementLevel ?? undefined,
+        otherActivities: otherActivities.length > 0 ? otherActivities : undefined,
+        relaxationPeriods: relaxationPeriods.length > 0 ? relaxationPeriods : undefined,
+      } : undefined,
       emergencyFlag,
       emergencyNote: omitEmpty(emergencyNote),
       notes: omitEmpty(notes),
     };
-  }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite,
-      breakfastAmount, fluids, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime,
-      // Sprint 2 Day 5: All toileting state variables
-      bowelFreq, bowelTimesUsedToilet, bowelDiaperChanges, bowelDiaperStatus, bowelAccidents,
-      bowelAssistance, bowelPain, bowelConsistency, bowelConcerns,
-      urineFreq, urineTimesUsedToilet, urineDiaperChanges, urineDiaperStatus, urineAccidents,
-      urineAssistance, urinePain, urineColor, urineConcerns,
+  }, [wakeTime, mood, showerTime, hairWash, medications,
+      // Meals
+      breakfastTime, breakfastAppetite, breakfastAmount, breakfastAssistance, breakfastSwallowing,
+      lunchTime, lunchAppetite, lunchAmount, lunchAssistance, lunchSwallowing,
+      teaBreakTime, teaBreakAppetite, teaBreakAmount, teaBreakSwallowing,
+      dinnerTime, dinnerAppetite, dinnerAmount, dinnerAssistance, dinnerSwallowing,
+      foodPreferences, foodRefusals,
+      fluids, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime,
+      // Toileting & Hygiene (Consolidated)
+      toiletingDiaperChanges, toiletingDiaperStatus, toiletingAccidents, toiletingAssistance, toiletingPain,
+      bowelFreq, bowelTimesUsedToilet, bowelConsistency, bowelConcerns,
+      urineFreq, urineTimesUsedToilet, urineColor, urineConcerns,
       balanceIssues, nearFalls, actualFalls,
       walkingPattern, freezingEpisodes, unaccompaniedTime, unaccompaniedIncidents, safetyChecks, emergencyPrep,
       // Environment & Safety: Additional fields
@@ -616,12 +976,17 @@ function CareLogFormComponent() {
       // teethBrushed, timesBrushed, denturesCleaned, mouthRinsed, oralAssistanceLevel, oralHealthIssues, painOrBleeding, oralCareNotes,
       // Sprint 3 Day 5: Special Concerns
       priorityLevel, behaviouralChanges, physicalChanges, incidentDescription, actionsTaken, specialConcernsNotes,
+      // Sprint 3 Day 3: Caregiver Notes
+      whatWentWell, challengesFaced, recommendationsForTomorrow, importantInfoForFamily, caregiverSignature,
+      // Sprint 3 Day 4: Activities & Social
+      phoneActivities, engagementLevel, otherActivities, relaxationPeriods,
       emergencyFlag, emergencyNote, notes, careRecipient]);
 
   // Create/Update mutation (for auto-save)
   const saveDraftMutation = useMutation({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mutationFn: async (data: any) => {
+      if (!caregiverToken) throw new Error('Not authenticated');
       const url = careLogId ? `/care-logs/${careLogId}` : '/care-logs';
       const method = careLogId ? 'PATCH' : 'POST';
 
@@ -640,6 +1005,7 @@ function CareLogFormComponent() {
   // Submit mutation (final submission)
   const submitMutation = useMutation({
     mutationFn: async (logId: string) => {
+      if (!caregiverToken) throw new Error('Not authenticated');
       if (!logId) throw new Error('No draft to submit');
 
       return authenticatedApiCall(`/care-logs/${logId}/submit`, caregiverToken, {
@@ -649,6 +1015,25 @@ function CareLogFormComponent() {
     onSuccess: () => {
       setLogStatus('submitted');
       // Don't use alert() - let the visual success message show instead
+    },
+  });
+
+  // Progressive Section Submission mutation
+  const submitSectionMutation = useMutation({
+    mutationFn: async ({ logId, section }: { logId: string; section: SectionName }) => {
+      if (!caregiverToken) throw new Error('Not authenticated');
+      if (!logId) throw new Error('No draft to share');
+
+      return authenticatedApiCall(`/care-logs/${logId}/submit-section`, caregiverToken, {
+        method: 'POST',
+        body: JSON.stringify({ section }),
+      });
+    },
+    onSuccess: (data: { completedSections: CompletedSections }) => {
+      // Update local state with the returned completedSections
+      if (data?.completedSections) {
+        setCompletedSections(data.completedSections);
+      }
     },
   });
 
@@ -704,59 +1089,128 @@ function CareLogFormComponent() {
     }
   };
 
+  // Handle sharing a section with family (progressive submission)
+  const handleShareSection = async (section: SectionName) => {
+    try {
+      // Ensure we have a draft saved first
+      let logIdToShare = careLogId;
+      if (!logIdToShare) {
+        const draft = await saveDraftMutation.mutateAsync(formData);
+        if (draft?.id) {
+          setCareLogId(draft.id);
+          logIdToShare = draft.id;
+        }
+      }
+
+      if (!logIdToShare) {
+        alert('Failed to save draft. Please try again.');
+        return;
+      }
+
+      // Submit the section
+      await submitSectionMutation.mutateAsync({ logId: logIdToShare, section });
+      console.log(`✅ Section "${section}" shared with family`);
+    } catch (error) {
+      console.error('Share section error:', error);
+      alert('Failed to share section. Please try again.');
+    }
+  };
+
   // Check if form is locked (submitted or invalidated)
   const isLocked = logStatus === 'submitted' || logStatus === 'invalidated';
 
   // Validation and section completion tracking
+  // Rules:
+  // - Green checkmark = section has data AND all conditionally required fields are properly filled
+  // - Amber warning = section has data but missing required fields
+  // - No indicator = no data entered (section is optional)
   const sectionValidation = useMemo(() => {
     // Track if any data has been entered in each section
-    const morningRoutineData = wakeTime || mood || showerTime || hairWash;
+    const morningRoutineData = Boolean(wakeTime || mood || showerTime || hairWash);
     const medicationsData = medications.some(med => med.given || med.time);
-    const mealsData = breakfastTime || breakfastAppetite > 0 || breakfastAmount > 0;
+    const mealsData = Boolean(
+      breakfastTime || breakfastAppetite > 0 || breakfastAmount > 0 ||
+      lunchTime || lunchAppetite > 0 || lunchAmount > 0 ||
+      teaBreakTime || teaBreakAppetite > 0 || teaBreakAmount > 0 ||
+      dinnerTime || dinnerAppetite > 0 || dinnerAmount > 0 ||
+      foodPreferences || foodRefusals
+    );
     // Vital signs: only count as hasData if at least ONE actual measurement is entered (not just time)
-    const vitalsData = bloodPressure || pulseRate || oxygenLevel || bloodSugar;
-    const toiletingData = bowelFreq > 0 || urineFreq > 0;
-    // Section 6: Rest & Sleep
+    const vitalsData = Boolean(bloodPressure || pulseRate || oxygenLevel || bloodSugar);
+    const toiletingData = bowelFreq > 0 || urineFreq > 0 || (toiletingDiaperChanges !== null && toiletingDiaperChanges > 0);
+
+    // Section 6: Rest & Sleep - when enabled, times and quality are required
     const restSleepData = afternoonRest !== null || nightSleep !== null;
+    const afternoonRestComplete = !afternoonRest || (
+      afternoonRest.startTime &&
+      afternoonRest.endTime &&
+      afternoonRest.startTime < afternoonRest.endTime &&
+      afternoonRest.quality
+    );
+    const nightSleepComplete = !nightSleep || (
+      nightSleep.bedtime &&
+      nightSleep.quality
+    );
+
     // Section 7: Fall Risk & Safety
     const fallRiskData = balanceIssues !== null || nearFalls !== 'none' || actualFalls !== 'none' ||
                          walkingPattern.length > 0 || freezingEpisodes !== 'none';
-    // Section 8: Unaccompanied Time
-    const unaccompaniedData = unaccompaniedTime.length > 0 || unaccompaniedIncidents;
+
+    // Section 8: Unaccompanied Time - when periods added, need startTime, endTime, reason
+    const unaccompaniedData = unaccompaniedTime.length > 0 || Boolean(unaccompaniedIncidents);
+    const unaccompaniedComplete = unaccompaniedTime.every(period =>
+      period.startTime && period.endTime && period.reason && period.startTime < period.endTime
+    );
+
     // Section 9: Safety Checks
     const safetyChecksData = Object.values(safetyChecks).some(v => v.checked);
+
     // Section 10: Spiritual & Emotional
-    const spiritualEmotionalData = prayerStartTime || prayerEndTime || prayerExpression ||
-                                   overallMood !== null || communicationScale !== null || socialInteraction;
+    const spiritualEmotionalData = Boolean(prayerStartTime || prayerEndTime || prayerExpression ||
+                                   overallMood !== null || communicationScale !== null || socialInteraction);
+
     // Section 11: Physical Activity
-    const physicalActivityData = exerciseDuration !== null || exerciseType.length > 0 || walkingDistance ||
-                                 assistanceLevel || painDuringActivity || energyAfterActivity ||
-                                 participationWillingness || equipmentUsed.length > 0 || mobilityNotes;
+    const physicalActivityData = exerciseDuration !== null || exerciseType.length > 0 || Boolean(walkingDistance) ||
+                                 Boolean(assistanceLevel) || Boolean(painDuringActivity) || Boolean(energyAfterActivity) ||
+                                 Boolean(participationWillingness) || equipmentUsed.length > 0 || Boolean(mobilityNotes);
+
     // Section 12: Special Concerns & Incidents
-    const specialConcernsData = priorityLevel || behaviouralChanges.length > 0 || physicalChanges ||
-                                incidentDescription || actionsTaken || specialConcernsNotes;
+    const specialConcernsData = Boolean(priorityLevel || behaviouralChanges.length > 0 || physicalChanges ||
+                                incidentDescription || actionsTaken || specialConcernsNotes);
+
     // Section 13: Notes & Submit
-    const notesData = notes || emergencyFlag;
+    const notesData = Boolean(notes || emergencyFlag);
 
     return {
-      1: { // Morning Routine - optional
+      1: { // Morning Routine - all fields optional, always valid if any data entered
         complete: true,
         hasData: morningRoutineData,
         missing: [],
       },
-      2: { // Medications - if marked as given, need time
+      2: { // Medications - if marked as given, time is required
         complete: medications.every(med => !med.given || (med.given && med.time !== null && med.time !== '')),
         hasData: medicationsData,
         missing: medications
           .filter(med => med.given && (!med.time || med.time === ''))
           .map(med => `⏰ Time for ${med.name}`),
       },
-      3: { // Meals & Nutrition - if time entered, need all fields
-        complete: !breakfastTime || (breakfastTime && breakfastAppetite > 0 && breakfastAmount > 0),
+      3: { // Meals & Nutrition - if time entered, need appetite and amount
+        complete: (
+          (!breakfastTime || (breakfastTime && breakfastAppetite > 0 && breakfastAmount > 0)) &&
+          (!lunchTime || (lunchTime && lunchAppetite > 0 && lunchAmount > 0)) &&
+          (!teaBreakTime || (teaBreakTime && teaBreakAppetite > 0 && teaBreakAmount > 0)) &&
+          (!dinnerTime || (dinnerTime && dinnerAppetite > 0 && dinnerAmount > 0))
+        ),
         hasData: mealsData,
         missing: [
           ...(breakfastTime && !breakfastAppetite ? ['🍽️ Breakfast appetite (1-5)'] : []),
           ...(breakfastTime && !breakfastAmount ? ['🍽️ Breakfast amount eaten (%)'] : []),
+          ...(lunchTime && !lunchAppetite ? ['🍽️ Lunch appetite (1-5)'] : []),
+          ...(lunchTime && !lunchAmount ? ['🍽️ Lunch amount eaten (%)'] : []),
+          ...(teaBreakTime && !teaBreakAppetite ? ['🍽️ Tea break appetite (1-5)'] : []),
+          ...(teaBreakTime && !teaBreakAmount ? ['🍽️ Tea break amount eaten (%)'] : []),
+          ...(dinnerTime && !dinnerAppetite ? ['🍽️ Dinner appetite (1-5)'] : []),
+          ...(dinnerTime && !dinnerAmount ? ['🍽️ Dinner amount eaten (%)'] : []),
         ],
       },
       4: { // Vital Signs - all optional
@@ -764,25 +1218,40 @@ function CareLogFormComponent() {
         hasData: vitalsData,
         missing: [],
       },
-      5: { // Toileting - optional (at least one recommended)
+      5: { // Toileting - all optional
         complete: true,
         hasData: toiletingData,
         missing: [],
       },
-      6: { // Rest & Sleep - optional
-        complete: true,
+      6: { // Rest & Sleep - times and quality required when enabled
+        complete: afternoonRestComplete && nightSleepComplete,
         hasData: restSleepData,
-        missing: [],
+        missing: [
+          ...(afternoonRest && !afternoonRest.startTime ? ['⏰ Afternoon rest start time'] : []),
+          ...(afternoonRest && !afternoonRest.endTime ? ['⏰ Afternoon rest end time'] : []),
+          ...(afternoonRest && afternoonRest.startTime && afternoonRest.endTime &&
+              afternoonRest.startTime >= afternoonRest.endTime ? ['⚠️ End time must be after start time'] : []),
+          ...(nightSleep && !nightSleep.bedtime ? ['⏰ Night sleep bedtime'] : []),
+        ],
       },
       7: { // Fall Risk & Safety - all fields optional
         complete: true,
         hasData: fallRiskData,
         missing: [],
       },
-      8: { // Unaccompanied Time - optional
-        complete: true,
+      8: { // Unaccompanied Time - when periods added, need required fields
+        complete: unaccompaniedComplete,
         hasData: unaccompaniedData,
-        missing: [],
+        missing: unaccompaniedTime.flatMap((period, idx) => {
+          const issues: string[] = [];
+          if (!period.startTime) issues.push(`⏰ Period ${idx + 1}: Start time`);
+          if (!period.endTime) issues.push(`⏰ Period ${idx + 1}: End time`);
+          if (!period.reason) issues.push(`📝 Period ${idx + 1}: Reason`);
+          if (period.startTime && period.endTime && period.startTime >= period.endTime) {
+            issues.push(`⚠️ Period ${idx + 1}: End time must be after start time`);
+          }
+          return issues;
+        }),
       },
       9: { // Safety Checks - optional
         complete: true,
@@ -799,7 +1268,7 @@ function CareLogFormComponent() {
         hasData: physicalActivityData,
         missing: [],
       },
-      12: { // Special Concerns (Oral Care, etc.) - optional
+      12: { // Special Concerns - optional
         complete: true,
         hasData: specialConcernsData,
         missing: [],
@@ -810,7 +1279,13 @@ function CareLogFormComponent() {
         missing: [],
       },
     };
-  }, [wakeTime, mood, showerTime, hairWash, medications, breakfastTime, breakfastAppetite, breakfastAmount,
+  }, [wakeTime, mood, showerTime, hairWash, medications,
+      // All meals
+      breakfastTime, breakfastAppetite, breakfastAmount,
+      lunchTime, lunchAppetite, lunchAmount,
+      teaBreakTime, teaBreakAppetite, teaBreakAmount,
+      dinnerTime, dinnerAppetite, dinnerAmount,
+      foodPreferences, foodRefusals,
       bloodPressure, pulseRate, oxygenLevel, bloodSugar, bowelFreq, urineFreq,
       afternoonRest, nightSleep,
       balanceIssues, nearFalls, actualFalls, walkingPattern, freezingEpisodes,
@@ -819,6 +1294,8 @@ function CareLogFormComponent() {
       exerciseDuration, exerciseType, walkingDistance, assistanceLevel, painDuringActivity, energyAfterActivity,
       participationWillingness, equipmentUsed, mobilityNotes,
       priorityLevel, behaviouralChanges, physicalChanges, incidentDescription, actionsTaken, specialConcernsNotes,
+      whatWentWell, challengesFaced, recommendationsForTomorrow, importantInfoForFamily, caregiverSignature,
+      phoneActivities, engagementLevel, otherActivities, relaxationPeriods,
       notes, emergencyFlag]);
 
   const allSectionsComplete = Object.values(sectionValidation).every(s => s.complete);
@@ -847,6 +1324,18 @@ function CareLogFormComponent() {
     { id: 12, title: 'Special Concerns', emoji: '⚠️' }, // Sprint 3 Day 5
     { id: 13, title: 'Notes & Submit', emoji: '📝' },
   ];
+
+  // Show loading state while fetching draft
+  if (isLoadingDraft) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-accent-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your care report...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-accent-50 pb-8">
@@ -957,7 +1446,7 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">🌅 Morning Routine</h2>
-              <p className="text-sm text-gray-500 mt-1">All fields in this section are optional</p>
+              <p className="text-sm text-gray-500 mt-1">All fields are optional. Fill in what applies to today.</p>
             </CardHeader>
             <CardContent className="space-y-4">
               {isLocked && (
@@ -1032,7 +1521,9 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">💊 Medications</h2>
-              <p className="text-sm text-gray-500 mt-1">Mark medications as given. Time is required when medication is given.</p>
+              <p className="text-sm text-gray-500 mt-1">
+                All fields optional. <span className="font-medium text-gray-700">Time<span className="text-red-500">*</span> required when medication is marked as given.</span>
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               {medications.map((med, idx) => (
@@ -1060,7 +1551,7 @@ function CareLogFormComponent() {
                   {/* Sprint 2 Day 4: Purpose field */}
                   <div className="mb-3">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Purpose (optional)
+                      Purpose
                     </label>
                     <input
                       type="text"
@@ -1076,22 +1567,30 @@ function CareLogFormComponent() {
                   </div>
 
                   {med.given && (
-                    <Input
-                      label="Time given"
-                      type="time"
-                      value={med.time || ''}
-                      onChange={(e) => {
-                        const newMeds = [...medications];
-                        newMeds[idx].time = e.target.value;
-                        setMedications(newMeds);
-                      }}
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Time given<span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="time"
+                        value={med.time || ''}
+                        onChange={(e) => {
+                          const newMeds = [...medications];
+                          newMeds[idx].time = e.target.value;
+                          setMedications(newMeds);
+                        }}
+                        className={!med.time ? 'border-red-300' : ''}
+                      />
+                      {!med.time && (
+                        <p className="text-xs text-red-500 mt-1">Time is required when medication is given</p>
+                      )}
+                    </div>
                   )}
 
                   {/* Sprint 2 Day 4: Notes field */}
                   <div className="mt-3">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Notes (optional)
+                      Notes
                     </label>
                     <textarea
                       placeholder="e.g., Take with food, Patient refused"
@@ -1125,11 +1624,14 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">🍽️ Meals & Nutrition</h2>
-              <p className="text-sm text-gray-500 mt-1">All fields are optional. If you enter a meal time, please also enter appetite and amount.</p>
+              <p className="text-sm text-gray-500 mt-1">
+                All fields are optional. <span className="font-medium text-gray-700">If you enter a meal time, appetite<span className="text-red-500">*</span> and amount<span className="text-red-500">*</span> are required.</span>
+              </p>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div>
-                <h3 className="font-semibold mb-3">Breakfast</h3>
+              {/* Breakfast */}
+              <div className="border-b pb-6">
+                <h3 className="font-semibold mb-3">🌅 Breakfast</h3>
                 <Input
                   label="Time"
                   type="time"
@@ -1139,7 +1641,7 @@ function CareLogFormComponent() {
                 />
                 <div className="mb-3">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Appetite (1-5): <span className="font-bold text-primary-600">{breakfastAppetite}</span>
+                    Appetite (1-5){breakfastTime && <span className="text-red-500">*</span>}: <span className="font-bold text-primary-600">{breakfastAppetite}</span>
                   </label>
                   <input
                     type="range"
@@ -1154,9 +1656,9 @@ function CareLogFormComponent() {
                     <span>Excellent</span>
                   </div>
                 </div>
-                <div>
+                <div className="mb-3">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Amount Eaten: <span className="font-bold text-primary-600">{breakfastAmount}%</span>
+                    Amount Eaten{breakfastTime && <span className="text-red-500">*</span>}: <span className="font-bold text-primary-600">{breakfastAmount}%</span>
                   </label>
                   <input
                     type="range"
@@ -1174,6 +1676,238 @@ function CareLogFormComponent() {
                     <span>75%</span>
                     <span>100%</span>
                   </div>
+                </div>
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Eating Assistance</label>
+                  <div className="flex gap-2">
+                    {(['none', 'some', 'full'] as const).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => setBreakfastAssistance(level)}
+                        className={`flex-1 py-2 px-3 rounded-lg border text-sm ${
+                          breakfastAssistance === level
+                            ? 'bg-primary-100 border-primary-500 text-primary-700'
+                            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {level === 'none' ? 'Independent' : level === 'some' ? 'Some Help' : 'Full Assist'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Lunch */}
+              <div className="border-b pb-6">
+                <h3 className="font-semibold mb-3">☀️ Lunch</h3>
+                <Input
+                  label="Time"
+                  type="time"
+                  value={lunchTime}
+                  onChange={(e) => setLunchTime(e.target.value)}
+                  className="mb-3"
+                />
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Appetite (1-5){lunchTime && <span className="text-red-500">*</span>}: <span className="font-bold text-primary-600">{lunchAppetite}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={lunchAppetite}
+                    onChange={(e) => setLunchAppetite(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>No appetite</span>
+                    <span>Excellent</span>
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Amount Eaten{lunchTime && <span className="text-red-500">*</span>}: <span className="font-bold text-primary-600">{lunchAmount}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="25"
+                    value={lunchAmount}
+                    onChange={(e) => setLunchAmount(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0%</span>
+                    <span>25%</span>
+                    <span>50%</span>
+                    <span>75%</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Eating Assistance</label>
+                  <div className="flex gap-2">
+                    {(['none', 'some', 'full'] as const).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => setLunchAssistance(level)}
+                        className={`flex-1 py-2 px-3 rounded-lg border text-sm ${
+                          lunchAssistance === level
+                            ? 'bg-primary-100 border-primary-500 text-primary-700'
+                            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {level === 'none' ? 'Independent' : level === 'some' ? 'Some Help' : 'Full Assist'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tea Break */}
+              <div className="border-b pb-6">
+                <h3 className="font-semibold mb-3">🍵 Tea Break</h3>
+                <Input
+                  label="Time"
+                  type="time"
+                  value={teaBreakTime}
+                  onChange={(e) => setTeaBreakTime(e.target.value)}
+                  className="mb-3"
+                />
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Appetite (1-5){teaBreakTime && <span className="text-red-500">*</span>}: <span className="font-bold text-primary-600">{teaBreakAppetite}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={teaBreakAppetite}
+                    onChange={(e) => setTeaBreakAppetite(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>No appetite</span>
+                    <span>Excellent</span>
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Amount Eaten{teaBreakTime && <span className="text-red-500">*</span>}: <span className="font-bold text-primary-600">{teaBreakAmount}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="25"
+                    value={teaBreakAmount}
+                    onChange={(e) => setTeaBreakAmount(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0%</span>
+                    <span>25%</span>
+                    <span>50%</span>
+                    <span>75%</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dinner */}
+              <div className="border-b pb-6">
+                <h3 className="font-semibold mb-3">🌙 Dinner</h3>
+                <Input
+                  label="Time"
+                  type="time"
+                  value={dinnerTime}
+                  onChange={(e) => setDinnerTime(e.target.value)}
+                  className="mb-3"
+                />
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Appetite (1-5){dinnerTime && <span className="text-red-500">*</span>}: <span className="font-bold text-primary-600">{dinnerAppetite}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={dinnerAppetite}
+                    onChange={(e) => setDinnerAppetite(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>No appetite</span>
+                    <span>Excellent</span>
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Amount Eaten{dinnerTime && <span className="text-red-500">*</span>}: <span className="font-bold text-primary-600">{dinnerAmount}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="25"
+                    value={dinnerAmount}
+                    onChange={(e) => setDinnerAmount(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0%</span>
+                    <span>25%</span>
+                    <span>50%</span>
+                    <span>75%</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Eating Assistance</label>
+                  <div className="flex gap-2">
+                    {(['none', 'some', 'full'] as const).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => setDinnerAssistance(level)}
+                        className={`flex-1 py-2 px-3 rounded-lg border text-sm ${
+                          dinnerAssistance === level
+                            ? 'bg-primary-100 border-primary-500 text-primary-700'
+                            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {level === 'none' ? 'Independent' : level === 'some' ? 'Some Help' : 'Full Assist'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Food Notes */}
+              <div>
+                <h3 className="font-semibold mb-3">📝 Food Notes</h3>
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Food Preferences Today</label>
+                  <textarea
+                    value={foodPreferences}
+                    onChange={(e) => setFoodPreferences(e.target.value)}
+                    placeholder="e.g., Enjoyed the soup, asked for more rice..."
+                    className="w-full p-3 border rounded-lg resize-none"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Food Refusals / Dislikes</label>
+                  <textarea
+                    value={foodRefusals}
+                    onChange={(e) => setFoodRefusals(e.target.value)}
+                    placeholder="e.g., Refused vegetables, said meat was too tough..."
+                    className="w-full p-3 border rounded-lg resize-none"
+                    rows={2}
+                  />
                 </div>
               </div>
 
@@ -1331,7 +2065,7 @@ function CareLogFormComponent() {
                   {/* Swallowing Issues */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Swallowing Issues (optional)
+                      Swallowing Issues
                     </label>
                     <div className="flex flex-wrap gap-4">
                       {['Coughing', 'Choking', 'Slow', 'None'].map((issue) => (
@@ -1401,7 +2135,9 @@ function CareLogFormComponent() {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">😴 Rest & Sleep</h2>
-              <p className="text-sm text-gray-500 mt-1">Optional. If rest/sleep occurred, complete the required time and quality fields.</p>
+              <p className="text-sm text-gray-500 mt-1">
+                All fields optional. <span className="font-medium text-gray-700">When recording rest/sleep, start time<span className="text-red-500">*</span>, end time<span className="text-red-500">*</span>, and quality<span className="text-red-500">*</span> are required.</span>
+              </p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Afternoon Rest */}
@@ -1490,7 +2226,7 @@ function CareLogFormComponent() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-1">Notes (optional)</label>
+                      <label className="block text-sm font-medium mb-1">Notes</label>
                       <textarea
                         value={afternoonRest.notes || ''}
                         onChange={(e) => setAfternoonRest({ ...afternoonRest, notes: e.target.value })}
@@ -1639,7 +2375,7 @@ function CareLogFormComponent() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-1">Notes (optional)</label>
+                      <label className="block text-sm font-medium mb-1">Notes</label>
                       <textarea
                         value={nightSleep.notes || ''}
                         onChange={(e) => setNightSleep({ ...nightSleep, notes: e.target.value })}
@@ -1755,77 +2491,160 @@ function CareLogFormComponent() {
           </Card>
         )}
 
-        {/* Section 5: Complete Toileting & Hygiene (Sprint 2 Day 5) */}
+        {/* Section 5: Toileting & Hygiene (Consolidated) */}
         {currentSection === 5 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold">🚽 Toileting & Hygiene</h2>
-              <p className="text-sm text-gray-500 mt-1">All fields are optional. Track bowel movements and urination separately.</p>
+              <p className="text-sm text-gray-500 mt-1">All fields optional. Diaper/assistance fields apply to all toileting.</p>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Bowel Movements Section */}
+              {/* Shared Diaper Management Section */}
+              <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                <h3 className="font-semibold text-lg">🩲 Diaper Management</h3>
+                <p className="text-xs text-gray-500">These apply to all toileting today (bowel + urination combined)</p>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Total Diaper Changes</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={toiletingDiaperChanges || ''}
+                      onChange={(e) => setToiletingDiaperChanges(e.target.value ? parseInt(e.target.value) : null)}
+                      className="w-full p-2 border rounded-lg"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Current Status</label>
+                    <div className="flex gap-1">
+                      {[
+                        { value: 'dry', label: 'Dry', emoji: '✨' },
+                        { value: 'wet', label: 'Wet', emoji: '💧' },
+                        { value: 'soiled', label: 'Soiled', emoji: '💩' },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setToiletingDiaperStatus(option.value as 'dry' | 'wet' | 'soiled')}
+                          className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-colors ${
+                            toiletingDiaperStatus === option.value
+                              ? 'bg-purple-500 text-white'
+                              : 'bg-white border hover:bg-gray-50'
+                          }`}
+                        >
+                          {option.emoji} {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Accidents</label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: 'none', label: 'None', color: 'bg-green-500' },
+                      { value: 'minor', label: 'Minor', color: 'bg-yellow-500' },
+                      { value: 'major', label: 'Major', color: 'bg-red-500' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setToiletingAccidents(option.value as 'none' | 'minor' | 'major')}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                          toiletingAccidents === option.value
+                            ? `${option.color} text-white`
+                            : 'bg-white border hover:bg-gray-50'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Assistance Needed</label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: 'none', label: 'None', emoji: '✅' },
+                      { value: 'partial', label: 'Partial', emoji: '🤝' },
+                      { value: 'full', label: 'Full', emoji: '👐' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setToiletingAssistance(option.value as 'none' | 'partial' | 'full')}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                          toiletingAssistance === option.value
+                            ? 'bg-purple-500 text-white'
+                            : 'bg-white border hover:bg-gray-50'
+                        }`}
+                      >
+                        {option.emoji} {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Pain During Toileting</label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: 'no_pain', label: 'No Pain', emoji: '😊' },
+                      { value: 'some_pain', label: 'Some Pain', emoji: '😣' },
+                      { value: 'very_painful', label: 'Very Painful', emoji: '😫' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setToiletingPain(option.value as 'no_pain' | 'some_pain' | 'very_painful')}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                          toiletingPain === option.value
+                            ? 'bg-purple-500 text-white'
+                            : 'bg-white border hover:bg-gray-50'
+                        }`}
+                      >
+                        {option.emoji} {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bowel Movements Subsection */}
               <div className="bg-amber-50 p-4 rounded-lg space-y-4">
                 <h3 className="font-semibold text-lg">💩 Bowel Movements</h3>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">Frequency (times today) *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={bowelFreq}
-                    onChange={(e) => setBowelFreq(parseInt(e.target.value) || 0)}
-                    className="w-full p-2 border rounded-lg"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Frequency (times today)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={bowelFreq}
+                      onChange={(e) => setBowelFreq(parseInt(e.target.value) || 0)}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Times Used Toilet</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={bowelTimesUsedToilet || ''}
+                      onChange={(e) => setBowelTimesUsedToilet(e.target.value ? parseInt(e.target.value) : null)}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
                 </div>
 
                 {bowelFreq > 0 && (
                   <>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Times Used Toilet</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={bowelTimesUsedToilet || ''}
-                        onChange={(e) => setBowelTimesUsedToilet(e.target.value ? parseInt(e.target.value) : null)}
-                        className="w-full p-2 border rounded-lg"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Diaper Changes</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={bowelDiaperChanges || ''}
-                        onChange={(e) => setBowelDiaperChanges(e.target.value ? parseInt(e.target.value) : null)}
-                        className="w-full p-2 border rounded-lg"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Diaper Status</label>
-                      <div className="flex gap-2">
-                        {[
-                          { value: 'dry', label: 'Dry', emoji: '✨' },
-                          { value: 'wet', label: 'Wet', emoji: '💧' },
-                          { value: 'soiled', label: 'Soiled', emoji: '💩' },
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setBowelDiaperStatus(option.value as 'dry' | 'wet' | 'soiled')}
-                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                              bowelDiaperStatus === option.value
-                                ? 'bg-amber-500 text-white'
-                                : 'bg-white border hover:bg-gray-50'
-                            }`}
-                          >
-                            {option.emoji} {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
                     <div>
                       <label className="block text-sm font-medium mb-2">Consistency</label>
                       <select
@@ -1843,79 +2662,7 @@ function CareLogFormComponent() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">Accidents</label>
-                      <div className="flex gap-2">
-                        {[
-                          { value: 'none', label: 'None' },
-                          { value: 'minor', label: 'Minor' },
-                          { value: 'major', label: 'Major' },
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setBowelAccidents(option.value as 'none' | 'minor' | 'major')}
-                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                              bowelAccidents === option.value
-                                ? 'bg-amber-500 text-white'
-                                : 'bg-white border hover:bg-gray-50'
-                            }`}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Assistance Needed</label>
-                      <div className="flex gap-2">
-                        {[
-                          { value: 'none', label: 'None', emoji: '✅' },
-                          { value: 'partial', label: 'Partial', emoji: '🤝' },
-                          { value: 'full', label: 'Full', emoji: '👐' },
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setBowelAssistance(option.value as 'none' | 'partial' | 'full')}
-                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                              bowelAssistance === option.value
-                                ? 'bg-amber-500 text-white'
-                                : 'bg-white border hover:bg-gray-50'
-                            }`}
-                          >
-                            {option.emoji} {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Pain Level</label>
-                      <div className="flex gap-2">
-                        {[
-                          { value: 'no_pain', label: 'No Pain', emoji: '😊' },
-                          { value: 'some_pain', label: 'Some Pain', emoji: '😣' },
-                          { value: 'very_painful', label: 'Very Painful', emoji: '😫' },
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setBowelPain(option.value as 'no_pain' | 'some_pain' | 'very_painful')}
-                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                              bowelPain === option.value
-                                ? 'bg-amber-500 text-white'
-                                : 'bg-white border hover:bg-gray-50'
-                            }`}
-                          >
-                            {option.emoji} {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Concerns/Notes</label>
+                      <label className="block text-sm font-medium mb-1">Bowel Concerns</label>
                       <textarea
                         value={bowelConcerns}
                         onChange={(e) => setBowelConcerns(e.target.value)}
@@ -1928,69 +2675,36 @@ function CareLogFormComponent() {
                 )}
               </div>
 
-              {/* Urination Section */}
+              {/* Urination Subsection */}
               <div className="bg-blue-50 p-4 rounded-lg space-y-4">
                 <h3 className="font-semibold text-lg">💧 Urination</h3>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">Frequency (times today) *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={urineFreq}
-                    onChange={(e) => setUrineFreq(parseInt(e.target.value) || 0)}
-                    className="w-full p-2 border rounded-lg"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Frequency (times today)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={urineFreq}
+                      onChange={(e) => setUrineFreq(parseInt(e.target.value) || 0)}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Times Used Toilet</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={urineTimesUsedToilet || ''}
+                      onChange={(e) => setUrineTimesUsedToilet(e.target.value ? parseInt(e.target.value) : null)}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
                 </div>
 
                 {urineFreq > 0 && (
                   <>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Times Used Toilet</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={urineTimesUsedToilet || ''}
-                        onChange={(e) => setUrineTimesUsedToilet(e.target.value ? parseInt(e.target.value) : null)}
-                        className="w-full p-2 border rounded-lg"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Diaper Changes</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={urineDiaperChanges || ''}
-                        onChange={(e) => setUrineDiaperChanges(e.target.value ? parseInt(e.target.value) : null)}
-                        className="w-full p-2 border rounded-lg"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Diaper Status</label>
-                      <div className="flex gap-2">
-                        {[
-                          { value: 'dry', label: 'Dry', emoji: '✨' },
-                          { value: 'wet', label: 'Wet', emoji: '💧' },
-                          { value: 'soiled', label: 'Soiled', emoji: '💩' },
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setUrineDiaperStatus(option.value as 'dry' | 'wet' | 'soiled')}
-                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                              urineDiaperStatus === option.value
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-white border hover:bg-gray-50'
-                            }`}
-                          >
-                            {option.emoji} {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
                     <div>
                       <label className="block text-sm font-medium mb-2">Urine Color</label>
                       <select
@@ -2008,79 +2722,7 @@ function CareLogFormComponent() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">Accidents</label>
-                      <div className="flex gap-2">
-                        {[
-                          { value: 'none', label: 'None' },
-                          { value: 'minor', label: 'Minor' },
-                          { value: 'major', label: 'Major' },
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setUrineAccidents(option.value as 'none' | 'minor' | 'major')}
-                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                              urineAccidents === option.value
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-white border hover:bg-gray-50'
-                            }`}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Assistance Needed</label>
-                      <div className="flex gap-2">
-                        {[
-                          { value: 'none', label: 'None', emoji: '✅' },
-                          { value: 'partial', label: 'Partial', emoji: '🤝' },
-                          { value: 'full', label: 'Full', emoji: '👐' },
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setUrineAssistance(option.value as 'none' | 'partial' | 'full')}
-                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                              urineAssistance === option.value
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-white border hover:bg-gray-50'
-                            }`}
-                          >
-                            {option.emoji} {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Pain Level</label>
-                      <div className="flex gap-2">
-                        {[
-                          { value: 'no_pain', label: 'No Pain', emoji: '😊' },
-                          { value: 'some_pain', label: 'Some Pain', emoji: '😣' },
-                          { value: 'very_painful', label: 'Very Painful', emoji: '😫' },
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setUrinePain(option.value as 'no_pain' | 'some_pain' | 'very_painful')}
-                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                              urinePain === option.value
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-white border hover:bg-gray-50'
-                            }`}
-                          >
-                            {option.emoji} {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Concerns/Notes</label>
+                      <label className="block text-sm font-medium mb-1">Urination Concerns</label>
                       <textarea
                         value={urineConcerns}
                         onChange={(e) => setUrineConcerns(e.target.value)}
@@ -2188,7 +2830,7 @@ function CareLogFormComponent() {
               {/* Walking Pattern */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Walking Pattern (How she walks) <span className="text-gray-500 font-normal text-xs">(optional - select all that apply)</span>
+                  Walking Pattern (How she walks)
                 </label>
                 <div className="space-y-2">
                   {['normal', 'shuffling', 'uneven', 'very_slow', 'stumbling', 'cannot_lift_feet'].map((pattern) => (
@@ -2216,7 +2858,7 @@ function CareLogFormComponent() {
               {/* Freezing Episodes */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Freezing Episodes <span className="text-gray-500 font-normal text-xs">(optional)</span>
+                  Freezing Episodes
                 </label>
                 <p className="text-xs text-gray-600 mb-2">
                   (Suddenly stopping and being unable to move forward, like feet stuck to ground)
@@ -2253,7 +2895,7 @@ function CareLogFormComponent() {
                 Unaccompanied Time Tracking
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Optional. If adding time periods, start time, end time, and reason are required.
+                All fields optional. <span className="font-medium text-gray-700">When adding time periods, start time<span className="text-red-500">*</span>, end time<span className="text-red-500">*</span>, and reason<span className="text-red-500">*</span> are required.</span>
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -2438,7 +3080,7 @@ function CareLogFormComponent() {
               {/* Incidents Textarea */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Any incidents during unaccompanied time? (optional)
+                  Any incidents during unaccompanied time?
                 </label>
                 <textarea
                   placeholder="e.g., Care recipient tried to get up alone but replacement person assisted. No injuries."
@@ -2883,7 +3525,7 @@ function CareLogFormComponent() {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Notes (optional)
+                          Notes
                         </label>
                         <textarea
                           placeholder="Any concerns or items that need attention..."
@@ -2929,7 +3571,7 @@ function CareLogFormComponent() {
             <CardContent className="space-y-6">
               {/* Prayer Time */}
               <div className="space-y-3">
-                <label className="block text-sm font-medium">Prayer Time (optional)</label>
+                <label className="block text-sm font-medium">Prayer Time</label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-600">Start Time</label>
@@ -2954,7 +3596,7 @@ function CareLogFormComponent() {
 
               {/* Prayer Expression */}
               <div className="space-y-3">
-                <label className="block text-sm font-medium">Prayer Expression (optional)</label>
+                <label className="block text-sm font-medium">Prayer Expression</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { value: 'speaking_out_loud', label: 'Speaking Out Loud' },
@@ -3021,7 +3663,7 @@ function CareLogFormComponent() {
 
               {/* Social Interaction */}
               <div className="space-y-3">
-                <label className="block text-sm font-medium">Social Interaction (optional)</label>
+                <label className="block text-sm font-medium">Social Interaction</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { value: 'engaged', label: 'Engaged' },
@@ -3538,7 +4180,7 @@ function CareLogFormComponent() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  General Notes (optional)
+                  General Notes
                 </label>
                 <textarea
                   value={notes}
@@ -3548,6 +4190,394 @@ function CareLogFormComponent() {
                   rows={4}
                 />
               </div>
+
+              {/* Sprint 3 Day 4: Activities & Social Interaction */}
+              <div className="border-t pt-4 mt-4">
+                <h3 className="font-semibold text-gray-900 mb-4">📱 Activities & Social Interaction</h3>
+                <div className="space-y-4">
+                  {/* Phone Activities */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Activities</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { value: 'youtube', label: '📺 YouTube/Videos' },
+                        { value: 'texting', label: '💬 Texting' },
+                        { value: 'calls', label: '📞 Phone Calls' },
+                        { value: 'none', label: '❌ None' },
+                      ].map(({ value, label }) => (
+                        <label key={value} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50">
+                          <input
+                            type="checkbox"
+                            checked={phoneActivities.includes(value as 'youtube' | 'texting' | 'calls' | 'none')}
+                            onChange={(e) => {
+                              if (value === 'none') {
+                                setPhoneActivities(e.target.checked ? ['none'] : []);
+                              } else {
+                                if (e.target.checked) {
+                                  setPhoneActivities(prev => [...prev.filter(p => p !== 'none'), value as 'youtube' | 'texting' | 'calls']);
+                                } else {
+                                  setPhoneActivities(prev => prev.filter(p => p !== value));
+                                }
+                              }
+                            }}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm">{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Engagement Level */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Overall Engagement Level (1-5)
+                    </label>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((level) => (
+                        <button
+                          key={level}
+                          type="button"
+                          onClick={() => setEngagementLevel(engagementLevel === level ? null : level)}
+                          className={`flex-1 py-2 rounded-lg transition-colors ${
+                            engagementLevel === level
+                              ? 'bg-primary-500 text-white'
+                              : 'bg-gray-100 hover:bg-gray-200'
+                          }`}
+                        >
+                          {level}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>Withdrawn</span>
+                      <span>Very Engaged</span>
+                    </div>
+                  </div>
+
+                  {/* Other Activities */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Other Activities</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { value: 'conversation', label: '💬 Conversation' },
+                        { value: 'prayer', label: '🙏 Prayer' },
+                        { value: 'reading', label: '📖 Reading' },
+                        { value: 'watching_tv', label: '📺 Watching TV' },
+                        { value: 'listening_music', label: '🎵 Listening to Music' },
+                        { value: 'games', label: '🎮 Games/Puzzles' },
+                        { value: 'none', label: '❌ None' },
+                      ].map(({ value, label }) => (
+                        <label key={value} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50">
+                          <input
+                            type="checkbox"
+                            checked={otherActivities.includes(value as 'phone' | 'conversation' | 'prayer' | 'reading' | 'watching_tv' | 'listening_music' | 'games' | 'none')}
+                            onChange={(e) => {
+                              if (value === 'none') {
+                                setOtherActivities(e.target.checked ? ['none'] : []);
+                              } else {
+                                if (e.target.checked) {
+                                  setOtherActivities(prev => [...prev.filter(p => p !== 'none'), value as 'conversation' | 'prayer' | 'reading' | 'watching_tv' | 'listening_music' | 'games']);
+                                } else {
+                                  setOtherActivities(prev => prev.filter(p => p !== value));
+                                }
+                              }
+                            }}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm">{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Relaxation Periods */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Relaxation Periods</label>
+                    <div className="space-y-3">
+                      {relaxationPeriods.map((period, index) => (
+                        <div key={index} className="bg-gray-50 p-3 rounded-lg space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">Period {index + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => setRelaxationPeriods(prev => prev.filter((_, i) => i !== index))}
+                              className="text-red-500 text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-xs text-gray-500">Start Time</label>
+                              <Input
+                                type="time"
+                                value={period.startTime}
+                                onChange={(e) => {
+                                  const updated = [...relaxationPeriods];
+                                  updated[index] = { ...period, startTime: e.target.value };
+                                  setRelaxationPeriods(updated);
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-500">End Time</label>
+                              <Input
+                                type="time"
+                                value={period.endTime}
+                                onChange={(e) => {
+                                  const updated = [...relaxationPeriods];
+                                  updated[index] = { ...period, endTime: e.target.value };
+                                  setRelaxationPeriods(updated);
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500">Activity</label>
+                            <select
+                              value={period.activity}
+                              onChange={(e) => {
+                                const updated = [...relaxationPeriods];
+                                updated[index] = { ...period, activity: e.target.value as 'resting' | 'sleeping' | 'watching_tv' | 'listening_music' | 'quiet_time' };
+                                setRelaxationPeriods(updated);
+                              }}
+                              className="w-full px-3 py-2 border rounded-lg"
+                            >
+                              <option value="resting">😌 Resting</option>
+                              <option value="sleeping">😴 Sleeping</option>
+                              <option value="watching_tv">📺 Watching TV</option>
+                              <option value="listening_music">🎵 Listening to Music</option>
+                              <option value="quiet_time">🤫 Quiet Time</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500">Mood During</label>
+                            <select
+                              value={period.mood}
+                              onChange={(e) => {
+                                const updated = [...relaxationPeriods];
+                                updated[index] = { ...period, mood: e.target.value as 'happy' | 'calm' | 'restless' | 'bored' | 'engaged' };
+                                setRelaxationPeriods(updated);
+                              }}
+                              className="w-full px-3 py-2 border rounded-lg"
+                            >
+                              <option value="happy">😊 Happy</option>
+                              <option value="calm">😌 Calm</option>
+                              <option value="restless">😟 Restless</option>
+                              <option value="bored">😐 Bored</option>
+                              <option value="engaged">🤗 Engaged</option>
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setRelaxationPeriods(prev => [...prev, {
+                          startTime: '',
+                          endTime: '',
+                          activity: 'resting',
+                          mood: 'calm',
+                        }])}
+                        className="w-full"
+                      >
+                        + Add Relaxation Period
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sprint 3 Day 3: Structured Caregiver Notes */}
+              <div className="border-t pt-4 mt-4">
+                <h3 className="font-semibold text-gray-900 mb-4">📋 Daily Summary for Family</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      What Went Well Today?
+                    </label>
+                    <textarea
+                      value={whatWentWell}
+                      onChange={(e) => setWhatWentWell(e.target.value)}
+                      placeholder="Positive moments, achievements, or good experiences..."
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      rows={3}
+                      maxLength={1000}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">{whatWentWell.length}/1000 characters</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Challenges Faced
+                    </label>
+                    <textarea
+                      value={challengesFaced}
+                      onChange={(e) => setChallengesFaced(e.target.value)}
+                      placeholder="Any difficulties or concerns encountered..."
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      rows={3}
+                      maxLength={1000}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">{challengesFaced.length}/1000 characters</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Recommendations for Tomorrow
+                    </label>
+                    <textarea
+                      value={recommendationsForTomorrow}
+                      onChange={(e) => setRecommendationsForTomorrow(e.target.value)}
+                      placeholder="Suggestions for next caregiver or things to try..."
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      rows={3}
+                      maxLength={1000}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">{recommendationsForTomorrow.length}/1000 characters</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Important Info for Family
+                    </label>
+                    <textarea
+                      value={importantInfoForFamily}
+                      onChange={(e) => setImportantInfoForFamily(e.target.value)}
+                      placeholder="Key information family members should know..."
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      rows={3}
+                      maxLength={1000}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">{importantInfoForFamily.length}/1000 characters</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Caregiver Signature
+                    </label>
+                    <input
+                      type="text"
+                      value={caregiverSignature}
+                      onChange={(e) => setCaregiverSignature(e.target.value)}
+                      placeholder="Your name as signature..."
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      maxLength={200}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Progressive Section Sharing */}
+              {logStatus === 'draft' && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Share Progress with Family
+                  </h4>
+                  <p className="text-sm text-purple-700 mb-4">
+                    Share sections with family as you complete them throughout the day. They'll see your updates in real-time.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Morning Section */}
+                    <button
+                      onClick={() => handleShareSection('morning')}
+                      disabled={submitSectionMutation.isPending || !!completedSections.morning}
+                      className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                        completedSections.morning
+                          ? 'bg-green-100 border-green-300 cursor-default'
+                          : 'bg-white border-purple-200 hover:border-purple-400 hover:bg-purple-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">🌅</span>
+                        <span className="font-medium text-gray-900">Morning</span>
+                        {completedSections.morning && <CheckCircle className="h-4 w-4 text-green-600 ml-auto" />}
+                      </div>
+                      <p className="text-xs text-gray-600">
+                        {completedSections.morning
+                          ? `Shared at ${new Date(completedSections.morning.submittedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                          : 'Wake up, shower, medications, meals, vitals'}
+                      </p>
+                    </button>
+
+                    {/* Afternoon Section */}
+                    <button
+                      onClick={() => handleShareSection('afternoon')}
+                      disabled={submitSectionMutation.isPending || !!completedSections.afternoon}
+                      className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                        completedSections.afternoon
+                          ? 'bg-green-100 border-green-300 cursor-default'
+                          : 'bg-white border-purple-200 hover:border-purple-400 hover:bg-purple-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">☀️</span>
+                        <span className="font-medium text-gray-900">Afternoon</span>
+                        {completedSections.afternoon && <CheckCircle className="h-4 w-4 text-green-600 ml-auto" />}
+                      </div>
+                      <p className="text-xs text-gray-600">
+                        {completedSections.afternoon
+                          ? `Shared at ${new Date(completedSections.afternoon.submittedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                          : 'Toileting, rest & sleep tracking'}
+                      </p>
+                    </button>
+
+                    {/* Evening Section */}
+                    <button
+                      onClick={() => handleShareSection('evening')}
+                      disabled={submitSectionMutation.isPending || !!completedSections.evening}
+                      className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                        completedSections.evening
+                          ? 'bg-green-100 border-green-300 cursor-default'
+                          : 'bg-white border-purple-200 hover:border-purple-400 hover:bg-purple-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">🌙</span>
+                        <span className="font-medium text-gray-900">Evening</span>
+                        {completedSections.evening && <CheckCircle className="h-4 w-4 text-green-600 ml-auto" />}
+                      </div>
+                      <p className="text-xs text-gray-600">
+                        {completedSections.evening
+                          ? `Shared at ${new Date(completedSections.evening.submittedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                          : 'Physical activity & exercise'}
+                      </p>
+                    </button>
+
+                    {/* Daily Summary Section */}
+                    <button
+                      onClick={() => handleShareSection('dailySummary')}
+                      disabled={submitSectionMutation.isPending || !!completedSections.dailySummary}
+                      className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                        completedSections.dailySummary
+                          ? 'bg-green-100 border-green-300 cursor-default'
+                          : 'bg-white border-purple-200 hover:border-purple-400 hover:bg-purple-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">📋</span>
+                        <span className="font-medium text-gray-900">Daily Summary</span>
+                        {completedSections.dailySummary && <CheckCircle className="h-4 w-4 text-green-600 ml-auto" />}
+                      </div>
+                      <p className="text-xs text-gray-600">
+                        {completedSections.dailySummary
+                          ? `Shared at ${new Date(completedSections.dailySummary.submittedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                          : 'Safety, concerns, notes'}
+                      </p>
+                    </button>
+                  </div>
+                  {submitSectionMutation.isPending && (
+                    <p className="text-sm text-purple-600 mt-3 text-center">Sharing with family...</p>
+                  )}
+                  {Object.keys(completedSections).length > 0 && Object.keys(completedSections).length < 4 && (
+                    <p className="text-xs text-purple-600 mt-3 text-center">
+                      {4 - Object.keys(completedSections).length} section{4 - Object.keys(completedSections).length !== 1 ? 's' : ''} remaining
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Submit Section */}
               {isLocked ? (
@@ -3621,9 +4651,27 @@ function CareLogFormComponent() {
                         )}
 
                         {/* Meals */}
-                        {breakfastTime && (
-                          <p>🍽️ Breakfast: {breakfastTime} - Appetite: {breakfastAppetite}/5, Eaten: {breakfastAmount}%</p>
+                        {(breakfastTime || lunchTime || teaBreakTime || dinnerTime) && (
+                          <div>
+                            <p className="font-semibold">🍽️ Meals:</p>
+                            <ul className="ml-4 space-y-1">
+                              {breakfastTime && (
+                                <li>• Breakfast: {breakfastTime} - Appetite: {breakfastAppetite}/5, Eaten: {breakfastAmount}%{breakfastAssistance !== 'none' ? ` (${breakfastAssistance} assist)` : ''}</li>
+                              )}
+                              {lunchTime && (
+                                <li>• Lunch: {lunchTime} - Appetite: {lunchAppetite}/5, Eaten: {lunchAmount}%{lunchAssistance !== 'none' ? ` (${lunchAssistance} assist)` : ''}</li>
+                              )}
+                              {teaBreakTime && (
+                                <li>• Tea Break: {teaBreakTime} - Appetite: {teaBreakAppetite}/5, Eaten: {teaBreakAmount}%</li>
+                              )}
+                              {dinnerTime && (
+                                <li>• Dinner: {dinnerTime} - Appetite: {dinnerAppetite}/5, Eaten: {dinnerAmount}%{dinnerAssistance !== 'none' ? ` (${dinnerAssistance} assist)` : ''}</li>
+                              )}
+                            </ul>
+                          </div>
                         )}
+                        {foodPreferences && <p>👍 Food preferences: {foodPreferences}</p>}
+                        {foodRefusals && <p>👎 Food refusals: {foodRefusals}</p>}
 
                         {/* Vitals */}
                         {(bloodPressure || pulseRate || oxygenLevel || bloodSugar) && (
@@ -3639,8 +4687,8 @@ function CareLogFormComponent() {
                         )}
 
                         {/* Toileting */}
-                        {(bowelFreq > 0 || urineFreq > 0 || diaperChanges > 0) && (
-                          <p>🚽 Toileting: {bowelFreq} bowel, {urineFreq} urine, {diaperChanges} diaper changes</p>
+                        {(bowelFreq > 0 || urineFreq > 0 || toiletingDiaperChanges) && (
+                          <p>🚽 Toileting: {bowelFreq} bowel, {urineFreq} urine, {toiletingDiaperChanges || 0} diaper changes</p>
                         )}
 
                         {/* Fall Risk */}

@@ -154,6 +154,17 @@ export const careLogs = sqliteTable('care_logs', {
   invalidatedBy: text('invalidated_by').references(() => users.id), // family_admin who invalidated
   invalidationReason: text('invalidation_reason'),
 
+  // Progressive Section Submission
+  // Tracks which sections have been "shared" with family for progressive visibility
+  // Sections can be re-submitted to update data; final "Submit All" locks the form
+  completedSections: text('completed_sections', { mode: 'json' })
+    .$type<{
+      morning?: { submittedAt: string; submittedBy: string };
+      afternoon?: { submittedAt: string; submittedBy: string };
+      evening?: { submittedAt: string; submittedBy: string };
+      dailySummary?: { submittedAt: string; submittedBy: string };
+    }>(),
+
   // Morning Routine
   wakeTime: text('wake_time'), // HH:MM format
   mood: text('mood', { enum: ['alert', 'confused', 'sleepy', 'agitated', 'calm'] }),
@@ -172,9 +183,12 @@ export const careLogs = sqliteTable('care_logs', {
   // Meals & Nutrition (JSON object)
   meals: text('meals', { mode: 'json' })
     .$type<{
-      breakfast?: { time: string; appetite: number; amountEaten: number; swallowingIssues: string[] };
-      lunch?: { time: string; appetite: number; amountEaten: number; swallowingIssues: string[] };
-      dinner?: { time: string; appetite: number; amountEaten: number; swallowingIssues: string[] };
+      breakfast?: { time: string; appetite: number; amountEaten: number; swallowingIssues: string[]; assistance?: 'none' | 'some' | 'full' };
+      lunch?: { time: string; appetite: number; amountEaten: number; swallowingIssues: string[]; assistance?: 'none' | 'some' | 'full' };
+      teaBreak?: { time: string; appetite: number; amountEaten: number; swallowingIssues: string[] };
+      dinner?: { time: string; appetite: number; amountEaten: number; swallowingIssues: string[]; assistance?: 'none' | 'some' | 'full' };
+      foodPreferences?: string;
+      foodRefusals?: string;
     }>(),
 
   // Fluids (JSON array)
@@ -348,7 +362,104 @@ export const careLogs = sqliteTable('care_logs', {
       socialInteraction?: 'engaged' | 'responsive' | 'withdrawn' | 'aggressive_hostile';
     }>(),
 
-  // Notes
+  // Sprint 3 Day 2: Physical Activity & Exercise
+  physicalActivity: text('physical_activity', { mode: 'json' })
+    .$type<{
+      exerciseDuration?: number;
+      exerciseType?: string[];
+      walkingDistance?: string;
+      assistanceLevel?: 'none' | 'minimal' | 'moderate' | 'full';
+      painDuringActivity?: 'none' | 'mild' | 'moderate' | 'severe';
+      energyAfterActivity?: 'energized' | 'tired' | 'exhausted' | 'same';
+      participationWillingness?: 'enthusiastic' | 'willing' | 'reluctant' | 'refused';
+      equipmentUsed?: string[];
+      mobilityNotes?: string;
+    }>(),
+
+  // Sprint 3 Day 3: Oral Care & Hygiene
+  oralCare: text('oral_care', { mode: 'json' })
+    .$type<{
+      teethBrushed?: boolean;
+      timesBrushed?: number;
+      denturesCleaned?: boolean;
+      mouthRinsed?: boolean;
+      assistanceLevel?: 'none' | 'minimal' | 'moderate' | 'full';
+      oralHealthIssues?: string[];
+      painOrBleeding?: boolean;
+      notes?: string;
+    }>(),
+
+  // Sprint 3 Day 4: Detailed Exercise Sessions
+  morningExerciseSession: text('morning_exercise_session', { mode: 'json' })
+    .$type<{
+      startTime: string;
+      endTime: string;
+      exercises?: Array<{
+        type: string;
+        done: boolean;
+        duration: number;
+        participation: number;
+      }>;
+      notes?: string;
+    }>(),
+  afternoonExerciseSession: text('afternoon_exercise_session', { mode: 'json' })
+    .$type<{
+      startTime: string;
+      endTime: string;
+      exercises?: Array<{
+        type: string;
+        done: boolean;
+        duration: number;
+        participation: number;
+      }>;
+      notes?: string;
+    }>(),
+  movementDifficulties: text('movement_difficulties', { mode: 'json' })
+    .$type<{
+      gettingOutOfBed?: { level: string; notes?: string };
+      gettingIntoBed?: { level: string; notes?: string };
+      sittingInChair?: { level: string; notes?: string };
+      gettingUpFromChair?: { level: string; notes?: string };
+      gettingInCar?: { level: string; notes?: string };
+      gettingOutOfCar?: { level: string; notes?: string };
+    }>(),
+
+  // Sprint 3 Day 5: Special Concerns & Incidents
+  specialConcerns: text('special_concerns', { mode: 'json' })
+    .$type<{
+      priorityLevel?: 'emergency' | 'urgent' | 'routine';
+      behaviouralChanges?: string[];
+      physicalChanges?: string;
+      incidentDescription?: string;
+      actionsTaken?: string;
+      notes?: string;
+    }>(),
+
+  // Sprint 3 Day 3: Caregiver Notes (structured daily summary)
+  caregiverNotes: text('caregiver_notes', { mode: 'json' })
+    .$type<{
+      whatWentWell?: string;
+      challengesFaced?: string;
+      recommendationsForTomorrow?: string;
+      importantInfoForFamily?: string;
+      caregiverSignature?: string;
+    }>(),
+
+  // Sprint 3 Day 4: Activities & Social Interaction
+  activities: text('activities', { mode: 'json' })
+    .$type<{
+      phoneActivities?: ('youtube' | 'texting' | 'calls' | 'none')[];
+      engagementLevel?: number; // 1-5 scale
+      otherActivities?: ('phone' | 'conversation' | 'prayer' | 'reading' | 'watching_tv' | 'listening_music' | 'games' | 'none')[];
+      relaxationPeriods?: Array<{
+        startTime: string;
+        endTime: string;
+        activity: 'resting' | 'sleeping' | 'watching_tv' | 'listening_music' | 'quiet_time';
+        mood: 'happy' | 'calm' | 'restless' | 'bored' | 'engaged';
+      }>;
+    }>(),
+
+  // Notes (legacy - simple text notes)
   notes: text('notes'),
 
   createdAt: integer('created_at', { mode: 'timestamp' })
@@ -451,6 +562,56 @@ export const alerts = sqliteTable('alerts', {
 });
 
 /**
+ * Care Log Audit Table
+ * Tracks all changes made to care logs for audit trail and family visibility
+ */
+export const careLogAudit = sqliteTable('care_log_audit', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  careLogId: text('care_log_id')
+    .references(() => careLogs.id, { onDelete: 'cascade' })
+    .notNull(),
+
+  // Who made the change
+  changedBy: text('changed_by').notNull(), // caregiver_id
+  changedByName: text('changed_by_name'), // Denormalized for history
+
+  // What changed
+  action: text('action', {
+    enum: ['create', 'update', 'submit', 'submit_section'],
+  }).notNull(),
+  sectionSubmitted: text('section_submitted'), // For submit_section: 'morning', 'afternoon', 'evening', 'dailySummary'
+
+  // Change details (JSON)
+  changes: text('changes', { mode: 'json' }).$type<Record<string, { old: unknown; new: unknown }>>(),
+
+  // Full snapshot of the care log at this point
+  snapshot: text('snapshot', { mode: 'json' }).$type<Record<string, unknown>>(),
+
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+/**
+ * Care Log Views Table
+ * Tracks when family members last viewed each care log
+ * Used to show "new changes" badges
+ */
+export const careLogViews = sqliteTable('care_log_views', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  careLogId: text('care_log_id')
+    .references(() => careLogs.id, { onDelete: 'cascade' })
+    .notNull(),
+  userId: text('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+
+  viewedAt: integer('viewed_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+/**
  * Export all tables for Drizzle ORM
  */
 export const schema = {
@@ -462,4 +623,6 @@ export const schema = {
   medicationSchedules,
   packLists,
   alerts,
+  careLogAudit,
+  careLogViews,
 };

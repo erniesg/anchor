@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LineChart,
   Line,
@@ -50,15 +51,7 @@ interface TrendLog {
 
 function TrendsComponent() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [careRecipient, setCareRecipient] = useState<CareRecipient | null>(null);
-
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    const recipientData = localStorage.getItem('careRecipient');
-    if (userData) setUser(JSON.parse(userData));
-    if (recipientData) setCareRecipient(JSON.parse(recipientData));
-  }, []);
+  const { user, careRecipient, logout } = useAuth();
 
   // Redirect to onboarding if no care recipient exists
   useEffect(() => {
@@ -89,10 +82,8 @@ function TrendsComponent() {
   });
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('careRecipient');
-    window.location.href = '/auth/login';
+    logout();
+    navigate({ to: '/auth/login' });
   };
 
   // Transform week data for charts

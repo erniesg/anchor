@@ -48,13 +48,13 @@ function CaregiverPackListComponent() {
       queryClient.invalidateQueries({ queryKey: ['pack-list', careRecipientId] });
       addToast({
         type: 'success',
-        message: 'Pack list saved successfully',
+        message: 'Hospital bag saved successfully',
       });
     },
     onError: (error) => {
       addToast({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Failed to save pack list',
+        message: error instanceof Error ? error.message : 'Failed to save hospital bag',
       });
     },
   });
@@ -72,13 +72,13 @@ function CaregiverPackListComponent() {
       queryClient.invalidateQueries({ queryKey: ['pack-list', careRecipientId] });
       addToast({
         type: 'success',
-        message: 'Pack list verified successfully',
+        message: 'Hospital bag verified successfully',
       });
     },
     onError: (error) => {
       addToast({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Failed to verify pack list',
+        message: error instanceof Error ? error.message : 'Failed to verify hospital bag',
       });
     },
   });
@@ -118,7 +118,7 @@ function CaregiverPackListComponent() {
             <div className="flex items-center gap-3">
               <Backpack className="h-7 w-7 text-purple-600" />
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Hospital Emergency Bag</h1>
+                <h1 className="text-xl font-bold text-gray-900">Hospital Bag Preparedness</h1>
                 <p className="text-sm text-gray-600">
                   {careRecipientName ? `For ${careRecipientName}` : 'Manage pack list items'}
                 </p>
@@ -146,7 +146,7 @@ function CaregiverPackListComponent() {
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h3 className="font-semibold text-blue-900 mb-1 flex items-center gap-2">
                 <Backpack className="h-5 w-5" />
-                Quick Reference: Hospital Emergency Bag
+                Quick Reference: Hospital Bag Preparedness
               </h3>
               <p className="text-sm text-blue-800">
                 This is the master list of items to bring in case of emergency hospital visits.

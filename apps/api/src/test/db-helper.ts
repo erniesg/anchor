@@ -169,6 +169,26 @@ export function runMigrations(sqlite: Database.Database) {
       -- Sprint 3 Day 1: Spiritual & Emotional Well-Being
       spiritual_emotional TEXT,
 
+      -- Sprint 3 Day 2: Physical Activity & Exercise
+      physical_activity TEXT,
+
+      -- Sprint 3 Day 3: Oral Care & Hygiene
+      oral_care TEXT,
+
+      -- Sprint 3 Day 4: Detailed Exercise Sessions
+      morning_exercise_session TEXT,
+      afternoon_exercise_session TEXT,
+      movement_difficulties TEXT,
+
+      -- Sprint 3 Day 5: Special Concerns & Incidents
+      special_concerns TEXT,
+
+      -- Sprint 3 Day 3: Caregiver Notes
+      caregiver_notes TEXT,
+
+      -- Sprint 3 Day 4: Activities & Social
+      activities TEXT,
+
       -- Sprint 3 Day 2: Environment & Safety
       room_maintenance TEXT,
       personal_items_check TEXT,
@@ -176,6 +196,9 @@ export function runMigrations(sqlite: Database.Database) {
 
       -- Notes
       notes TEXT,
+
+      -- Progressive Section Submission
+      completed_sections TEXT,
 
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
@@ -213,6 +236,30 @@ export function runMigrations(sqlite: Database.Database) {
       created_at INTEGER NOT NULL,
       FOREIGN KEY (care_recipient_id) REFERENCES care_recipients(id) ON DELETE CASCADE,
       FOREIGN KEY (acknowledged_by) REFERENCES users(id)
+    );
+
+    -- Audit History & Change Tracking (Phase 5)
+    CREATE TABLE IF NOT EXISTS care_log_audit (
+      id TEXT PRIMARY KEY,
+      care_log_id TEXT NOT NULL,
+      changed_by TEXT NOT NULL,
+      changed_by_name TEXT,
+      action TEXT NOT NULL,
+      section_submitted TEXT,
+      changes TEXT,
+      snapshot TEXT,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (care_log_id) REFERENCES care_logs(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS care_log_views (
+      id TEXT PRIMARY KEY,
+      care_log_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      viewed_at INTEGER NOT NULL,
+      FOREIGN KEY (care_log_id) REFERENCES care_logs(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(care_log_id, user_id)
     );
   `);
 }

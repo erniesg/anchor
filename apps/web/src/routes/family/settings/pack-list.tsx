@@ -53,13 +53,13 @@ function PackListManagementComponent() {
       queryClient.invalidateQueries({ queryKey: ['pack-list', recipientId] });
       addToast({
         type: 'success',
-        message: 'Pack list saved successfully',
+        message: 'Hospital bag saved successfully',
       });
     },
     onError: (error) => {
       addToast({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Failed to save pack list',
+        message: error instanceof Error ? error.message : 'Failed to save hospital bag',
       });
     },
   });
@@ -77,13 +77,13 @@ function PackListManagementComponent() {
       queryClient.invalidateQueries({ queryKey: ['pack-list', recipientId] });
       addToast({
         type: 'success',
-        message: 'Pack list verified successfully',
+        message: 'Hospital bag verified successfully',
       });
     },
     onError: (error) => {
       addToast({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Failed to verify pack list',
+        message: error instanceof Error ? error.message : 'Failed to verify hospital bag',
       });
     },
   });
@@ -126,14 +126,14 @@ function PackListManagementComponent() {
               items={[
                 { label: 'Settings', href: '/family/settings' },
                 { label: 'Care Recipients', href: '/family/settings/care-recipients' },
-                { label: 'Pack List', href: '/family/settings/pack-list' },
+                { label: 'Hospital Bag', href: '/family/settings/pack-list' },
               ]}
             />
             <div className="flex items-center justify-between mt-4">
               <div className="flex items-center gap-3">
                 <Backpack className="h-8 w-8 text-blue-600" />
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Hospital Emergency Bag</h1>
+                  <h1 className="text-2xl font-bold text-gray-900">Hospital Bag Preparedness</h1>
                   <p className="text-sm text-gray-600">
                     {recipientName ? `For ${recipientName}` : 'Manage pack list items'}
                   </p>

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { useToast } from '@/lib/toast';
 import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal, Edit, Plus, Heart, ExternalLink } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { authenticatedApiCall } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const Route = createFileRoute('/family/settings/caregivers')({
   component: CaregiversSettingsComponent,
@@ -29,18 +30,6 @@ interface Caregiver {
   deactivatedAt?: string | null;
 }
 
-// Helper to get user role from localStorage
-const getUserRole = (): 'family_admin' | 'family_member' | null => {
-  if (typeof window === 'undefined') return null;
-  const userData = localStorage.getItem('user');
-  if (!userData) return null;
-  try {
-    const user = JSON.parse(userData);
-    return user.role || null;
-  } catch {
-    return null;
-  }
-};
 
 interface CareRecipient {
   id: string;
@@ -50,6 +39,7 @@ interface CareRecipient {
 
 function CaregiversSettingsComponent() {
   const { recipientId, action } = Route.useSearch();
+  const { user, token } = useAuth();
   const [selectedRecipientId, setSelectedRecipientId] = useState<string | null>(recipientId || null);
   const [selectedCaregiver, setSelectedCaregiver] = useState<Caregiver | null>(null);
   const [showResetPinModal, setShowResetPinModal] = useState(false);
@@ -62,7 +52,7 @@ function CaregiversSettingsComponent() {
   const [deactivationReason, setDeactivationReason] = useState('');
   const [copiedPin, setCopiedPin] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null); // Track which ID was copied
-  const [userRole, _setUserRole] = useState<'family_admin' | 'family_member' | null>(getUserRole); void _setUserRole;
+  const userRole = user?.role as 'family_admin' | 'family_member' | null;
 
   // Add caregiver form state
   const [addForm, setAddForm] = useState({
@@ -103,7 +93,7 @@ function CaregiversSettingsComponent() {
   const { data: careRecipients, isLoading: recipientsLoading } = useQuery({
     queryKey: ['care-recipients'],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
       if (!token) throw new Error('No authentication token');
       return authenticatedApiCall<CareRecipient[]>('/care-recipients', token);
     },
@@ -135,7 +125,7 @@ function CaregiversSettingsComponent() {
     queryKey: ['caregivers', selectedRecipientId],
     queryFn: async () => {
       if (!selectedRecipientId) return [];
-      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
       if (!token) throw new Error('No authentication token');
       return authenticatedApiCall(`/caregivers/recipient/${selectedRecipientId}`, token);
     },
@@ -148,7 +138,7 @@ function CaregiversSettingsComponent() {
   // Reset PIN mutation
   const resetPinMutation = useMutation({
     mutationFn: async (caregiverId: string) => {
-      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
       if (!token) throw new Error('No authentication token');
       return authenticatedApiCall(`/caregivers/${caregiverId}/reset-pin`, token, {
         method: 'POST',
@@ -173,7 +163,7 @@ function CaregiversSettingsComponent() {
   // Deactivate mutation
   const deactivateMutation = useMutation({
     mutationFn: async ({ caregiverId, reason }: { caregiverId: string; reason: string }) => {
-      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
       if (!token) throw new Error('No authentication token');
       return authenticatedApiCall(`/caregivers/${caregiverId}/deactivate`, token, {
         method: 'POST',
@@ -201,7 +191,7 @@ function CaregiversSettingsComponent() {
   // Reactivate mutation
   const reactivateMutation = useMutation({
     mutationFn: async (caregiverId: string) => {
-      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
       if (!token) throw new Error('No authentication token');
       return authenticatedApiCall(`/caregivers/${caregiverId}/reactivate`, token, {
         method: 'POST',
@@ -227,7 +217,7 @@ function CaregiversSettingsComponent() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async ({ caregiverId, data }: { caregiverId: string; data: typeof editForm }) => {
-      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
       if (!token) throw new Error('No authentication token');
       return authenticatedApiCall(`/caregivers/${caregiverId}`, token, {
         method: 'PUT',
@@ -255,7 +245,7 @@ function CaregiversSettingsComponent() {
   const addCaregiverMutation = useMutation({
     mutationFn: async (data: typeof addForm) => {
       if (!selectedRecipientId) throw new Error('No care recipient selected');
-      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
       if (!token) throw new Error('No authentication token');
       return authenticatedApiCall('/caregivers', token, {
         method: 'POST',

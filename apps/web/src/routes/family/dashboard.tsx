@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ExternalLink, Copy, Check, Heart } from 'lucide-react';
 import { authenticatedApiCall } from '@/lib/api';
 import { FamilyLayout } from '@/components/FamilyLayout';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LineChart,
   Line,
@@ -176,24 +177,14 @@ function StatusBadge({ status }: { status?: string }) {
 
 function DashboardComponent() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [careRecipient, setCareRecipient] = useState<CareRecipient | null>(null);
-  const [token, setToken] = useState<string>('');
+  const { user, token, careRecipient, logout, setCareRecipient: setAuthCareRecipient, refreshCareRecipient } = useAuth();
   const [viewMode, setViewMode] = useState<'today' | 'week' | 'month'>('today');
   const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, -1 = last week, etc.
-
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    const tokenData = localStorage.getItem('token');
-    if (userData) setUser(JSON.parse(userData));
-    if (tokenData) setToken(tokenData);
-  }, []);
 
   // Fetch care recipients from API to check onboarding status
   const { data: careRecipients } = useQuery({
     queryKey: ['care-recipients-onboarding-check'],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
       if (!token) return null;
       try {
         return await authenticatedApiCall('/care-recipients', token);
@@ -201,16 +192,15 @@ function DashboardComponent() {
         return null;
       }
     },
-    enabled: !!user,
+    enabled: !!user && !!token,
   });
 
-  // Set care recipient from API data
+  // Set care recipient from API data if not already set
   useEffect(() => {
-    if (careRecipients && careRecipients.length > 0) {
-      setCareRecipient(careRecipients[0]);
-      localStorage.setItem('careRecipient', JSON.stringify(careRecipients[0]));
+    if (careRecipients && careRecipients.length > 0 && !careRecipient) {
+      setAuthCareRecipient(careRecipients[0]);
     }
-  }, [careRecipients]);
+  }, [careRecipients, careRecipient, setAuthCareRecipient]);
 
   // Redirect to onboarding if no care recipients exist (checked via API)
   useEffect(() => {
@@ -245,6 +235,31 @@ function DashboardComponent() {
     enabled: !!careRecipient?.id && !!token && viewMode === 'today',
     refetchInterval: 30000,
   });
+
+  const queryClient = useQueryClient();
+
+  // Mark care log as viewed mutation
+  const markViewedMutation = useMutation({
+    mutationFn: async (logId: string) => {
+      if (!token) throw new Error('No token');
+      return authenticatedApiCall(`/care-logs/${logId}/mark-viewed`, token, {
+        method: 'POST',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['care-log-today', careRecipient?.id] });
+    },
+  });
+
+  // Auto-mark as viewed after 3 seconds when there are unviewed changes
+  useEffect(() => {
+    if (todayLog?.id && todayLog?.hasUnviewedChanges && viewMode === 'today') {
+      const timeout = setTimeout(() => {
+        markViewedMutation.mutate(todayLog.id);
+      }, 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [todayLog?.id, todayLog?.hasUnviewedChanges, viewMode]);
 
   // Fetch week data (Mon-Sun)
   const { data: weekLogs, isLoading: weekLoading } = useQuery({
@@ -301,10 +316,8 @@ function DashboardComponent() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('careRecipient');
-    window.location.href = '/auth/login';
+    logout();
+    navigate({ to: '/auth/login' });
   };
 
   return (
@@ -441,8 +454,14 @@ function DashboardComponent() {
                   {viewMode === 'today' && (
                     <div className="text-right">
                       {todayLog?.status && (
-                        <div className="mb-2">
+                        <div className="mb-2 flex items-center justify-end gap-2">
                           <StatusBadge status={todayLog.status} />
+                          {todayLog.hasUnviewedChanges && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full animate-pulse">
+                              <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                              New Changes
+                            </span>
+                          )}
                         </div>
                       )}
                       <p className="text-sm text-gray-600">
@@ -1894,6 +1913,146 @@ function DashboardComponent() {
                           <div className="mt-3 pt-3 border-t border-gray-200">
                             <span className="text-gray-600 text-xs font-medium">Notes:</span>
                             <p className="text-gray-700 mt-1">{todayLog.oralCare.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Sprint 3 Day 3: Caregiver Notes */}
+                {todayLog.caregiverNotes && (
+                  <Card data-testid="caregiver-notes-card">
+                    <CardHeader>
+                      <h3 className="font-semibold">📋 Caregiver Daily Summary</h3>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4 text-sm">
+                        {/* What Went Well */}
+                        {todayLog.caregiverNotes.whatWentWell && (
+                          <div>
+                            <span className="text-gray-600 font-medium">What Went Well:</span>
+                            <p className="text-gray-800 mt-1 bg-green-50 p-2 rounded">{todayLog.caregiverNotes.whatWentWell}</p>
+                          </div>
+                        )}
+
+                        {/* Challenges Faced */}
+                        {todayLog.caregiverNotes.challengesFaced && (
+                          <div>
+                            <span className="text-gray-600 font-medium">Challenges Faced:</span>
+                            <p className="text-gray-800 mt-1 bg-yellow-50 p-2 rounded">{todayLog.caregiverNotes.challengesFaced}</p>
+                          </div>
+                        )}
+
+                        {/* Recommendations for Tomorrow */}
+                        {todayLog.caregiverNotes.recommendationsForTomorrow && (
+                          <div>
+                            <span className="text-gray-600 font-medium">Recommendations for Tomorrow:</span>
+                            <p className="text-gray-800 mt-1 bg-blue-50 p-2 rounded">{todayLog.caregiverNotes.recommendationsForTomorrow}</p>
+                          </div>
+                        )}
+
+                        {/* Important Info for Family */}
+                        {todayLog.caregiverNotes.importantInfoForFamily && (
+                          <div>
+                            <span className="text-gray-600 font-medium">Important Info for Family:</span>
+                            <p className="text-gray-800 mt-1 bg-purple-50 p-2 rounded border-l-4 border-purple-400">{todayLog.caregiverNotes.importantInfoForFamily}</p>
+                          </div>
+                        )}
+
+                        {/* Caregiver Signature */}
+                        {todayLog.caregiverNotes.caregiverSignature && (
+                          <div className="pt-3 border-t border-gray-200">
+                            <span className="text-gray-600">Signed by:</span>
+                            <span className="font-medium ml-2">{todayLog.caregiverNotes.caregiverSignature}</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Sprint 3 Day 4: Activities & Social Interaction */}
+                {todayLog.activities && (
+                  <Card data-testid="activities-card">
+                    <CardHeader>
+                      <h3 className="font-semibold">📱 Activities & Social</h3>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3 text-sm">
+                        {/* Phone Activities */}
+                        {todayLog.activities.phoneActivities && todayLog.activities.phoneActivities.length > 0 && (
+                          <div>
+                            <span className="text-gray-600 font-medium">Phone Activities:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {todayLog.activities.phoneActivities.map((activity: string) => (
+                                <span key={activity} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+                                  {activity === 'youtube' ? '📺 YouTube' :
+                                   activity === 'texting' ? '💬 Texting' :
+                                   activity === 'calls' ? '📞 Calls' : '❌ None'}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Engagement Level */}
+                        {todayLog.activities.engagementLevel && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 font-medium">Engagement Level:</span>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((level) => (
+                                <span
+                                  key={level}
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                                    level <= todayLog.activities.engagementLevel
+                                      ? 'bg-primary-500 text-white'
+                                      : 'bg-gray-200'
+                                  }`}
+                                >
+                                  {level}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Other Activities */}
+                        {todayLog.activities.otherActivities && todayLog.activities.otherActivities.length > 0 && (
+                          <div>
+                            <span className="text-gray-600 font-medium">Other Activities:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {todayLog.activities.otherActivities.map((activity: string) => (
+                                <span key={activity} className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs">
+                                  {activity === 'conversation' ? '💬 Conversation' :
+                                   activity === 'prayer' ? '🙏 Prayer' :
+                                   activity === 'reading' ? '📖 Reading' :
+                                   activity === 'watching_tv' ? '📺 TV' :
+                                   activity === 'listening_music' ? '🎵 Music' :
+                                   activity === 'games' ? '🎮 Games' : '❌ None'}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Relaxation Periods */}
+                        {todayLog.activities.relaxationPeriods && todayLog.activities.relaxationPeriods.length > 0 && (
+                          <div>
+                            <span className="text-gray-600 font-medium">Relaxation Periods:</span>
+                            <div className="space-y-2 mt-1">
+                              {todayLog.activities.relaxationPeriods.map((period: { startTime: string; endTime: string; activity: string; mood: string }, index: number) => (
+                                <div key={index} className="bg-purple-50 p-2 rounded text-xs">
+                                  <div className="flex justify-between">
+                                    <span>{period.startTime} - {period.endTime}</span>
+                                    <span className="capitalize">{period.activity.replace(/_/g, ' ')}</span>
+                                  </div>
+                                  <div className="text-gray-500 mt-1">
+                                    Mood: {period.mood === 'happy' ? '😊' : period.mood === 'calm' ? '😌' : period.mood === 'restless' ? '😟' : period.mood === 'bored' ? '😐' : '🤗'} {period.mood}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>

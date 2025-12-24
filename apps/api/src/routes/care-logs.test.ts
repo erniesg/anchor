@@ -484,6 +484,137 @@ describe('Care Logs API', () => {
     });
   });
 
+  describe('GET /care-logs/caregiver/today - Caregiver Draft Loading', () => {
+    it('should return today\'s draft log for caregiver', async () => {
+      const today = new Date().toISOString().split('T')[0];
+
+      // Create a draft log
+      const createRes = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify({
+          careRecipientId,
+          logDate: today,
+          wakeTime: '07:30',
+          mood: 'alert',
+          meals: {
+            breakfast: { time: '08:00', appetite: 4, amountEaten: 75 },
+            lunch: { time: '12:30', appetite: 3, amountEaten: 60 },
+          },
+        }),
+      }, mockEnv);
+      expect(createRes.status).toBe(201);
+
+      // Fetch caregiver's today draft
+      const res = await app.request('/care-logs/caregiver/today', {
+        headers: { Authorization: `Bearer ${caregiverToken}` },
+      }, mockEnv);
+
+      expect(res.status).toBe(200);
+      const draft = await res.json();
+      expect(draft).not.toBeNull();
+      expect(draft.logDate).toContain(today);
+      expect(draft.status).toBe('draft');
+      expect(draft.wakeTime).toBe('07:30');
+      expect(draft.mood).toBe('alert');
+      expect(draft.meals.breakfast.time).toBe('08:00');
+      expect(draft.meals.lunch.time).toBe('12:30');
+    });
+
+    it('should return null if no draft for today', async () => {
+      const res = await app.request('/care-logs/caregiver/today', {
+        headers: { Authorization: `Bearer ${caregiverToken}` },
+      }, mockEnv);
+
+      expect(res.status).toBe(200);
+      const draft = await res.json();
+      expect(draft).toBeNull();
+    });
+
+    it('should return submitted log if exists (not just drafts)', async () => {
+      const today = new Date().toISOString().split('T')[0];
+
+      // Create and submit a log
+      const createRes = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify({
+          careRecipientId,
+          logDate: today,
+          wakeTime: '07:00',
+        }),
+      }, mockEnv);
+      const log = await createRes.json();
+
+      await app.request(`/care-logs/${log.id}/submit`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${caregiverToken}` },
+      }, mockEnv);
+
+      // Fetch should still return the submitted log
+      const res = await app.request('/care-logs/caregiver/today', {
+        headers: { Authorization: `Bearer ${caregiverToken}` },
+      }, mockEnv);
+
+      expect(res.status).toBe(200);
+      const todayLog = await res.json();
+      expect(todayLog.status).toBe('submitted');
+    });
+
+    it('should reject non-caregiver access', async () => {
+      const res = await app.request('/care-logs/caregiver/today', {
+        headers: { Authorization: `Bearer ${familyMemberToken}` },
+      }, mockEnv);
+
+      // Family member tokens return 401 (Unauthorized) not 403 (Forbidden)
+      expect(res.status).toBe(401);
+    });
+
+    it('should return all meal data including lunch, tea break, dinner', async () => {
+      const today = new Date().toISOString().split('T')[0];
+
+      // Create draft with all meals
+      await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify({
+          careRecipientId,
+          logDate: today,
+          meals: {
+            breakfast: { time: '08:00', appetite: 4, amountEaten: 80 },
+            lunch: { time: '12:30', appetite: 3, amountEaten: 70 },
+            teaBreak: { time: '15:00', appetite: 2, amountEaten: 50 },
+            dinner: { time: '18:30', appetite: 4, amountEaten: 85 },
+            foodPreferences: 'Liked the soup',
+            foodRefusals: 'Refused vegetables',
+          },
+        }),
+      }, mockEnv);
+
+      const res = await app.request('/care-logs/caregiver/today', {
+        headers: { Authorization: `Bearer ${caregiverToken}` },
+      }, mockEnv);
+
+      expect(res.status).toBe(200);
+      const draft = await res.json();
+      expect(draft.meals.breakfast.time).toBe('08:00');
+      expect(draft.meals.lunch.time).toBe('12:30');
+      expect(draft.meals.teaBreak.time).toBe('15:00');
+      expect(draft.meals.dinner.time).toBe('18:30');
+      expect(draft.meals.foodPreferences).toBe('Liked the soup');
+      expect(draft.meals.foodRefusals).toBe('Refused vegetables');
+    });
+  });
+
   describe('GET /care-logs/recipient/:recipientId/date/:date - Date-Specific Log', () => {
     it('should return log for specific date', async () => {
       const targetDate = '2025-10-01';
@@ -2225,6 +2356,812 @@ describe('Care Logs API', () => {
       }, mockEnv);
 
       expect(res.status).toBe(201);
+    });
+  });
+
+  // Progressive Section Submission
+  describe('Progressive Section Submission', () => {
+    let draftLogId: string;
+
+    beforeEach(async () => {
+      // Create a draft log with morning data
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify({
+          careRecipientId,
+          caregiverId,
+          logDate: new Date().toISOString().split('T')[0],
+          wakeTime: '07:30',
+          mood: 'alert',
+          showerTime: '08:00',
+          bloodPressure: '120/80',
+          pulseRate: 72,
+          meals: {
+            breakfast: { time: '09:00', appetite: 4, amountEaten: 80 },
+          },
+        }),
+      }, mockEnv);
+      const log = await res.json();
+      draftLogId = log.id;
+    });
+
+    describe('POST /care-logs/:id/submit-section', () => {
+      it('should submit morning section successfully', async () => {
+        const res = await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.success).toBe(true);
+        expect(data.completedSections).toBeDefined();
+        expect(data.completedSections.morning).toBeDefined();
+        expect(data.completedSections.morning.submittedAt).toBeDefined();
+        expect(data.completedSections.morning.submittedBy).toBe(caregiverId);
+      });
+
+      it('should submit afternoon section successfully', async () => {
+        // Add afternoon data first
+        await app.request(`/care-logs/${draftLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({
+            meals: {
+              breakfast: { time: '09:00', appetite: 4, amountEaten: 80 },
+              lunch: { time: '12:30', appetite: 3, amountEaten: 70 },
+            },
+            afternoonRest: {
+              startTime: '14:00',
+              endTime: '15:30',
+              quality: 'deep',
+            },
+          }),
+        }, mockEnv);
+
+        const res = await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'afternoon' }),
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.completedSections.afternoon).toBeDefined();
+      });
+
+      it('should submit evening section successfully', async () => {
+        // Add evening data first
+        await app.request(`/care-logs/${draftLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({
+            meals: {
+              breakfast: { time: '09:00', appetite: 4, amountEaten: 80 },
+              dinner: { time: '18:30', appetite: 4, amountEaten: 85 },
+            },
+            nightSleep: {
+              bedtime: '21:00',
+              quality: 'deep',
+              wakings: 0,
+              wakingReasons: [],
+              behaviors: [],
+            },
+          }),
+        }, mockEnv);
+
+        const res = await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'evening' }),
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.completedSections.evening).toBeDefined();
+      });
+
+      it('should submit dailySummary section successfully', async () => {
+        // Add daily summary data first
+        await app.request(`/care-logs/${draftLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({
+            bowelMovements: {
+              frequency: 2,
+              consistency: 'normal',
+            },
+            urination: {
+              frequency: 6,
+              urineColor: 'yellow',
+            },
+            balanceIssues: 2,
+            nearFalls: 'none',
+            actualFalls: 'none',
+            notes: 'Overall a good day',
+          }),
+        }, mockEnv);
+
+        const res = await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'dailySummary' }),
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.completedSections.dailySummary).toBeDefined();
+      });
+
+      it('should allow submitting sections in any order', async () => {
+        // Submit evening first
+        await app.request(`/care-logs/${draftLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({
+            nightSleep: { bedtime: '21:00', quality: 'deep', wakings: 0, wakingReasons: [], behaviors: [] },
+          }),
+        }, mockEnv);
+
+        await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'evening' }),
+        }, mockEnv);
+
+        // Then submit morning
+        const res = await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.completedSections.morning).toBeDefined();
+        expect(data.completedSections.evening).toBeDefined();
+      });
+
+      it('should preserve previously submitted sections', async () => {
+        // Submit morning
+        await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        // Submit afternoon
+        await app.request(`/care-logs/${draftLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({
+            afternoonRest: { startTime: '14:00', endTime: '15:30', quality: 'light' },
+          }),
+        }, mockEnv);
+
+        const res = await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'afternoon' }),
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.completedSections.morning).toBeDefined();
+        expect(data.completedSections.afternoon).toBeDefined();
+      });
+
+      it('should allow re-submitting a section to update timestamp', async () => {
+        // Submit morning first time
+        const res1 = await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        const data1 = await res1.json();
+        const firstTimestamp = data1.completedSections.morning.submittedAt;
+
+        // Wait a bit and re-submit
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        const res2 = await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        expect(res2.status).toBe(200);
+        const data2 = await res2.json();
+        expect(data2.completedSections.morning.submittedAt).not.toBe(firstTimestamp);
+      });
+
+      it('should validate section parameter', async () => {
+        const res = await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'invalid_section' }),
+        }, mockEnv);
+
+        expect(res.status).toBe(400);
+      });
+
+      it('should reject section submission without caregiver auth', async () => {
+        const res = await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${familyAdminToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        expect(res.status).toBe(401);
+      });
+
+      it('should reject section submission for non-existent log', async () => {
+        const res = await app.request('/care-logs/non-existent-id/submit-section', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        expect(res.status).toBe(404);
+      });
+
+      it('should allow editing data after section submission (sections are not locked)', async () => {
+        // Submit morning section
+        await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        // Should still be able to edit morning data
+        const res = await app.request(`/care-logs/${draftLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ wakeTime: '08:00' }),
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.wakeTime).toBe('08:00');
+      });
+    });
+
+    describe('Family Access with Completed Sections', () => {
+      it('should show completed sections to family members', async () => {
+        // Submit morning section
+        await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        // Family member should see the log
+        const res = await app.request(`/care-logs/recipient/${careRecipientId}/today`, {
+          headers: { Authorization: `Bearer ${familyMemberToken}` },
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const log = await res.json();
+        expect(log).not.toBeNull();
+        expect(log.completedSections).toBeDefined();
+        expect(log.completedSections.morning).toBeDefined();
+        // Morning data should be visible
+        expect(log.wakeTime).toBe('07:30');
+      });
+
+      it('should hide incomplete sections from family view', async () => {
+        // Submit only morning section
+        await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        // Add evening data but don't submit evening section
+        await app.request(`/care-logs/${draftLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({
+            nightSleep: { bedtime: '21:00', quality: 'deep', wakings: 0, wakingReasons: [], behaviors: [] },
+          }),
+        }, mockEnv);
+
+        // Family member fetches the log
+        const res = await app.request(`/care-logs/recipient/${careRecipientId}/today`, {
+          headers: { Authorization: `Bearer ${familyMemberToken}` },
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const log = await res.json();
+        // Morning data should be visible (section submitted)
+        expect(log.wakeTime).toBeDefined();
+        // Evening data should be hidden (section not submitted)
+        expect(log.nightSleep).toBeUndefined();
+      });
+
+      it('should not show logs without any completed sections to family', async () => {
+        // Create a draft without submitting any sections
+        const createRes = await app.request('/care-logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({
+            careRecipientId,
+            caregiverId,
+            logDate: '2025-12-25', // Different date
+            wakeTime: '07:00',
+          }),
+        }, mockEnv);
+        await createRes.json();
+
+        // Family member should not see this draft
+        const res = await app.request(`/care-logs/recipient/${careRecipientId}/date/2025-12-25`, {
+          headers: { Authorization: `Bearer ${familyMemberToken}` },
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const log = await res.json();
+        expect(log).toBeNull();
+      });
+
+      it('should show all data when all sections are submitted', async () => {
+        // Add all section data
+        await app.request(`/care-logs/${draftLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({
+            meals: {
+              breakfast: { time: '09:00', appetite: 4, amountEaten: 80 },
+              lunch: { time: '12:30', appetite: 3, amountEaten: 70 },
+              dinner: { time: '18:30', appetite: 4, amountEaten: 85 },
+            },
+            afternoonRest: { startTime: '14:00', endTime: '15:30', quality: 'deep' },
+            nightSleep: { bedtime: '21:00', quality: 'deep', wakings: 0, wakingReasons: [], behaviors: [] },
+            bowelMovements: { frequency: 2, consistency: 'normal' },
+            notes: 'Great day!',
+          }),
+        }, mockEnv);
+
+        // Submit all sections
+        for (const section of ['morning', 'afternoon', 'evening', 'dailySummary']) {
+          await app.request(`/care-logs/${draftLogId}/submit-section`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${caregiverToken}`,
+            },
+            body: JSON.stringify({ section }),
+          }, mockEnv);
+        }
+
+        // Family should see everything
+        const res = await app.request(`/care-logs/recipient/${careRecipientId}/today`, {
+          headers: { Authorization: `Bearer ${familyMemberToken}` },
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const log = await res.json();
+        expect(log.wakeTime).toBeDefined();
+        expect(log.afternoonRest).toBeDefined();
+        expect(log.nightSleep).toBeDefined();
+        expect(log.bowelMovements).toBeDefined();
+        expect(log.notes).toBe('Great day!');
+      });
+    });
+
+    describe('Final Submit with Completed Sections', () => {
+      it('should still allow full submit after section submissions', async () => {
+        // Submit morning section
+        await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        // Final submit
+        const res = await app.request(`/care-logs/${draftLogId}/submit`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${caregiverToken}` },
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.success).toBe(true);
+      });
+
+      it('should lock log after final submit (no more edits)', async () => {
+        // Submit morning section
+        await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        // Final submit
+        await app.request(`/care-logs/${draftLogId}/submit`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${caregiverToken}` },
+        }, mockEnv);
+
+        // Try to edit - should fail
+        const res = await app.request(`/care-logs/${draftLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ wakeTime: '08:00' }),
+        }, mockEnv);
+
+        expect(res.status).toBe(400);
+        const data = await res.json();
+        expect(data.error).toContain('draft');
+      });
+
+      it('should lock section submission after final submit', async () => {
+        // Final submit first
+        await app.request(`/care-logs/${draftLogId}/submit`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${caregiverToken}` },
+        }, mockEnv);
+
+        // Try to submit section - should fail
+        const res = await app.request(`/care-logs/${draftLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        expect(res.status).toBe(400);
+        const data = await res.json();
+        expect(data.error).toContain('finalized');
+      });
+    });
+  });
+
+  describe('Audit History & Change Tracking', () => {
+    let auditTestLogId: string;
+
+    beforeEach(async () => {
+      // Use fixed values to avoid scope issues with outer beforeEach
+      const testCareRecipientId = '550e8400-e29b-41d4-a716-446655440000';
+      const testCaregiverToken = 'mock-token-caregiver';
+
+      // Create a care log for testing
+      const createRes = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${testCaregiverToken}`,
+        },
+        body: JSON.stringify({
+          careRecipientId: testCareRecipientId,
+          logDate: new Date().toISOString().split('T')[0],
+          wakeTime: '07:00',
+          mood: 'alert', // Valid mood value
+        }),
+      }, mockEnv);
+      const log = await createRes.json();
+      auditTestLogId = log.id;
+    });
+
+    describe('GET /care-logs/:id/history - Audit History Endpoint', () => {
+      it('should return audit history for a care log', async () => {
+        // First update the log to create an audit entry
+        await app.request(`/care-logs/${auditTestLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({
+            mood: 'calm',
+            wakeTime: '07:30',
+          }),
+        }, mockEnv);
+
+        const res = await app.request(`/care-logs/${auditTestLogId}/history`, {
+          headers: { Authorization: `Bearer ${familyAdminToken}` },
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const history = await res.json();
+        expect(Array.isArray(history)).toBe(true);
+        expect(history.length).toBeGreaterThanOrEqual(1);
+      });
+
+      it('should include create action in history', async () => {
+        const res = await app.request(`/care-logs/${auditTestLogId}/history`, {
+          headers: { Authorization: `Bearer ${familyAdminToken}` },
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const history = await res.json();
+        const createAction = history.find((h: { action: string }) => h.action === 'create');
+        expect(createAction).toBeDefined();
+        expect(createAction.changedBy).toBe(caregiverId);
+      });
+
+      it('should include update actions with field changes', async () => {
+        // Update the log (using valid mood values from enum)
+        await app.request(`/care-logs/${auditTestLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({
+            mood: 'calm', // Valid mood enum value
+          }),
+        }, mockEnv);
+
+        const res = await app.request(`/care-logs/${auditTestLogId}/history`, {
+          headers: { Authorization: `Bearer ${familyAdminToken}` },
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const history = await res.json();
+        const updateAction = history.find((h: { action: string }) => h.action === 'update');
+        expect(updateAction).toBeDefined();
+        expect(updateAction.changes).toBeDefined();
+        expect(updateAction.changes.mood).toBeDefined();
+        expect(updateAction.changes.mood.old).toBe('alert'); // Initial mood from beforeEach
+        expect(updateAction.changes.mood.new).toBe('calm');
+      });
+
+      it('should include submit_section actions', async () => {
+        // Submit a section
+        await app.request(`/care-logs/${auditTestLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        const res = await app.request(`/care-logs/${auditTestLogId}/history`, {
+          headers: { Authorization: `Bearer ${familyAdminToken}` },
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const history = await res.json();
+        const submitSectionAction = history.find((h: { action: string }) => h.action === 'submit_section');
+        expect(submitSectionAction).toBeDefined();
+        expect(submitSectionAction.sectionSubmitted).toBe('morning');
+      });
+
+      it('should order history by most recent first', async () => {
+        // Make multiple updates
+        await app.request(`/care-logs/${auditTestLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ mood: 'calm' }),
+        }, mockEnv);
+
+        await app.request(`/care-logs/${auditTestLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ mood: 'tired' }),
+        }, mockEnv);
+
+        const res = await app.request(`/care-logs/${auditTestLogId}/history`, {
+          headers: { Authorization: `Bearer ${familyAdminToken}` },
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const history = await res.json();
+        // Most recent should be first
+        for (let i = 0; i < history.length - 1; i++) {
+          expect(new Date(history[i].createdAt).getTime()).toBeGreaterThanOrEqual(
+            new Date(history[i + 1].createdAt).getTime()
+          );
+        }
+      });
+
+      it('should restrict history access to authorized users only', async () => {
+        // Create a different family member token without access
+        const unauthorizedToken = 'Bearer unauthorized-token';
+
+        const res = await app.request(`/care-logs/${auditTestLogId}/history`, {
+          headers: { Authorization: unauthorizedToken },
+        }, mockEnv);
+
+        expect(res.status).toBe(401);
+      });
+    });
+
+    describe('POST /care-logs/:id/mark-viewed - View Tracking', () => {
+      it('should record when family member views a care log', async () => {
+        const res = await app.request(`/care-logs/${auditTestLogId}/mark-viewed`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${familyMemberToken}` },
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.viewedAt).toBeDefined();
+      });
+
+      it('should update existing view timestamp on repeat view', async () => {
+        // First view
+        const firstRes = await app.request(`/care-logs/${auditTestLogId}/mark-viewed`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${familyMemberToken}` },
+        }, mockEnv);
+        const firstView = await firstRes.json();
+
+        // Wait a bit
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Second view
+        const secondRes = await app.request(`/care-logs/${auditTestLogId}/mark-viewed`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${familyMemberToken}` },
+        }, mockEnv);
+        const secondView = await secondRes.json();
+
+        expect(new Date(secondView.viewedAt).getTime()).toBeGreaterThan(
+          new Date(firstView.viewedAt).getTime()
+        );
+      });
+
+      it('should reject caregiver access to mark-viewed', async () => {
+        const res = await app.request(`/care-logs/${auditTestLogId}/mark-viewed`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${caregiverToken}` },
+        }, mockEnv);
+
+        // Caregivers should not mark views - this is for family only
+        expect(res.status).toBe(401);
+      });
+    });
+
+    describe('Family Dashboard - Unviewed Changes', () => {
+      it('should indicate unviewed changes for family members', async () => {
+        // Submit morning section to make log visible to family
+        await app.request(`/care-logs/${auditTestLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        // Family views the log
+        await app.request(`/care-logs/${auditTestLogId}/mark-viewed`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${familyMemberToken}` },
+        }, mockEnv);
+
+        // Delay > 1 second to ensure timestamps differ (Drizzle stores timestamps in seconds)
+        await new Promise(resolve => setTimeout(resolve, 1100));
+
+        // Caregiver makes an update (using valid mood enum value)
+        await app.request(`/care-logs/${auditTestLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ mood: 'sleepy' }), // Valid mood enum value
+        }, mockEnv);
+
+        // Re-submit morning section
+        await app.request(`/care-logs/${auditTestLogId}/submit-section`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${caregiverToken}`,
+          },
+          body: JSON.stringify({ section: 'morning' }),
+        }, mockEnv);
+
+        // Family fetches today's log - should indicate unviewed changes
+        const res = await app.request(`/care-logs/recipient/${careRecipientId}/today`, {
+          headers: { Authorization: `Bearer ${familyMemberToken}` },
+        }, mockEnv);
+
+        expect(res.status).toBe(200);
+        const log = await res.json();
+        expect(log.hasUnviewedChanges).toBe(true);
+      });
     });
   });
 });

@@ -144,7 +144,7 @@ export function PackList({
       setLastSaved(new Date());
     } catch (error) {
       console.error('Failed to save pack list:', error);
-      alert('Failed to save pack list. Please try again.');
+      alert('Failed to save hospital bag. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -154,10 +154,10 @@ export function PackList({
     if (onVerify) {
       try {
         await onVerify();
-        alert('Pack list verified successfully!');
+        alert('Hospital bag verified successfully!');
       } catch (error) {
         console.error('Failed to verify pack list:', error);
-        alert('Failed to verify pack list. Please try again.');
+        alert('Failed to verify hospital bag. Please try again.');
       }
     }
   };
@@ -179,7 +179,7 @@ export function PackList({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Hospital Emergency Bag</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Hospital Bag Preparedness</h2>
               <p className="text-sm text-gray-600 mt-1">
                 One-time setup - Update as needed when items change
               </p>
@@ -307,7 +307,7 @@ export function PackList({
 
           {items.length === 0 && !showTemplates && (
             <div className="text-center py-8 text-gray-500">
-              <p>No items in the pack list yet.</p>
+              <p>No items in the hospital bag yet.</p>
               <p className="text-sm mt-2">Add items below or use the template to get started.</p>
             </div>
           )}
@@ -385,7 +385,7 @@ export function PackList({
                 className="flex-1 bg-green-600 hover:bg-green-700"
               >
                 <Save className="w-4 h-4 mr-2" />
-                {isSaving ? 'Saving...' : 'Save Pack List'}
+                {isSaving ? 'Saving...' : 'Save Hospital Bag'}
               </Button>
 
               {onVerify && (
