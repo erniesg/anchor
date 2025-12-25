@@ -37,6 +37,14 @@ const OptionalLabel = ({ children }: { children: React.ReactNode }) => (
   </span>
 );
 
+interface MealLog {
+  time: string;
+  appetite: number;
+  amountEaten: number;
+  assistance: 'none' | 'some' | 'full';
+  swallowingIssues: string[];
+}
+
 interface CareLog {
   id: string;
   status: 'draft' | 'submitted' | 'invalidated';
@@ -57,13 +65,12 @@ interface CareLog {
   oxygenLevel?: string;
   bloodSugar?: string;
   vitalsTime?: string;
-  // Breakfast
-  breakfast?: {
-    time: string;
-    appetite: number;
-    amountEaten: number;
-    assistance: 'none' | 'some' | 'full';
-    swallowingIssues: string[];
+  // Meals (nested object from API)
+  meals?: {
+    breakfast?: MealLog;
+    lunch?: MealLog;
+    teaBreak?: MealLog;
+    dinner?: MealLog;
   };
   // Medications
   medications?: Array<{
@@ -150,12 +157,12 @@ function MorningFormComponent() {
       if (todayLog.bloodSugar) setBloodSugar(todayLog.bloodSugar);
       if (todayLog.vitalsTime) setVitalsTime(todayLog.vitalsTime);
 
-      // Load breakfast
-      if (todayLog.breakfast) {
-        setBreakfastTime(todayLog.breakfast.time || '');
-        setBreakfastAppetite(todayLog.breakfast.appetite || 3);
-        setBreakfastAmount(todayLog.breakfast.amountEaten || 3);
-        setBreakfastAssistance(todayLog.breakfast.assistance || 'none');
+      // Load breakfast from meals object
+      if (todayLog.meals?.breakfast) {
+        setBreakfastTime(todayLog.meals.breakfast.time || '');
+        setBreakfastAppetite(todayLog.meals.breakfast.appetite || 3);
+        setBreakfastAmount(todayLog.meals.breakfast.amountEaten || 3);
+        setBreakfastAssistance(todayLog.meals.breakfast.assistance || 'none');
       }
 
       // Load morning medications
@@ -209,12 +216,15 @@ function MorningFormComponent() {
         oxygenLevel: oxygenLevel || undefined,
         bloodSugar: bloodSugar || undefined,
         vitalsTime: vitalsTime || undefined,
-        breakfast: breakfastTime ? {
-          time: breakfastTime,
-          appetite: breakfastAppetite,
-          amountEaten: breakfastAmount,
-          assistance: breakfastAssistance,
-          swallowingIssues: [],
+        // API expects meals as nested object
+        meals: breakfastTime ? {
+          breakfast: {
+            time: breakfastTime,
+            appetite: breakfastAppetite,
+            amountEaten: breakfastAmount,
+            assistance: breakfastAssistance,
+            swallowingIssues: [],
+          },
         } : undefined,
         medications: medications.length > 0 ? medications : undefined,
       };

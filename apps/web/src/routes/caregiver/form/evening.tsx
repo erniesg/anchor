@@ -38,6 +38,14 @@ const OptionalLabel = ({ children }: { children: React.ReactNode }) => (
   </span>
 );
 
+interface MealLog {
+  time: string;
+  appetite: number;
+  amountEaten: number;
+  assistance?: 'none' | 'some' | 'full';
+  swallowingIssues?: string[];
+}
+
 interface CareLog {
   id: string;
   status: 'draft' | 'submitted' | 'invalidated';
@@ -47,13 +55,12 @@ interface CareLog {
     evening?: { submittedAt: string; submittedBy: string };
     dailySummary?: { submittedAt: string; submittedBy: string };
   };
-  // Dinner
-  dinner?: {
-    time: string;
-    appetite: number;
-    amountEaten: number;
-    assistance: 'none' | 'some' | 'full';
-    swallowingIssues: string[];
+  // Meals (nested object from API)
+  meals?: {
+    breakfast?: MealLog;
+    lunch?: MealLog;
+    teaBreak?: MealLog;
+    dinner?: MealLog;
   };
   // Night sleep
   nightSleep?: {
@@ -149,12 +156,12 @@ function EveningFormComponent() {
       setCareLogId(todayLog.id);
       setIsSubmitted(!!todayLog.completedSections?.evening);
 
-      // Load dinner
-      if (todayLog.dinner) {
-        setDinnerTime(todayLog.dinner.time || '');
-        setDinnerAppetite(todayLog.dinner.appetite || 3);
-        setDinnerAmount(todayLog.dinner.amountEaten || 3);
-        setDinnerAssistance(todayLog.dinner.assistance || 'none');
+      // Load dinner from meals object
+      if (todayLog.meals?.dinner) {
+        setDinnerTime(todayLog.meals.dinner.time || '');
+        setDinnerAppetite(todayLog.meals.dinner.appetite || 3);
+        setDinnerAmount(todayLog.meals.dinner.amountEaten || 3);
+        setDinnerAssistance(todayLog.meals.dinner.assistance || 'none');
       }
 
       // Load night sleep
@@ -209,12 +216,15 @@ function EveningFormComponent() {
       if (!token) throw new Error('Not authenticated');
 
       const payload = {
-        dinner: dinnerTime ? {
-          time: dinnerTime,
-          appetite: dinnerAppetite,
-          amountEaten: dinnerAmount,
-          assistance: dinnerAssistance,
-          swallowingIssues: [],
+        // API expects meals as nested object
+        meals: dinnerTime ? {
+          dinner: {
+            time: dinnerTime,
+            appetite: dinnerAppetite,
+            amountEaten: dinnerAmount,
+            assistance: dinnerAssistance,
+            swallowingIssues: [],
+          },
         } : undefined,
         nightSleep: bedtime ? {
           bedtime,

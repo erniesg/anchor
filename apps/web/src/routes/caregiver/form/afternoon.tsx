@@ -38,6 +38,14 @@ const OptionalLabel = ({ children }: { children: React.ReactNode }) => (
   </span>
 );
 
+interface MealLog {
+  time: string;
+  appetite: number;
+  amountEaten: number;
+  assistance?: 'none' | 'some' | 'full';
+  swallowingIssues?: string[];
+}
+
 interface CareLog {
   id: string;
   status: 'draft' | 'submitted' | 'invalidated';
@@ -47,20 +55,12 @@ interface CareLog {
     evening?: { submittedAt: string; submittedBy: string };
     dailySummary?: { submittedAt: string; submittedBy: string };
   };
-  // Lunch
-  lunch?: {
-    time: string;
-    appetite: number;
-    amountEaten: number;
-    assistance: 'none' | 'some' | 'full';
-    swallowingIssues: string[];
-  };
-  // Tea break
-  teaBreak?: {
-    time: string;
-    appetite: number;
-    amountEaten: number;
-    swallowingIssues: string[];
+  // Meals (nested object from API)
+  meals?: {
+    breakfast?: MealLog;
+    lunch?: MealLog;
+    teaBreak?: MealLog;
+    dinner?: MealLog;
   };
   // Afternoon rest
   afternoonRest?: {
@@ -140,19 +140,19 @@ function AfternoonFormComponent() {
       setCareLogId(todayLog.id);
       setIsSubmitted(!!todayLog.completedSections?.afternoon);
 
-      // Load lunch
-      if (todayLog.lunch) {
-        setLunchTime(todayLog.lunch.time || '');
-        setLunchAppetite(todayLog.lunch.appetite || 3);
-        setLunchAmount(todayLog.lunch.amountEaten || 3);
-        setLunchAssistance(todayLog.lunch.assistance || 'none');
+      // Load lunch from meals object
+      if (todayLog.meals?.lunch) {
+        setLunchTime(todayLog.meals.lunch.time || '');
+        setLunchAppetite(todayLog.meals.lunch.appetite || 3);
+        setLunchAmount(todayLog.meals.lunch.amountEaten || 3);
+        setLunchAssistance(todayLog.meals.lunch.assistance || 'none');
       }
 
-      // Load tea break
-      if (todayLog.teaBreak) {
-        setTeaBreakTime(todayLog.teaBreak.time || '');
-        setTeaBreakAppetite(todayLog.teaBreak.appetite || 3);
-        setTeaBreakAmount(todayLog.teaBreak.amountEaten || 3);
+      // Load tea break from meals object
+      if (todayLog.meals?.teaBreak) {
+        setTeaBreakTime(todayLog.meals.teaBreak.time || '');
+        setTeaBreakAppetite(todayLog.meals.teaBreak.appetite || 3);
+        setTeaBreakAmount(todayLog.meals.teaBreak.amountEaten || 3);
       }
 
       // Load afternoon rest
@@ -205,20 +205,29 @@ function AfternoonFormComponent() {
     mutationFn: async (logId: string) => {
       if (!token) throw new Error('Not authenticated');
 
-      const payload = {
-        lunch: lunchTime ? {
+      // Build meals object with lunch and teaBreak
+      const mealsData: Record<string, unknown> = {};
+      if (lunchTime) {
+        mealsData.lunch = {
           time: lunchTime,
           appetite: lunchAppetite,
           amountEaten: lunchAmount,
           assistance: lunchAssistance,
           swallowingIssues: [],
-        } : undefined,
-        teaBreak: teaBreakTime ? {
+        };
+      }
+      if (teaBreakTime) {
+        mealsData.teaBreak = {
           time: teaBreakTime,
           appetite: teaBreakAppetite,
           amountEaten: teaBreakAmount,
           swallowingIssues: [],
-        } : undefined,
+        };
+      }
+
+      const payload = {
+        // API expects meals as nested object
+        meals: Object.keys(mealsData).length > 0 ? mealsData : undefined,
         afternoonRest: restEnabled && restStartTime ? {
           startTime: restStartTime,
           endTime: restEndTime,
