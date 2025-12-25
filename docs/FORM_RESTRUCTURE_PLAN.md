@@ -3,8 +3,44 @@
 > **Goal**: Reorganize the daily care form from 13 flat sections into time-based forms with anytime quick actions.
 
 **Created**: 2024-12-23
-**Updated**: 2024-12-24 (Phase 1 + 6 complete, deployed to production)
+**Updated**: 2024-12-25 (Phase 1 + 6 complete, starting time-based forms)
 **Status**: In Progress - 2/7 Phases Done
+
+---
+
+## Backwards Compatibility Strategy
+
+### Approach: Parallel Routes
+- **New time-based forms**: `/caregiver/form/morning`, `/afternoon`, `/evening`, `/summary`
+- **Legacy full form**: `/caregiver/form-legacy` (remains fully functional)
+- **Dashboard**: `/caregiver/form` links to both new forms AND legacy
+
+### Why Keep Legacy?
+1. Fallback if new forms have issues
+2. Power users may prefer single-page form
+3. Gradual migration - no big bang switch
+4. Easy A/B testing between approaches
+
+### Route Structure
+```
+/caregiver/form              → Dashboard (shows both options)
+/caregiver/form/morning      → NEW: Morning-only form
+/caregiver/form/afternoon    → NEW: Afternoon-only form
+/caregiver/form/evening      → NEW: Evening-only form
+/caregiver/form/summary      → NEW: Daily summary form
+/caregiver/form-legacy       → EXISTING: Full 13-section form
+```
+
+### Dashboard Links
+```
+┌─────────────────────────────────────────┐
+│  Time-Based Forms (Recommended)         │
+│  [Morning] [Afternoon] [Evening] [Summary]
+│                                         │
+│  ─────────────────────────────────────  │
+│  Or use: [Full Form (Legacy)] →         │
+└─────────────────────────────────────────┘
+```
 
 ---
 
@@ -259,16 +295,18 @@ without requiring full form extraction.
 - [x] 6.7 Ensure entries save immediately to care log
 
 ### Phase 7: Cleanup & Polish
-**Goal**: Remove old form, test everything
+**Goal**: Polish new forms, keep legacy accessible
 
 **Tasks**:
-- [ ] 7.1 Remove old 13-section form code
+- [ ] 7.1 Add "Full Form (Legacy)" link to dashboard
 - [ ] 7.2 Update E2E tests for new structure
-- [ ] 7.3 Test on mobile viewports
+- [ ] 7.3 Test on mobile viewports (375px)
 - [ ] 7.4 Test progressive submission flow
 - [ ] 7.5 Test family dashboard still displays all data
 - [ ] 7.6 Deploy to dev and test
 - [ ] 7.7 Deploy to production
+
+**Note**: Legacy form at `/caregiver/form-legacy` remains fully functional as fallback.
 
 ---
 

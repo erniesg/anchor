@@ -149,19 +149,17 @@ function FormDashboardComponent() {
   ];
 
   const handleTimePeriodClick = (periodId: string) => {
-    // Navigate to legacy form with section param
-    // Morning: sections 1-3 (Morning Routine, Medications, Breakfast)
-    // Afternoon: sections 3-6 (Lunch, Tea, Vitals, Rest)
-    // Evening: sections 3, 6 (Dinner, Night Sleep)
-    // Summary: sections 7-13 (Fall Risk, Unaccompanied, Safety, etc.)
-    const sectionMap: Record<string, number> = {
-      morning: 1,
-      afternoon: 3, // Start at meals for lunch
-      evening: 3, // Start at meals for dinner
-      summary: 7, // Start at Fall Risk
+    // Navigate to new time-based forms
+    const routeMap: Record<string, string> = {
+      morning: '/caregiver/form/morning',
+      afternoon: '/caregiver/form/afternoon',
+      evening: '/caregiver/form/evening',
+      summary: '/caregiver/form/summary',
     };
-    const section = sectionMap[periodId] || 1;
-    navigate({ to: '/caregiver/form-legacy', search: { section } });
+    const route = routeMap[periodId];
+    if (route) {
+      navigate({ to: route });
+    }
   };
 
   const handleQuickAction = (actionId: string) => {

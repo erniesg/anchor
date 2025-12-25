@@ -27,6 +27,10 @@ import { Route as FamilySettingsFamilyMembersRouteImport } from './routes/family
 import { Route as FamilySettingsCaregiversRouteImport } from './routes/family/settings/caregivers'
 import { Route as FamilySettingsCareRecipientsRouteImport } from './routes/family/settings/care-recipients'
 import { Route as FamilyOnboardingCaregiverRouteImport } from './routes/family/onboarding/caregiver'
+import { Route as CaregiverFormSummaryRouteImport } from './routes/caregiver/form/summary'
+import { Route as CaregiverFormMorningRouteImport } from './routes/caregiver/form/morning'
+import { Route as CaregiverFormEveningRouteImport } from './routes/caregiver/form/evening'
+import { Route as CaregiverFormAfternoonRouteImport } from './routes/caregiver/form/afternoon'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -122,6 +126,26 @@ const FamilyOnboardingCaregiverRoute =
     path: '/family/onboarding/caregiver',
     getParentRoute: () => rootRouteImport,
   } as any)
+const CaregiverFormSummaryRoute = CaregiverFormSummaryRouteImport.update({
+  id: '/summary',
+  path: '/summary',
+  getParentRoute: () => CaregiverFormRoute,
+} as any)
+const CaregiverFormMorningRoute = CaregiverFormMorningRouteImport.update({
+  id: '/morning',
+  path: '/morning',
+  getParentRoute: () => CaregiverFormRoute,
+} as any)
+const CaregiverFormEveningRoute = CaregiverFormEveningRouteImport.update({
+  id: '/evening',
+  path: '/evening',
+  getParentRoute: () => CaregiverFormRoute,
+} as any)
+const CaregiverFormAfternoonRoute = CaregiverFormAfternoonRouteImport.update({
+  id: '/afternoon',
+  path: '/afternoon',
+  getParentRoute: () => CaregiverFormRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -133,6 +157,10 @@ export interface FileRoutesByFullPath {
   '/caregiver/pack-list': typeof CaregiverPackListRoute
   '/family/dashboard': typeof FamilyDashboardRoute
   '/family/trends': typeof FamilyTrendsRoute
+  '/caregiver/form/afternoon': typeof CaregiverFormAfternoonRoute
+  '/caregiver/form/evening': typeof CaregiverFormEveningRoute
+  '/caregiver/form/morning': typeof CaregiverFormMorningRoute
+  '/caregiver/form/summary': typeof CaregiverFormSummaryRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
   '/family/settings/care-recipients': typeof FamilySettingsCareRecipientsRoute
   '/family/settings/caregivers': typeof FamilySettingsCaregiversRoute
@@ -152,6 +180,10 @@ export interface FileRoutesByTo {
   '/caregiver/pack-list': typeof CaregiverPackListRoute
   '/family/dashboard': typeof FamilyDashboardRoute
   '/family/trends': typeof FamilyTrendsRoute
+  '/caregiver/form/afternoon': typeof CaregiverFormAfternoonRoute
+  '/caregiver/form/evening': typeof CaregiverFormEveningRoute
+  '/caregiver/form/morning': typeof CaregiverFormMorningRoute
+  '/caregiver/form/summary': typeof CaregiverFormSummaryRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
   '/family/settings/care-recipients': typeof FamilySettingsCareRecipientsRoute
   '/family/settings/caregivers': typeof FamilySettingsCaregiversRoute
@@ -173,6 +205,10 @@ export interface FileRoutesById {
   '/caregiver/pack-list': typeof CaregiverPackListRoute
   '/family/dashboard': typeof FamilyDashboardRoute
   '/family/trends': typeof FamilyTrendsRoute
+  '/caregiver/form/afternoon': typeof CaregiverFormAfternoonRoute
+  '/caregiver/form/evening': typeof CaregiverFormEveningRoute
+  '/caregiver/form/morning': typeof CaregiverFormMorningRoute
+  '/caregiver/form/summary': typeof CaregiverFormSummaryRoute
   '/family/onboarding/caregiver': typeof FamilyOnboardingCaregiverRoute
   '/family/settings/care-recipients': typeof FamilySettingsCareRecipientsRoute
   '/family/settings/caregivers': typeof FamilySettingsCaregiversRoute
@@ -195,6 +231,10 @@ export interface FileRouteTypes {
     | '/caregiver/pack-list'
     | '/family/dashboard'
     | '/family/trends'
+    | '/caregiver/form/afternoon'
+    | '/caregiver/form/evening'
+    | '/caregiver/form/morning'
+    | '/caregiver/form/summary'
     | '/family/onboarding/caregiver'
     | '/family/settings/care-recipients'
     | '/family/settings/caregivers'
@@ -214,6 +254,10 @@ export interface FileRouteTypes {
     | '/caregiver/pack-list'
     | '/family/dashboard'
     | '/family/trends'
+    | '/caregiver/form/afternoon'
+    | '/caregiver/form/evening'
+    | '/caregiver/form/morning'
+    | '/caregiver/form/summary'
     | '/family/onboarding/caregiver'
     | '/family/settings/care-recipients'
     | '/family/settings/caregivers'
@@ -234,6 +278,10 @@ export interface FileRouteTypes {
     | '/caregiver/pack-list'
     | '/family/dashboard'
     | '/family/trends'
+    | '/caregiver/form/afternoon'
+    | '/caregiver/form/evening'
+    | '/caregiver/form/morning'
+    | '/caregiver/form/summary'
     | '/family/onboarding/caregiver'
     | '/family/settings/care-recipients'
     | '/family/settings/caregivers'
@@ -393,14 +441,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FamilyOnboardingCaregiverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/caregiver/form/summary': {
+      id: '/caregiver/form/summary'
+      path: '/summary'
+      fullPath: '/caregiver/form/summary'
+      preLoaderRoute: typeof CaregiverFormSummaryRouteImport
+      parentRoute: typeof CaregiverFormRoute
+    }
+    '/caregiver/form/morning': {
+      id: '/caregiver/form/morning'
+      path: '/morning'
+      fullPath: '/caregiver/form/morning'
+      preLoaderRoute: typeof CaregiverFormMorningRouteImport
+      parentRoute: typeof CaregiverFormRoute
+    }
+    '/caregiver/form/evening': {
+      id: '/caregiver/form/evening'
+      path: '/evening'
+      fullPath: '/caregiver/form/evening'
+      preLoaderRoute: typeof CaregiverFormEveningRouteImport
+      parentRoute: typeof CaregiverFormRoute
+    }
+    '/caregiver/form/afternoon': {
+      id: '/caregiver/form/afternoon'
+      path: '/afternoon'
+      fullPath: '/caregiver/form/afternoon'
+      preLoaderRoute: typeof CaregiverFormAfternoonRouteImport
+      parentRoute: typeof CaregiverFormRoute
+    }
   }
 }
 
 interface CaregiverFormRouteChildren {
+  CaregiverFormAfternoonRoute: typeof CaregiverFormAfternoonRoute
+  CaregiverFormEveningRoute: typeof CaregiverFormEveningRoute
+  CaregiverFormMorningRoute: typeof CaregiverFormMorningRoute
+  CaregiverFormSummaryRoute: typeof CaregiverFormSummaryRoute
   CaregiverFormIndexRoute: typeof CaregiverFormIndexRoute
 }
 
 const CaregiverFormRouteChildren: CaregiverFormRouteChildren = {
+  CaregiverFormAfternoonRoute: CaregiverFormAfternoonRoute,
+  CaregiverFormEveningRoute: CaregiverFormEveningRoute,
+  CaregiverFormMorningRoute: CaregiverFormMorningRoute,
+  CaregiverFormSummaryRoute: CaregiverFormSummaryRoute,
   CaregiverFormIndexRoute: CaregiverFormIndexRoute,
 }
 
