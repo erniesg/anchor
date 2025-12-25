@@ -2,10 +2,12 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PackList } from '@/components/PackList';
 import type { PackListItem } from '@/components/PackList';
-import { ArrowLeft, Backpack } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { authenticatedApiCall } from '@/lib/api';
 import { useToast } from '@/lib/toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const Route = createFileRoute('/caregiver/pack-list')({
   component: CaregiverPackListComponent,
@@ -15,26 +17,25 @@ function CaregiverPackListComponent() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const { token, careRecipient } = useAuth();
 
-  // Get caregiver info from localStorage
-  const careRecipientId = localStorage.getItem('careRecipientId');
-  const careRecipientName = localStorage.getItem('careRecipientName');
+  // Get care recipient info from auth context
+  const careRecipientId = careRecipient?.id;
+  const careRecipientName = careRecipient?.name;
 
   // Fetch pack list
   const { data: packListData, isLoading } = useQuery({
     queryKey: ['pack-list', careRecipientId],
     queryFn: async () => {
-      const token = localStorage.getItem('caregiverToken');
       if (!token) throw new Error('No authentication token');
       return authenticatedApiCall(`/pack-lists/recipient/${careRecipientId}`, token);
     },
-    enabled: !!careRecipientId,
+    enabled: !!careRecipientId && !!token,
   });
 
   // Save pack list mutation
   const saveMutation = useMutation({
     mutationFn: async (items: PackListItem[]) => {
-      const token = localStorage.getItem('caregiverToken');
       if (!token) throw new Error('No authentication token');
       return authenticatedApiCall('/pack-lists', token, {
         method: 'POST',
@@ -62,7 +63,6 @@ function CaregiverPackListComponent() {
   // Verify pack list mutation
   const verifyMutation = useMutation({
     mutationFn: async () => {
-      const token = localStorage.getItem('caregiverToken');
       if (!token) throw new Error('No authentication token');
       return authenticatedApiCall(`/pack-lists/${careRecipientId}/verify`, token, {
         method: 'POST',
@@ -93,75 +93,76 @@ function CaregiverPackListComponent() {
 
   if (!careRecipientId) {
     return (
-      <div className="bg-gray-50 min-h-screen">
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="text-center py-12">
-            <p className="text-gray-600">No care recipient information found.</p>
-            <Button
-              onClick={() => navigate({ to: '/caregiver/login' })}
-              className="mt-4"
-            >
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+        <Card className="max-w-sm mx-4">
+          <CardContent className="py-8 text-center">
+            <p className="text-gray-600 mb-4">No care recipient information found.</p>
+            <Button onClick={() => navigate({ to: '/caregiver/login' })}>
               Go to Login
             </Button>
-          </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading hospital bag...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen">
-      {/* Page Header */}
-      <div className="bg-white border-b shadow-sm sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 pb-24">
+      {/* Header - matching time-based form style */}
+      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
+        <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Backpack className="h-7 w-7 text-purple-600" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate({ to: '/caregiver/form' })}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Hospital Bag Preparedness</h1>
-                <p className="text-sm text-gray-600">
-                  {careRecipientName ? `For ${careRecipientName}` : 'Manage pack list items'}
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🎒</span>
+                  <h1 className="text-lg font-bold text-gray-900">Hospital Bag</h1>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {careRecipientName ? `For ${careRecipientName}` : 'Manage pack list'}
                 </p>
               </div>
             </div>
-            <Button
-              onClick={() => navigate({ to: '/caregiver/form' })}
-              variant="outline"
-              size="sm"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Form
-            </Button>
           </div>
         </div>
       </div>
 
-      {/* Pack List Content */}
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        {isLoading ? (
-          <div className="text-center py-12 text-gray-500">Loading pack list...</div>
-        ) : (
-          <>
-            {/* Info Banner */}
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h3 className="font-semibold text-blue-900 mb-1 flex items-center gap-2">
-                <Backpack className="h-5 w-5" />
-                Quick Reference: Hospital Bag Preparedness
-              </h3>
-              <p className="text-sm text-blue-800">
-                This is the master list of items to bring in case of emergency hospital visits.
-                Check off items as you pack them, and update the list if items change.
-              </p>
-            </div>
+      {/* Content - matching time-based form style */}
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
+        {/* Info Card */}
+        <Card className="border-purple-200 bg-purple-50">
+          <CardContent className="py-4">
+            <p className="text-sm text-purple-800">
+              Keep this list ready for emergency hospital visits. Check off items as you pack them.
+            </p>
+          </CardContent>
+        </Card>
 
-            <PackList
-              careRecipientId={careRecipientId}
-              initialData={packListData}
-              onSave={handleSave}
-              onVerify={handleVerify}
-            />
-          </>
-        )}
+        {/* Pack List Component */}
+        <PackList
+          careRecipientId={careRecipientId}
+          initialData={packListData}
+          onSave={handleSave}
+          onVerify={handleVerify}
+        />
       </div>
     </div>
   );

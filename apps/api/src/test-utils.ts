@@ -34,6 +34,7 @@ export function createMockEnv(): Env {
     ENVIRONMENT: 'dev',
     JWT_SECRET: 'test-jwt-secret-key-for-testing',
     LOGTO_APP_SECRET: 'test-logto-secret',
+    RESEND_API_KEY: 'test-resend-api-key',
   };
 }
 

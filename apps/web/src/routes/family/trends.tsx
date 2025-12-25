@@ -51,7 +51,7 @@ interface TrendLog {
 
 function TrendsComponent() {
   const navigate = useNavigate();
-  const { user, careRecipient, logout } = useAuth();
+  const { user, careRecipient, logoutFamily } = useAuth();
 
   // Redirect to onboarding if no care recipient exists
   useEffect(() => {
@@ -82,7 +82,7 @@ function TrendsComponent() {
   });
 
   const handleLogout = () => {
-    logout();
+    logoutFamily();
     navigate({ to: '/auth/login' });
   };
 

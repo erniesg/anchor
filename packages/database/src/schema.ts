@@ -613,6 +613,24 @@ export const careLogViews = sqliteTable('care_log_views', {
 });
 
 /**
+ * Password Reset Tokens Table
+ * Time-limited tokens for family members to reset their password
+ */
+export const passwordResetTokens = sqliteTable('password_reset_tokens', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  token: text('token').notNull().unique(), // Secure random token
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  usedAt: integer('used_at', { mode: 'timestamp' }), // Null until used
+
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+/**
  * Export all tables for Drizzle ORM
  */
 export const schema = {
@@ -626,4 +644,5 @@ export const schema = {
   alerts,
   careLogAudit,
   careLogViews,
+  passwordResetTokens,
 };

@@ -13,6 +13,7 @@ export interface Env {
   ENVIRONMENT: 'dev' | 'production';
   JWT_SECRET: string;
   LOGTO_APP_SECRET: string;
+  RESEND_API_KEY: string;
 }
 
 /**

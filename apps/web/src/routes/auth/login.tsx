@@ -84,6 +84,12 @@ function LoginComponent() {
               </div>
             </div>
 
+            <div className="text-right">
+              <Link to="/auth/forgot-password" className="text-sm text-primary-600 hover:text-primary-700">
+                Forgot password?
+              </Link>
+            </div>
+
             {loginMutation.isError && (
               <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg text-sm">
                 Invalid email or password

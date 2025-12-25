@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -120,6 +120,19 @@ function MorningFormComponent() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  // Auto-save tracking
+  const hasUnsavedChanges = useRef(false);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialLoad = useRef(true);
+  const saveMutationRef = useRef<((logId: string) => Promise<void>) | null>(null);
+
+  // Mark form as dirty when any field changes
+  const markDirty = useCallback(() => {
+    if (!isInitialLoad.current) {
+      hasUnsavedChanges.current = true;
+    }
+  }, []);
+
   // Fetch today's care log
   const { data: todayLog, isLoading } = useQuery({
     queryKey: ['caregiver-today-log'],
@@ -175,7 +188,43 @@ function MorningFormComponent() {
         }
       }
     }
+
+    // Mark initial load complete after a brief delay (regardless of whether todayLog exists)
+    const timer = setTimeout(() => {
+      isInitialLoad.current = false;
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [todayLog]);
+
+  // Debounced auto-save effect - saves 3 seconds after last change
+  useEffect(() => {
+    // Track changes to trigger auto-save
+    markDirty();
+
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Set new timeout for auto-save
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      if (hasUnsavedChanges.current && careLogId && !isSaving) {
+        try {
+          await saveMutationRef.current?.(careLogId);
+          hasUnsavedChanges.current = false;
+        } catch {
+          // Silent fail for auto-save - user can manually retry
+        }
+      }
+    }, 3000);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [wakeTime, mood, showerTime, hairWash, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime, breakfastTime, breakfastAppetite, breakfastAmount, breakfastAssistance, medications, careLogId, isSaving, markDirty]);
 
   // Create care log if none exists
   const createLogMutation = useMutation({
@@ -201,48 +250,57 @@ function MorningFormComponent() {
     },
   });
 
+  // Build payload for saving
+  const buildPayload = useCallback(() => ({
+    wakeTime: wakeTime || undefined,
+    mood: mood || undefined,
+    showerTime: showerTime || undefined,
+    hairWash: hairWash || undefined,
+    bloodPressure: bloodPressure || undefined,
+    pulseRate: pulseRate || undefined,
+    oxygenLevel: oxygenLevel || undefined,
+    bloodSugar: bloodSugar || undefined,
+    vitalsTime: vitalsTime || undefined,
+    // API expects meals as nested object
+    meals: breakfastTime ? {
+      breakfast: {
+        time: breakfastTime,
+        appetite: breakfastAppetite,
+        amountEaten: breakfastAmount,
+        assistance: breakfastAssistance,
+        swallowingIssues: [],
+      },
+    } : undefined,
+    medications: medications.length > 0 ? medications : undefined,
+  }), [wakeTime, mood, showerTime, hairWash, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime, breakfastTime, breakfastAppetite, breakfastAmount, breakfastAssistance, medications]);
+
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: async (logId: string) => {
       if (!token) throw new Error('Not authenticated');
-
-      const payload = {
-        wakeTime: wakeTime || undefined,
-        mood: mood || undefined,
-        showerTime: showerTime || undefined,
-        hairWash: hairWash || undefined,
-        bloodPressure: bloodPressure || undefined,
-        pulseRate: pulseRate || undefined,
-        oxygenLevel: oxygenLevel || undefined,
-        bloodSugar: bloodSugar || undefined,
-        vitalsTime: vitalsTime || undefined,
-        // API expects meals as nested object
-        meals: breakfastTime ? {
-          breakfast: {
-            time: breakfastTime,
-            appetite: breakfastAppetite,
-            amountEaten: breakfastAmount,
-            assistance: breakfastAssistance,
-            swallowingIssues: [],
-          },
-        } : undefined,
-        medications: medications.length > 0 ? medications : undefined,
-      };
 
       return authenticatedApiCall(
         `/care-logs/${logId}`,
         token,
         {
           method: 'PATCH',
-          body: JSON.stringify(payload),
+          body: JSON.stringify(buildPayload()),
         }
       );
     },
     onSuccess: () => {
       setLastSaved(new Date());
+      hasUnsavedChanges.current = false;
       queryClient.invalidateQueries({ queryKey: ['caregiver-today-log'] });
     },
   });
+
+  // Assign to ref for auto-save
+  useEffect(() => {
+    saveMutationRef.current = async (logId: string) => {
+      await saveMutation.mutateAsync(logId);
+    };
+  }, [saveMutation]);
 
   // Submit section mutation
   const submitSectionMutation = useMutation({
@@ -282,6 +340,49 @@ function MorningFormComponent() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Check if form has any data worth saving
+  const hasFormData = wakeTime || mood || showerTime || hairWash ||
+    bloodPressure || pulseRate || oxygenLevel || bloodSugar || vitalsTime ||
+    breakfastTime;
+
+  // Navigate with auto-save - always save if there's data
+  const handleNavigateBack = async () => {
+    // Save if we have a log and there's data or unsaved changes
+    if (careLogId && (hasUnsavedChanges.current || hasFormData)) {
+      setIsSaving(true);
+      try {
+        await saveMutation.mutateAsync(careLogId);
+        hasUnsavedChanges.current = false;
+      } catch (err) {
+        console.error('Auto-save failed:', err);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+    navigate({ to: '/caregiver/form' });
+  };
+
+  const handleNavigateToAfternoon = async () => {
+    // Always save if there's any form data
+    if (hasFormData || hasUnsavedChanges.current) {
+      setIsSaving(true);
+      try {
+        let logId = careLogId;
+        if (!logId) {
+          const newLog = await createLogMutation.mutateAsync();
+          logId = newLog.id;
+        }
+        await saveMutation.mutateAsync(logId);
+        hasUnsavedChanges.current = false;
+      } catch (err) {
+        console.error('Auto-save failed:', err);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+    navigate({ to: '/caregiver/form/afternoon' });
   };
 
   const handleSubmitSection = async () => {
@@ -327,7 +428,8 @@ function MorningFormComponent() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate({ to: '/caregiver/form' })}
+                onClick={handleNavigateBack}
+                disabled={isSaving}
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
@@ -632,12 +734,15 @@ function MorningFormComponent() {
             {isSubmitted ? 'Update & Re-submit Morning' : 'Submit Morning Section'}
           </Button>
 
-          <Link to="/caregiver/form/afternoon" className="block">
-            <Button variant="outline" className="w-full flex items-center justify-between">
-              <span>Continue to Afternoon</span>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </Link>
+          <Button
+            variant="outline"
+            className="w-full flex items-center justify-between"
+            onClick={handleNavigateToAfternoon}
+            disabled={isSaving}
+          >
+            <span>{isSaving ? 'Saving...' : 'Continue to Afternoon'}</span>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 

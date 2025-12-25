@@ -13,10 +13,10 @@ import {
   FileText,
   CheckCircle,
   Clock,
-  Backpack,
   Droplets,
   Activity,
   AlertTriangle,
+  LogOut,
 } from 'lucide-react';
 
 export const Route = createFileRoute('/caregiver/form/')({
@@ -44,10 +44,15 @@ interface TodayResponse {
 }
 
 function FormDashboardComponent() {
-  const { token, careRecipient } = useAuth();
+  const { token, careRecipient, logoutCaregiver, caregiver } = useAuth();
   const navigate = useNavigate();
   const caregiverToken = token;
   const [careLogId, setCareLogId] = useState<string | null>(null);
+
+  const handleLogout = () => {
+    logoutCaregiver();
+    navigate({ to: '/caregiver/login' });
+  };
 
   // Fetch today's care log
   const { data: todayLog, isLoading } = useQuery({
@@ -120,33 +125,6 @@ function FormDashboardComponent() {
     },
   ];
 
-  // Quick actions for anytime entries
-  const quickActions = [
-    {
-      id: 'toileting',
-      label: 'Toileting',
-      icon: '🚽',
-      description: 'Log bathroom visit',
-    },
-    {
-      id: 'fluid',
-      label: 'Fluid',
-      icon: '💧',
-      description: 'Log drink intake',
-    },
-    {
-      id: 'exercise',
-      label: 'Exercise',
-      icon: '🏃',
-      description: 'Log activity session',
-    },
-    {
-      id: 'incident',
-      label: 'Incident',
-      icon: '⚠️',
-      description: 'Report concern',
-    },
-  ];
 
   const handleTimePeriodClick = (periodId: string) => {
     // Navigate to new time-based forms
@@ -162,19 +140,6 @@ function FormDashboardComponent() {
     }
   };
 
-  const handleQuickAction = (actionId: string) => {
-    // TODO: Open quick action modal/drawer
-    console.log('Quick action:', actionId);
-    // For now, navigate to legacy form based on action
-    const sectionMap: Record<string, number> = {
-      toileting: 5, // Toileting section
-      fluid: 3, // Meals section has fluid intake
-      exercise: 11, // Physical Activity section
-      incident: 12, // Special Concerns section
-    };
-    const section = sectionMap[actionId] || 1;
-    navigate({ to: '/caregiver/form-legacy', search: { section } });
-  };
 
   const formatSubmittedTime = (isoString: string) => {
     const date = new Date(isoString);
@@ -202,9 +167,12 @@ function FormDashboardComponent() {
         <div className="max-w-lg mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-primary-700">Today's Care Log</h1>
-              <p className="text-sm text-gray-600">
-                {careRecipient?.name || 'Care Recipient'} - {new Date().toLocaleDateString()}
+              <p className="text-sm text-gray-500">Care Log for</p>
+              <h1 className="text-2xl font-bold text-primary-700">
+                {careRecipient?.name || 'Care Recipient'}
+              </h1>
+              <p className="text-sm text-gray-600 font-medium">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -223,11 +191,28 @@ function FormDashboardComponent() {
                 onClick={() => navigate({ to: '/caregiver/pack-list' })}
                 variant="outline"
                 size="sm"
+                title="Hospital Bag"
+                className="text-lg"
               >
-                <Backpack className="h-4 w-4" />
+                🎒
+              </Button>
+              <Button
+                onClick={handleLogout}
+                variant="ghost"
+                size="sm"
+                className="text-gray-500 hover:text-red-600"
+                title="Logout"
+              >
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </div>
+          {/* Show logged in as info */}
+          {caregiver?.username && (
+            <p className="text-xs text-gray-400 mt-1">
+              Logged in as: {caregiver.username}
+            </p>
+          )}
         </div>
       </div>
 
@@ -274,28 +259,6 @@ function FormDashboardComponent() {
               </button>
             );
           })}
-        </div>
-      </div>
-
-      {/* Quick Actions Section */}
-      <div className="max-w-lg mx-auto px-4">
-        <div className="border-t pt-6">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4 flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            Quick Actions (Anytime)
-          </h2>
-          <div className="grid grid-cols-4 gap-3">
-            {quickActions.map((action) => (
-              <button
-                key={action.id}
-                onClick={() => handleQuickAction(action.id)}
-                className="flex flex-col items-center p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all"
-              >
-                <span className="text-2xl mb-1">{action.icon}</span>
-                <span className="text-xs font-medium text-gray-700">{action.label}</span>
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 

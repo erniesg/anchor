@@ -2,9 +2,10 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { Resend } from 'resend';
 import type { AppContext } from '../index';
-import { users, caregivers, careRecipients } from '@anchor/database/schema';
-import { eq } from 'drizzle-orm';
+import { users, caregivers, careRecipients, passwordResetTokens } from '@anchor/database/schema';
+import { eq, and, gt } from 'drizzle-orm';
 
 const auth = new Hono<AppContext>();
 
@@ -230,6 +231,157 @@ auth.post('/caregiver/login', async (c) => {
       return c.json({ error: 'Validation failed', details: error.errors }, 400);
     }
     console.error('Caregiver login error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// Forgot Password Schema
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+// Reset Password Schema
+const resetPasswordSchema = z.object({
+  token: z.string().min(32),
+  password: z.string().min(8),
+});
+
+// Generate secure random token
+function generateResetToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+// Forgot Password - sends reset email
+auth.post('/forgot-password', async (c) => {
+  try {
+    const body = await c.req.json();
+    const data = forgotPasswordSchema.parse(body);
+
+    const db = c.get('db');
+    const env = c.env;
+
+    // Find user by email
+    const user = await db.select().from(users).where(eq(users.email, data.email)).get();
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      return c.json({
+        success: true,
+        message: 'If an account exists with this email, a reset link has been sent.',
+      });
+    }
+
+    // Generate token and expiry (1 hour)
+    const token = generateResetToken();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Store token in database
+    await db.insert(passwordResetTokens).values({
+      userId: user.id,
+      token,
+      expiresAt,
+    });
+
+    // Send email with Resend
+    const resend = new Resend(env.RESEND_API_KEY);
+
+    // Determine frontend URL based on environment
+    const frontendUrl = env.ENVIRONMENT === 'production'
+      ? 'https://anchor.erniesg.workers.dev'
+      : 'https://anchor-dev.erniesg.workers.dev';
+
+    const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
+
+    await resend.emails.send({
+      from: 'Anchor Care <noreply@berlayar.ai>',
+      to: user.email,
+      subject: 'Reset Your Password - Anchor Care',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #1e40af;">Reset Your Password</h1>
+          <p>Hi ${user.name},</p>
+          <p>You requested to reset your password for your Anchor Care account.</p>
+          <p>Click the button below to set a new password:</p>
+          <p style="margin: 24px 0;">
+            <a href="${resetUrl}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+              Reset Password
+            </a>
+          </p>
+          <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
+          <p style="color: #666; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+          <p style="color: #999; font-size: 12px;">Anchor Care - Caring for your loved ones</p>
+        </div>
+      `,
+    });
+
+    return c.json({
+      success: true,
+      message: 'If an account exists with this email, a reset link has been sent.',
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return c.json({ error: 'Validation failed', details: error.errors }, 400);
+    }
+    console.error('Forgot password error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// Reset Password - validates token and updates password
+auth.post('/reset-password', async (c) => {
+  try {
+    const body = await c.req.json();
+    const data = resetPasswordSchema.parse(body);
+
+    const db = c.get('db');
+
+    // Find valid token (not used, not expired)
+    const resetToken = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(
+        and(
+          eq(passwordResetTokens.token, data.token),
+          gt(passwordResetTokens.expiresAt, new Date())
+        )
+      )
+      .get();
+
+    if (!resetToken) {
+      return c.json({ error: 'Invalid or expired reset token' }, 400);
+    }
+
+    if (resetToken.usedAt) {
+      return c.json({ error: 'This reset link has already been used' }, 400);
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(data.password, 10);
+
+    // Update user password
+    await db
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.id, resetToken.userId));
+
+    // Mark token as used
+    await db
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokens.id, resetToken.id));
+
+    return c.json({
+      success: true,
+      message: 'Password has been reset successfully. You can now login with your new password.',
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return c.json({ error: 'Validation failed', details: error.errors }, 400);
+    }
+    console.error('Reset password error:', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
 });
