@@ -3,8 +3,8 @@
 > **Goal**: Reorganize the daily care form from 13 flat sections into time-based forms with anytime quick actions.
 
 **Created**: 2024-12-23
-**Updated**: 2024-12-24
-**Status**: In Progress
+**Updated**: 2024-12-24 (Phase 1 + 6 complete, deployed to production)
+**Status**: In Progress - 2/7 Phases Done
 
 ---
 
@@ -246,17 +246,17 @@ without requiring full form extraction.
 - [ ] 5.7 Add "Submit Complete Day" button
 - [ ] 5.8 Lock summary until other sections done (or allow override)
 
-### Phase 6: Anytime Quick Actions (FAB)
+### Phase 6: Anytime Quick Actions (FAB) ✅ DONE
 **Goal**: Add floating action button for anytime entries
 
 **Tasks**:
-- [ ] 6.1 Create FAB component
-- [ ] 6.2 Create quick toileting modal/drawer
-- [ ] 6.3 Create quick fluid modal/drawer
-- [ ] 6.4 Create quick exercise modal/drawer
-- [ ] 6.5 Create quick incident modal/drawer
-- [ ] 6.6 Add FAB to all caregiver form pages
-- [ ] 6.7 Ensure entries save immediately to care log
+- [x] 6.1 Create FAB component
+- [x] 6.2 Create quick toileting modal/drawer
+- [x] 6.3 Create quick fluid modal/drawer
+- [x] 6.4 Create quick exercise modal/drawer
+- [x] 6.5 Create quick incident modal/drawer
+- [x] 6.6 Add FAB to all caregiver form pages
+- [x] 6.7 Ensure entries save immediately to care log
 
 ### Phase 7: Cleanup & Polish
 **Goal**: Remove old form, test everything
@@ -274,16 +274,16 @@ without requiring full form extraction.
 
 ## Progress Tracking
 
-### Overall Progress: 14% (1/7 phases complete)
+### Overall Progress: 29% (2/7 phases complete)
 
 | Phase | Status | Progress |
 |-------|--------|----------|
 | Phase 1: Dashboard + Routing | ✅ Done | 5/5 |
-| Phase 2: Morning Form | ⏳ Next | 0/7 |
+| Phase 2: Morning Form | ⏳ Next | 1/7 |
 | Phase 3: Afternoon Form | Pending | 0/6 |
 | Phase 4: Evening Form | Pending | 0/5 |
 | Phase 5: Summary Form | Pending | 0/8 |
-| Phase 6: Quick Actions FAB | Pending | 0/7 |
+| Phase 6: Quick Actions FAB | ✅ Done | 7/7 |
 | Phase 7: Cleanup & Polish | Pending | 0/7 |
 
 ### Completed Items ✅
@@ -295,6 +295,9 @@ without requiring full form extraction.
 - [x] E2E tests updated to use BASE_URL
 - [x] Family auth working on production
 - [x] **Phase 1: Dashboard with time-period cards** (2024-12-24)
+- [x] **Full deployed flow tested** - Caregiver → Section submit → Family visibility → Audit trail (2024-12-24)
+- [x] **Phase 6: Quick Actions FAB complete** - Toileting, Fluid, Exercise, Incident modals (2024-12-24)
+- [x] **Fixed PATCH handler for fluids/sleep** - Added missing fields to care-logs PATCH endpoint (2024-12-24)
 
 ---
 

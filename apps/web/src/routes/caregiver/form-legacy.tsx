@@ -8,6 +8,7 @@ import { useAutoSave } from '@/hooks/use-auto-save';
 import { Save, CheckCircle, AlertCircle, Clock, Backpack } from 'lucide-react';
 import { authenticatedApiCall } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { QuickActionFAB } from '@/components/caregiver/QuickActionFAB';
 
 // Helper component for required field indicator
 const RequiredLabel = ({ children, required = false }: { children: React.ReactNode; required?: boolean }) => (
@@ -4813,6 +4814,13 @@ function CareLogFormComponent() {
           </Card>
         )}
       </div>
+
+      {/* Quick Action FAB */}
+      <QuickActionFAB
+        careLogId={careLogId}
+        careRecipientId={careRecipient?.id || null}
+        onLogCreated={setCareLogId}
+      />
     </div>
   );
 }

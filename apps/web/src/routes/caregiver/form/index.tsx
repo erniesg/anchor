@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { QuickActionFAB } from '@/components/caregiver/QuickActionFAB';
 import {
   Sun,
   Cloud,
@@ -45,6 +47,7 @@ function FormDashboardComponent() {
   const { token, careRecipient } = useAuth();
   const navigate = useNavigate();
   const caregiverToken = token;
+  const [careLogId, setCareLogId] = useState<string | null>(null);
 
   // Fetch today's care log
   const { data: todayLog, isLoading } = useQuery({
@@ -67,6 +70,11 @@ function FormDashboardComponent() {
 
   const completedSections = todayLog?.completedSections || {};
   const logStatus = todayLog?.status || 'draft';
+
+  // Sync careLogId with fetched log
+  if (todayLog?.id && careLogId !== todayLog.id) {
+    setCareLogId(todayLog.id);
+  }
 
   // Time period configuration
   const timePeriods = [
@@ -328,6 +336,13 @@ function FormDashboardComponent() {
           </Card>
         </div>
       )}
+
+      {/* Quick Action FAB */}
+      <QuickActionFAB
+        careLogId={careLogId}
+        careRecipientId={careRecipient?.id || null}
+        onLogCreated={setCareLogId}
+      />
     </div>
   );
 }

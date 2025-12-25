@@ -859,6 +859,12 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
         hairWash: data.hairWash,
         medications: data.medications,
         meals: data.meals,
+        // Sprint 2 Day 1: Fluid Intake (added to PATCH handler)
+        fluids: data.fluids ? JSON.stringify(data.fluids) : undefined,
+        totalFluidIntake: data.fluids ? data.fluids.reduce((sum: number, f: { amountMl: number }) => sum + f.amountMl, 0) : undefined,
+        // Sprint 2 Day 3: Sleep Tracking
+        afternoonRest: data.afternoonRest ? JSON.stringify(data.afternoonRest) : undefined,
+        nightSleep: data.nightSleep ? JSON.stringify(data.nightSleep) : undefined,
         bloodPressure: data.bloodPressure,
         pulseRate: data.pulseRate,
         oxygenLevel: data.oxygenLevel,
