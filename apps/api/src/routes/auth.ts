@@ -21,10 +21,16 @@ const loginSchema = z.object({
   password: z.string(),
 });
 
+// Caregiver login accepts either username OR caregiverId (UUID)
 const caregiverPinSchema = z.object({
-  caregiverId: z.string().uuid(),
+  // Either username (e.g., "happy-panda-42") or UUID
+  caregiverId: z.string().optional(),
+  username: z.string().optional(),
   pin: z.string().length(6).regex(/^\d{6}$/),
-});
+}).refine(
+  (data) => data.caregiverId || data.username,
+  { message: 'Either caregiverId or username is required' }
+);
 
 // Family Signup
 auth.post('/signup', async (c) => {
@@ -152,12 +158,23 @@ auth.post('/caregiver/login', async (c) => {
     const db = c.get('db');
     const env = c.env;
 
-    // Find caregiver by ID
-    const caregiver = await db
-      .select()
-      .from(caregivers)
-      .where(eq(caregivers.id, data.caregiverId))
-      .get();
+    // Find caregiver by username OR ID
+    let caregiver;
+    if (data.username) {
+      // Login with username (e.g., "happy-panda-42")
+      caregiver = await db
+        .select()
+        .from(caregivers)
+        .where(eq(caregivers.username, data.username.toLowerCase()))
+        .get();
+    } else if (data.caregiverId) {
+      // Login with UUID (legacy)
+      caregiver = await db
+        .select()
+        .from(caregivers)
+        .where(eq(caregivers.id, data.caregiverId))
+        .get();
+    }
 
     if (!caregiver) {
       return c.json({ error: 'Invalid caregiver ID or PIN' }, 401);
@@ -196,6 +213,7 @@ auth.post('/caregiver/login', async (c) => {
       caregiver: {
         id: caregiver.id,
         name: caregiver.name,
+        username: caregiver.username,
         careRecipientId: caregiver.careRecipientId,
       },
       careRecipient: careRecipient ? {

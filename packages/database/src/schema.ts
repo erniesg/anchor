@@ -103,6 +103,7 @@ export const caregivers = sqliteTable('caregivers', {
     .references(() => careRecipients.id, { onDelete: 'cascade' })
     .notNull(),
   name: text('name').notNull(),
+  username: text('username').unique(), // Human-readable login ID (e.g., "happy-panda-42")
   phone: text('phone'),
   email: text('email'), // Optional email for caregiver
   language: text('language').default('en').notNull(),

@@ -316,7 +316,9 @@ describe('Authentication API', () => {
       expect(res.status).toBe(400);
     });
 
-    it('should validate caregiverId as UUID', async () => {
+    it('should return 401 for non-existent username or caregiverId', async () => {
+      // With username support, "not-a-uuid" is treated as a username and looked up
+      // When not found, returns 401 (not 400 validation error)
       const res = await app.request('/auth/caregiver/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -326,7 +328,7 @@ describe('Authentication API', () => {
         }),
       }, mockEnv);
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(401);
     });
 
     it('should require both caregiverId and PIN', async () => {

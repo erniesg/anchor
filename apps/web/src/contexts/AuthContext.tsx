@@ -39,7 +39,7 @@ interface AuthContextType {
 
   // Actions
   loginFamily: (email: string, password: string) => Promise<void>;
-  loginCaregiver: (caregiverId: string, pin: string) => Promise<void>;
+  loginCaregiver: (usernameOrId: string, pin: string) => Promise<void>;
   signup: (email: string, name: string, password: string, phone?: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -155,15 +155,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetchCareRecipients(response.token);
   }, [fetchCareRecipients]);
 
-  // Caregiver login
-  const loginCaregiver = useCallback(async (caregiverId: string, pin: string) => {
+  // Caregiver login - accepts username (e.g., "happy-panda-42") or UUID
+  const loginCaregiver = useCallback(async (usernameOrId: string, pin: string) => {
+    // Detect if input is UUID or username
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(usernameOrId);
+    const payload = isUUID
+      ? { caregiverId: usernameOrId, pin }
+      : { username: usernameOrId.toLowerCase(), pin };
+
     const response = await apiCall<{
       token: string;
       caregiver: Caregiver;
       careRecipient: CareRecipient | null;
     }>('/auth/caregiver/login', {
       method: 'POST',
-      body: JSON.stringify({ caregiverId, pin }),
+      body: JSON.stringify(payload),
     });
 
     // Store token and minimal cached data for offline

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/lib/toast';
-import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal, Edit, Plus, Heart, ExternalLink } from 'lucide-react';
+import { UserCog, ArrowLeft, Key, UserX, UserCheck, Copy, Check, Search, SlidersHorizontal, Edit, Plus, Heart, ExternalLink, RefreshCw } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { authenticatedApiCall } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +23,7 @@ export const Route = createFileRoute('/family/settings/caregivers')({
 interface Caregiver {
   id: string;
   name: string;
+  username?: string | null;
   phone?: string;
   email?: string;
   active: boolean;
@@ -49,6 +50,8 @@ function CaregiversSettingsComponent() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newPin, setNewPin] = useState<string | null>(null);
   const [newCaregiverId, setNewCaregiverId] = useState<string | null>(null);
+  const [newUsername, setNewUsername] = useState<string | null>(null);
+  const [copiedUsername, setCopiedUsername] = useState(false);
   const [deactivationReason, setDeactivationReason] = useState('');
   const [copiedPin, setCopiedPin] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null); // Track which ID was copied
@@ -261,6 +264,7 @@ function CaregiversSettingsComponent() {
     onSuccess: (data) => {
       setNewPin(data.pin);
       setNewCaregiverId(data.id);
+      setNewUsername(data.username);
       setShowAddModal(false);
       setAddForm({
         name: '',
@@ -271,7 +275,7 @@ function CaregiversSettingsComponent() {
       queryClient.invalidateQueries({ queryKey: ['caregivers'] });
       addToast({
         type: 'success',
-        message: 'Caregiver created successfully! Save the PIN and ID.',
+        message: 'Caregiver created successfully! Save the username and PIN.',
       });
     },
     onError: (error) => {
@@ -282,10 +286,37 @@ function CaregiversSettingsComponent() {
     },
   });
 
+  // Generate username mutation
+  const generateUsernameMutation = useMutation({
+    mutationFn: async (caregiverId: string) => {
+      if (!token) throw new Error('Not authenticated');
+      return authenticatedApiCall<{ username: string }>(`/caregivers/${caregiverId}/generate-username`, token, {
+        method: 'POST',
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['caregivers'] });
+      addToast({
+        type: 'success',
+        message: `Username generated: ${data.username}`,
+      });
+    },
+    onError: (error) => {
+      addToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to generate username.',
+      });
+    },
+  });
+
   const handleResetPin = (caregiver: Caregiver) => {
     setSelectedCaregiver(caregiver);
     setShowResetPinModal(true);
     resetPinMutation.mutate(caregiver.id);
+  };
+
+  const handleGenerateUsername = (caregiver: Caregiver) => {
+    generateUsernameMutation.mutate(caregiver.id);
   };
 
   const handleDeactivate = (caregiver: Caregiver) => {
@@ -493,7 +524,7 @@ function CaregiversSettingsComponent() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-600 mt-2">
-                  💡 Each caregiver needs their unique Caregiver ID and PIN to login
+                  💡 Each caregiver needs their unique username and PIN to login
                 </p>
               </div>
             </div>
@@ -642,23 +673,40 @@ function CaregiversSettingsComponent() {
                             <div className="flex-1">
                               <h3 className="font-semibold text-lg text-gray-900">{caregiver.name}</h3>
                             <div className="mt-2 space-y-1">
-                              {/* Caregiver ID with copy button */}
-                              <div className="flex items-center gap-2">
+                              {/* Username with copy button */}
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <p className="text-sm text-gray-600">
-                                  <span className="font-medium">Caregiver ID:</span>
-                                  <code className="ml-1 text-xs bg-gray-100 px-2 py-1 rounded font-mono">{caregiver.id}</code>
-                                </p>
-                                <button
-                                  onClick={() => copyCaregiverId(caregiver.id)}
-                                  className="text-blue-600 hover:text-blue-700 transition-colors"
-                                  title="Copy Caregiver ID"
-                                >
-                                  {copiedId === caregiver.id ? (
-                                    <Check className="h-4 w-4 text-green-600" />
+                                  <span className="font-medium">Username:</span>
+                                  {caregiver.username ? (
+                                    <code className="ml-1 text-sm bg-green-100 text-green-800 px-2 py-1 rounded font-mono font-bold">{caregiver.username}</code>
                                   ) : (
-                                    <Copy className="h-4 w-4" />
+                                    <span className="ml-1 text-gray-400 italic">Not set</span>
                                   )}
-                                </button>
+                                </p>
+                                {caregiver.username && (
+                                  <button
+                                    onClick={() => copyCaregiverId(caregiver.username!)}
+                                    className="text-blue-600 hover:text-blue-700 transition-colors"
+                                    title="Copy Username"
+                                  >
+                                    {copiedId === caregiver.username ? (
+                                      <Check className="h-4 w-4 text-green-600" />
+                                    ) : (
+                                      <Copy className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                )}
+                                {isAdmin && (
+                                  <button
+                                    onClick={() => handleGenerateUsername(caregiver)}
+                                    disabled={generateUsernameMutation.isPending}
+                                    className="text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 text-xs"
+                                    title={caregiver.username ? "Generate new username" : "Generate username"}
+                                  >
+                                    <RefreshCw className={`h-3 w-3 ${generateUsernameMutation.isPending ? 'animate-spin' : ''}`} />
+                                    {caregiver.username ? 'New' : 'Generate'}
+                                  </button>
+                                )}
                               </div>
                               {caregiver.phone && <p className="text-sm text-gray-600">Phone: {caregiver.phone}</p>}
                               {caregiver.email && <p className="text-sm text-gray-600">Email: {caregiver.email}</p>}
@@ -719,23 +767,29 @@ function CaregiversSettingsComponent() {
                           <div className="flex-1">
                             <h3 className="font-semibold text-lg text-gray-900">{caregiver.name}</h3>
                             <div className="mt-2 space-y-1">
-                              {/* Caregiver ID with copy button */}
+                              {/* Username with copy button */}
                               <div className="flex items-center gap-2">
                                 <p className="text-sm text-gray-600">
-                                  <span className="font-medium">Caregiver ID:</span>
-                                  <code className="ml-1 text-xs bg-gray-100 px-2 py-1 rounded font-mono">{caregiver.id}</code>
-                                </p>
-                                <button
-                                  onClick={() => copyCaregiverId(caregiver.id)}
-                                  className="text-blue-600 hover:text-blue-700 transition-colors"
-                                  title="Copy Caregiver ID"
-                                >
-                                  {copiedId === caregiver.id ? (
-                                    <Check className="h-4 w-4 text-green-600" />
+                                  <span className="font-medium">Username:</span>
+                                  {caregiver.username ? (
+                                    <code className="ml-1 text-sm bg-gray-200 text-gray-600 px-2 py-1 rounded font-mono">{caregiver.username}</code>
                                   ) : (
-                                    <Copy className="h-4 w-4" />
+                                    <span className="ml-1 text-gray-400 italic">Not set</span>
                                   )}
-                                </button>
+                                </p>
+                                {caregiver.username && (
+                                  <button
+                                    onClick={() => copyCaregiverId(caregiver.username!)}
+                                    className="text-blue-600 hover:text-blue-700 transition-colors"
+                                    title="Copy Username"
+                                  >
+                                    {copiedId === caregiver.username ? (
+                                      <Check className="h-4 w-4 text-green-600" />
+                                    ) : (
+                                      <Copy className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                )}
                               </div>
                               {caregiver.phone && <p className="text-sm text-gray-600">Phone: {caregiver.phone}</p>}
                               {caregiver.email && <p className="text-sm text-gray-600">Email: {caregiver.email}</p>}
@@ -1036,7 +1090,7 @@ function CaregiversSettingsComponent() {
       )}
 
       {/* Show Credentials Modal after successful caregiver creation */}
-      {newPin && newCaregiverId && !showAddModal && (
+      {newPin && newUsername && !showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md">
             <CardHeader className="border-b bg-green-50">
@@ -1050,8 +1104,36 @@ function CaregiversSettingsComponent() {
                 <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
                   <p className="text-sm font-semibold text-yellow-900 mb-2">⚠️ Save These Credentials</p>
                   <p className="text-xs text-yellow-800">
-                    The caregiver will need both the PIN and ID to login. Make sure to save them securely!
+                    The caregiver will need their username and PIN to login. Make sure to save them!
                   </p>
+                </div>
+
+                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-green-900">Username</p>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(newUsername);
+                        setCopiedUsername(true);
+                        setTimeout(() => setCopiedUsername(false), 2000);
+                      }}
+                      className="flex items-center gap-1 text-green-600 hover:text-green-700 text-sm font-medium"
+                    >
+                      {copiedUsername ? (
+                        <>
+                          <Check className="h-4 w-4" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-2xl font-mono font-bold text-green-900">{newUsername}</p>
+                  <p className="text-xs text-green-700 mt-2">Easy to remember!</p>
                 </div>
 
                 <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
@@ -1079,31 +1161,6 @@ function CaregiversSettingsComponent() {
                   <p className="text-2xl font-mono font-bold text-blue-900 tracking-widest">{newPin}</p>
                 </div>
 
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-semibold text-blue-900">Caregiver ID</p>
-                    <button
-                      onClick={() => {
-                        copyToClipboard(newCaregiverId, 'id');
-                      }}
-                      className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium"
-                    >
-                      {copiedId === newCaregiverId ? (
-                        <>
-                          <Check className="h-4 w-4" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-4 w-4" />
-                          Copy
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <p className="text-sm font-mono text-blue-900 break-all">{newCaregiverId}</p>
-                </div>
-
                 <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-4">
                   <div className="flex items-start gap-3">
                     <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1112,13 +1169,13 @@ function CaregiversSettingsComponent() {
                     <div className="flex-1">
                       <p className="font-bold text-blue-900 text-base mb-2">Where Caregivers Login</p>
                       <a
-                        href="https://anchor-dev.erniesg.workers.dev/caregiver/login"
+                        href={caregiverLoginUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="block bg-white border-2 border-blue-400 rounded-lg px-4 py-3 text-center hover:bg-blue-50 transition-colors"
                       >
-                        <p className="text-blue-700 font-bold text-lg">
-                          anchor-dev.erniesg.workers.dev/caregiver/login
+                        <p className="text-blue-700 font-bold text-sm break-all">
+                          {caregiverLoginUrl}
                         </p>
                         <p className="text-blue-600 text-xs mt-1">Click to open login page →</p>
                       </a>
@@ -1132,6 +1189,7 @@ function CaregiversSettingsComponent() {
                   onClick={() => {
                     setNewPin(null);
                     setNewCaregiverId(null);
+                    setNewUsername(null);
                   }}
                   className="w-full bg-green-600 hover:bg-green-700"
                 >

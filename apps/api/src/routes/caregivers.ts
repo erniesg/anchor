@@ -6,6 +6,7 @@ import { caregivers } from '@anchor/database/schema';
 import { eq } from 'drizzle-orm';
 import { familyAdminOnly, familyMemberAccess } from '../middleware/rbac';
 import { requireCaregiverManagement } from '../middleware/permissions';
+import { generateUsername, isValidUsername, normalizeUsername } from '../utils/username-generator';
 
 const caregiversRoute = new Hono<AppContext>();
 
@@ -27,7 +28,7 @@ const hashPin = async (pin: string): Promise<string> => {
   return bcrypt.hash(pin, 10);
 };
 
-// Create caregiver with auto-generated PIN (family_admin only)
+// Create caregiver with auto-generated PIN and username (family_admin only)
 caregiversRoute.post('/', ...familyAdminOnly, requireCaregiverManagement, async (c) => {
   try {
     const body = await c.req.json();
@@ -38,12 +39,27 @@ caregiversRoute.post('/', ...familyAdminOnly, requireCaregiverManagement, async 
     const pin = generatePin();
     const hashedPin = await hashPin(pin);
 
+    // Generate unique username (retry if collision)
+    let username = generateUsername();
+    let attempts = 0;
+    while (attempts < 10) {
+      const existing = await db
+        .select({ id: caregivers.id })
+        .from(caregivers)
+        .where(eq(caregivers.username, username))
+        .get();
+      if (!existing) break;
+      username = generateUsername();
+      attempts++;
+    }
+
     const newCaregiver = await db
       .insert(caregivers)
       .values({
         id: crypto.randomUUID(),
         careRecipientId: data.careRecipientId,
         name: data.name,
+        username, // Auto-generated username
         phone: data.phone,
         email: data.email,
         language: data.language,
@@ -80,6 +96,7 @@ caregiversRoute.get('/recipient/:recipientId', ...familyMemberAccess, async (c) 
       .select({
         id: caregivers.id,
         name: caregivers.name,
+        username: caregivers.username,
         phone: caregivers.phone,
         email: caregivers.email,
         active: caregivers.active,
@@ -132,6 +149,112 @@ caregiversRoute.post('/:id/reset-pin', ...familyAdminOnly, async (c) => {
     });
   } catch (error) {
     console.error('Reset PIN error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// Generate new username for caregiver (family_admin only)
+caregiversRoute.post('/:id/generate-username', ...familyAdminOnly, async (c) => {
+  try {
+    const caregiverId = c.req.param('id');
+    const db = c.get('db');
+
+    // Check if caregiver exists
+    const caregiver = await db
+      .select()
+      .from(caregivers)
+      .where(eq(caregivers.id, caregiverId))
+      .get();
+
+    if (!caregiver) {
+      return c.json({ error: 'Caregiver not found' }, 404);
+    }
+
+    // Generate unique username (retry if collision)
+    let username = generateUsername();
+    let attempts = 0;
+    while (attempts < 10) {
+      const existing = await db
+        .select({ id: caregivers.id })
+        .from(caregivers)
+        .where(eq(caregivers.username, username))
+        .get();
+      if (!existing) break;
+      username = generateUsername();
+      attempts++;
+    }
+
+    // Update caregiver username
+    await db
+      .update(caregivers)
+      .set({
+        username,
+        updatedAt: new Date(),
+      })
+      .where(eq(caregivers.id, caregiverId));
+
+    return c.json({
+      success: true,
+      username,
+      message: 'Username has been generated successfully',
+    });
+  } catch (error) {
+    console.error('Generate username error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// Update caregiver username (family_admin only)
+const updateUsernameSchema = z.object({
+  username: z.string().min(5).max(30),
+});
+
+caregiversRoute.put('/:id/username', ...familyAdminOnly, async (c) => {
+  try {
+    const caregiverId = c.req.param('id');
+    const body = await c.req.json();
+    const data = updateUsernameSchema.parse(body);
+    const db = c.get('db');
+
+    const username = normalizeUsername(data.username);
+
+    // Validate username format
+    if (!isValidUsername(username)) {
+      return c.json({
+        error: 'Invalid username format. Use lowercase letters, numbers, and hyphens only.',
+      }, 400);
+    }
+
+    // Check if username is already taken
+    const existing = await db
+      .select({ id: caregivers.id })
+      .from(caregivers)
+      .where(eq(caregivers.username, username))
+      .get();
+
+    if (existing && existing.id !== caregiverId) {
+      return c.json({ error: 'Username is already taken' }, 409);
+    }
+
+    // Update caregiver username
+    await db
+      .update(caregivers)
+      .set({
+        username,
+        updatedAt: new Date(),
+      })
+      .where(eq(caregivers.id, caregiverId));
+
+    return c.json({
+      success: true,
+      username,
+      message: 'Username has been updated successfully',
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return c.json({ error: 'Validation failed', details: error.errors }, 400);
+    }
+    console.error('Update username error:', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
 });

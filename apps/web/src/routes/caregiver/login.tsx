@@ -14,31 +14,35 @@ export const Route = createFileRoute('/caregiver/login')({
 function CaregiverLoginComponent() {
   const navigate = useNavigate();
   const { loginCaregiver } = useAuth();
-  const [caregiverId, setCaregiverId] = useState('');
+  const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState('');
 
   const loginMutation = useMutation({
-    mutationFn: async (data: { caregiverId: string; pin: string }) => {
-      await loginCaregiver(data.caregiverId, data.pin);
+    mutationFn: async (data: { username: string; pin: string }) => {
+      await loginCaregiver(data.username, data.pin);
     },
     onSuccess: () => {
       navigate({ to: '/caregiver/form' });
     },
     onError: (err: Error) => {
-      setError(err.message || 'Invalid PIN. Please try again.');
+      setError(err.message || 'Invalid username or PIN. Please try again.');
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!username.trim()) {
+      setError('Please enter your username');
+      return;
+    }
     if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
       setError('PIN must be exactly 6 digits');
       return;
     }
     setError('');
-    loginMutation.mutate({ caregiverId, pin });
+    loginMutation.mutate({ username: username.trim(), pin });
   };
 
   return (
@@ -52,18 +56,18 @@ function CaregiverLoginComponent() {
               </svg>
             </div>
             <h1 className="text-3xl font-bold text-primary-700 mb-2">Caregiver Login</h1>
-            <p className="text-gray-600">Enter your 6-digit PIN</p>
+            <p className="text-gray-600">Enter your username and PIN</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5" autoComplete="on">
             <Input
-              label="Caregiver ID"
-              name="caregiverId"
+              label="Username"
+              name="username"
               type="text"
               required
-              value={caregiverId}
-              onChange={(e) => setCaregiverId(e.target.value)}
-              placeholder="Enter your caregiver ID"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="e.g. happy-panda-42"
               autoComplete="username"
             />
 

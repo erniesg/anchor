@@ -75,6 +75,7 @@ export function runMigrations(sqlite: Database.Database) {
       id TEXT PRIMARY KEY,
       care_recipient_id TEXT NOT NULL,
       name TEXT NOT NULL,
+      username TEXT UNIQUE,
       phone TEXT,
       email TEXT,
       language TEXT NOT NULL DEFAULT 'en',
