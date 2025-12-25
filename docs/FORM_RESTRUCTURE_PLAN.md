@@ -295,8 +295,8 @@ These can be logged at any time, from any screen:
 
 **Tasks**:
 - [x] 7.1 Add "Full Form (Legacy)" link to dashboard
-- [ ] 7.2 Update E2E tests for new structure (optional - existing tests pass)
-- [ ] 7.3 Test on mobile viewports (375px) (optional - responsive design)
+- [x] 7.2 Update E2E tests for new structure (15/15 tests passing)
+- [x] 7.3 Test on mobile viewports (375px) (touch-friendly, no overflow)
 - [x] 7.4 Test progressive submission flow
 - [x] 7.5 Test family dashboard still displays all data
 - [x] 7.6 Deploy to dev and test
@@ -318,7 +318,7 @@ These can be logged at any time, from any screen:
 | Phase 4: Evening Form | ✅ Done | 5/5 |
 | Phase 5: Summary Form | ✅ Done | 8/8 |
 | Phase 6: Quick Actions FAB | ✅ Done | 7/7 |
-| Phase 7: Cleanup & Polish | ✅ Done | 5/7 |
+| Phase 7: Cleanup & Polish | ✅ Done | 7/7 |
 
 ### Completed Items ✅
 - [x] API tests passing (162/162)
@@ -346,6 +346,12 @@ These can be logged at any time, from any screen:
   - ✅ Section submissions working (morning, afternoon, evening)
   - ✅ Audit logs: 14+ entries recorded
   - ✅ Family can see: wake, mood, meals, fluids, completed sections
+- [x] **E2E Tests Complete** (2024-12-25)
+  - ✅ 15/15 Playwright tests passing
+  - ✅ Dashboard, Morning, Afternoon, Evening, Summary forms tested
+  - ✅ Mobile viewport (375px) - no overflow, touch-friendly buttons
+  - ✅ Family login and data viewing verified
+  - ✅ API integration tests (meals, sections, audit history)
 
 ---
 

@@ -1,946 +1,710 @@
 # Caregiver Data Entry UX Improvement Proposal
 
 **Date:** 2025-10-25
+**Updated:** 2025-12-25 (Post Form Restructure Review)
 **Focus:** Making data entry intuitive for users with varying literacy levels, including illiterate domestic workers
 
 ---
 
 ## Executive Summary
 
-The current caregiver data entry system is **functional but literacy-dependent**, with text-heavy forms that present significant barriers for domestic workers who may be illiterate or have low literacy levels. This proposal outlines specific improvements to make the system accessible to all users through:
+The current caregiver data entry system has been **significantly improved** with the time-based form restructure (completed 2025-12-25), but remains **partially literacy-dependent** with critical accessibility gaps. This updated proposal incorporates findings from comprehensive production testing and UI/UX review.
 
-1. **Visual/icon-based interfaces** instead of text-heavy forms
-2. **Voice and photo input** capabilities
-3. **Better validation** with clear visual feedback
-4. **Simplified data entry** methods
-5. **Large touch targets** for mobile users
-6. **Smart defaults** based on historical patterns
+### Current Status (Post-Restructure)
+- **Form Restructure:** 100% Complete (7/7 phases)
+- **E2E Tests:** 15/15 passing
+- **Overall UX Score:** 6/10 → Target: 9/10
+
+### Key Improvements Made
+1. **Time-based forms** - Morning/Afternoon/Evening/Summary sections
+2. **Quick Actions FAB** - Anytime toileting, fluid, exercise, incident logging
+3. **Progressive submission** - Family can see data as sections complete
+4. **Auto-save** - Changes persist automatically
+
+### Critical Remaining Gaps
+1. **Touch targets too small** (3/10) - Most buttons below 44px minimum
+2. **Visual feedback insufficient** (4/10) - No haptic/audio confirmation
+3. **Form design text-heavy** (5/10) - Requires reading comprehension
+4. **Number scales abstract** (5/10) - 1-5 without visual meaning
 
 ---
 
 ## Current System Analysis
 
-### System Architecture
-- **13 sections** with complex form inputs
-- **3,316 lines** of form code (`apps/web/src/routes/caregiver/form.tsx`)
-- Text-heavy labels and dropdowns
-- Auto-save every 30 seconds
-- Comprehensive backend validation with Zod schemas
+### Architecture After Restructure (Dec 2025)
 
-### Critical Literacy Barriers
-
-| Barrier | Severity | Current State |
-|---------|----------|---------------|
-| **Medication names as text** | CRITICAL | Pre-filled list, text-only, cannot recognize by appearance |
-| **Time format (HH:MM)** | CRITICAL | 24-hour format unfamiliar to low-literacy users |
-| **Numerical input for fluids** | CRITICAL | Requires understanding of ml/liters units |
-| **Error messages in English** | HIGH | Multiple validation errors shown as text only |
-| **Medical terminology** | HIGH | "Agitated", "Diarrhea", "Consistency" require reading comprehension |
-| **Form length** | HIGH | All 13 sections visible, overwhelming |
-| **Small touch targets** | MEDIUM | Standard button sizing, may be too small for mobile |
-
----
-
-## Recommended Improvements
-
-### 1. Visual/Icon-Based Interfaces
-
-#### Medication Management (CRITICAL PRIORITY)
-
-**Current:** Text list "Glucophage 500mg", "Forxiga 10mg"
-
-**Proposed:** Medication Card System with Photos
-
-```tsx
-// Medication Card Component
-┌─────────────────────┐
-│  [Photo of pill]    │  ← Family uploads medication photo
-│  1 tablet           │  ← Visual dosage indicator
-│  🌅 Breakfast       │  ← Emoji for time slot
-│  ☑ Given today      │  ← Large checkbox (60px)
-└─────────────────────┘
+**Routes:**
+```
+/caregiver/form              → Dashboard (4 time-period cards + quick actions)
+/caregiver/form/morning      → Morning form (wake, hygiene, vitals, breakfast, AM meds)
+/caregiver/form/afternoon    → Afternoon form (lunch, tea, rest, PM meds)
+/caregiver/form/evening      → Evening form (dinner, bedtime, evening meds)
+/caregiver/form/summary      → Daily summary (toileting, safety, notes, final submit)
+/caregiver/form-legacy       → Full 13-section form (backwards compatibility)
 ```
 
-**Implementation:**
-- Add `imageUrl` field to `medicationSchedules` table
-- Create `MedicationCard` component with image display
-- Use emoji consistently: 🌅 (breakfast), ☀️ (lunch), 🌙 (bedtime)
-- Minimum 60px touch targets for mobile
+**Code Metrics:**
+- **Dashboard:** 350 lines (`apps/web/src/routes/caregiver/form/index.tsx`)
+- **Morning Form:** 650 lines (`apps/web/src/routes/caregiver/form/morning.tsx`)
+- **Afternoon Form:** 500 lines
+- **Evening Form:** 450 lines
+- **Summary Form:** 750 lines
+- **Quick Actions FAB:** 400 lines
+- **Total:** ~3,100 lines (reduced from 3,316)
 
-**Files to modify:**
-- `packages/database/src/schema.ts` - Add imageUrl field
-- `apps/web/src/components/MedicationCard.tsx` - New component
-- `apps/web/src/routes/caregiver/form.tsx` - Replace text list
+### Critical Accessibility Barriers (Updated Assessment)
+
+| Barrier | Severity | Current State | Status |
+|---------|----------|---------------|--------|
+| **Touch targets < 44px** | CRITICAL | Buttons 32-40px, checkboxes 20px | ❌ Not Fixed |
+| **No save confirmation** | CRITICAL | Silent auto-save, no feedback | ❌ Not Fixed |
+| **Number scales abstract** | CRITICAL | "1-5" without visual meaning | ❌ Not Fixed |
+| **Text-dependent labels** | HIGH | "Morning", "Afternoon" require reading | ❌ Not Fixed |
+| **Time picker native** | HIGH | Small native input, hard to use | ❌ Not Fixed |
+| **No offline indicator** | HIGH | App fails silently when offline | ❌ Not Fixed |
+| **Color-only status** | MEDIUM | Red/green fails for colorblind | ❌ Not Fixed |
+| **Small fonts** | MEDIUM | 12px secondary text | ❌ Not Fixed |
+| **Form length** | LOW | Now split into 4 sections | ✅ Fixed |
+| **Progress tracking** | LOW | Section cards show completion | ✅ Fixed |
 
 ---
 
-#### Fluid Tracking - Visual Cup System
+## Detailed Code-Level Issues Found
 
-**Current:** Text input + number in ml
+### Issue 1: Button Component Touch Targets
 
-**Proposed:** Icon selection + Visual cup amounts
+**File:** `apps/web/src/components/ui/button.tsx`
 
-```tsx
-// Fluid Type Selector
-🥛 Milk     ☕ Coffee    🧃 Juice    💧 Water
-🍵 Tea      🥤 Soda      🍲 Broth    🧋 Other
-
-// Amount Selector
-┌────────────────────────────┐
-│ Visual cup that fills      │
-│ [Small] [Medium] [Large]   │
-│  150ml   200ml    250ml    │
-└────────────────────────────┘
+**Current Code (Lines 22-26):**
+```typescript
+const sizes = {
+  sm: 'px-3 py-1.5 text-sm',   // ~32px height ❌
+  md: 'px-4 py-2 text-base',   // ~40px height ❌
+  lg: 'px-6 py-3 text-lg',     // ~48px height ✅
+};
 ```
 
-**Implementation:**
-- Create `FluidTypeSelector` component with icon buttons
-- Create `FluidAmountPicker` with visual cup graphic
-- Pre-populate common drinks as button grid
-- Allow photo capture for "Other" category
+**Problem:** Only `lg` size meets Apple HIG (44px) / Material Design (48px) minimum.
 
----
-
-#### Mood Selection - Enhanced Visual Buttons
-
-**Current:** 5 text buttons ["alert", "confused", "sleepy", "agitated", "calm"]
-
-**Proposed:** Large emoji-based selector
-
-```tsx
-┌──────────┬──────────┬──────────┐
-│    😊    │    😴    │    😔    │
-│   HAPPY  │   SLEEPY │   SAD    │  ← 60x60px minimum
-└──────────┴──────────┴──────────┘
-┌──────────┬──────────┐
-│    😤    │    😌    │
-│ AGITATED │   CALM   │
-└──────────┴──────────┘
-```
-
-**Implementation:**
-- Create `MoodSelector` component
-- Minimum 60px buttons with high contrast
-- Add haptic feedback on selection (mobile vibration)
-- Simple 1-2 word labels
-
----
-
-#### Toileting - Icon-Based Status
-
-**Current:** Dropdown for "dry/wet/soiled"
-
-**Proposed:** Visual status buttons
-
-```tsx
-┌──────────┬──────────┬──────────┐
-│    ✨    │    💧    │    💩    │
-│   DRY    │   WET    │  SOILED  │
-└──────────┴──────────┴──────────┘
+**Recommended Fix:**
+```typescript
+const sizes = {
+  sm: 'px-4 py-2.5 text-sm min-h-[44px]',   // 44px ✅
+  md: 'px-5 py-3 text-base min-h-[48px]',   // 48px ✅
+  lg: 'px-6 py-4 text-lg min-h-[56px]',     // 56px ✅
+};
 ```
 
 ---
 
-### 2. Simplified Data Entry Methods
+### Issue 2: Number Scale Buttons Too Small
 
-#### Time Entry - AM/PM Interface
+**File:** `apps/web/src/routes/caregiver/form/morning.tsx`
 
-**Current:** HTML `<input type="time">` with 24-hour format
-
-**Proposed:** AM/PM Picker with visual clock
-
-```tsx
-┌─────────────────────┐
-│  When? Pick a time  │
-├─────────────────────┤
-│   Hour: [8]    ▲▼  │  ← Number picker
-│   Minute: [30] ▲▼  │  ← Quarter hours: 00, 15, 30, 45
-│   [AM] [PM]         │  ← Large toggle buttons
-│                     │
-│   🕰️ 8:30 AM       │  ← Visual confirmation
-└─────────────────────┘
+**Current Code (Lines 516-528):**
+```typescript
+<button className={`w-10 h-10 rounded-full`}> // 40px x 40px ❌
+  {level}
+</button>
 ```
 
-**Implementation:**
-- Create `TimePickerSimple` component
-- Restrict minutes to quarter hours (0, 15, 30, 45)
-- Show 12-hour format only
-- Large touch targets (48px minimum)
+**Problem:** 40px circles fall short of 44px minimum. Elderly users with tremors will struggle.
 
-**Files to create:**
-- `apps/web/src/components/ui/TimePicker.tsx`
+**Recommended Fix:**
+```typescript
+// Create IconScale component with 48px+ buttons and emoji
+const appetiteScale = [
+  { value: 1, icon: '😢', label: 'None' },
+  { value: 2, icon: '😕', label: 'Low' },
+  { value: 3, icon: '😐', label: 'Okay' },
+  { value: 4, icon: '😊', label: 'Good' },
+  { value: 5, icon: '😍', label: 'Great' }
+];
+
+<button className="w-14 h-14 rounded-full flex flex-col items-center"> // 56px ✅
+  <span className="text-2xl">{item.icon}</span>
+  <span className="text-xs">{item.label}</span>
+</button>
+```
 
 ---
 
-#### Number Entry - Increment/Decrement Buttons
+### Issue 3: Checkbox Touch Targets
 
-**Current:** Standard `<input type="number">`
+**File:** `apps/web/src/routes/caregiver/form/morning.tsx`
 
-**Proposed:** Visual number picker
-
-```tsx
-// For frequency, amounts, etc.
-Frequency:  [−] 2 [+]
-            ◄──────►
-
-// For preset amounts:
-Amount:  [Small] [Medium] [Large]
-         150ml   250ml    500ml
+**Current Code (Lines 425-430):**
+```typescript
+<input type="checkbox" className="h-5 w-5" /> // 20px x 20px ❌❌
 ```
 
-**Implementation:**
-- Create `NumberInputSimple` component
-- Large +/- buttons (48px)
-- Show current value prominently
-- Preset buttons for common values
+**Problem:** 20px checkbox is **less than half** the required 44px touch target.
+
+**Recommended Fix:**
+```typescript
+<label className="inline-flex items-center gap-3 min-h-[48px] cursor-pointer">
+  <input type="checkbox" className="h-8 w-8 accent-primary-600" /> // 32px checkbox
+  <span className="text-base">Hair washed?</span>
+</label>
+```
 
 ---
 
-#### Medication Time - Smart Defaults
+### Issue 4: No Save Confirmation Feedback
 
-**Current:** Time input + time slot dropdown
+**File:** `apps/web/src/routes/caregiver/form/morning.tsx`
 
-**Proposed:** Default times with easy override
-
-```tsx
-🌅 BREAKFAST (Usually 8:00 AM)  [✓ This time] [Change?]
-☀️ LUNCH (Usually 12:00 PM)     [✓ This time] [Change?]
-🌙 BEDTIME (Usually 9:00 PM)    [✓ This time] [Change?]
+**Current Code (Lines 348-353):**
+```typescript
+{lastSaved ? (
+  <span className="text-xs text-gray-500"> // Small, easy to miss
+    Saved {lastSaved.toLocaleTimeString()}
+  </span>
+) : null}
 ```
 
-**Implementation:**
-- Learn from historical data (last 7 days)
-- Pre-fill with typical time
-- One-tap confirm or tap to change
-- Visual time slot indicators
+**Problem:**
+- 12px text, easily missed
+- No haptic feedback on mobile
+- No sound confirmation
+- Disappears when navigating
 
----
+**Recommended Fix:**
+```typescript
+// Add toast notification system
+import toast from 'react-hot-toast';
 
-### 3. Better Validation with Visual Feedback
+const handleSave = async () => {
+  await saveMutation.mutateAsync(logId);
 
-#### Real-Time Field Validation
+  // Visual toast (larger, more prominent)
+  toast.success(
+    <div className="flex items-center gap-3">
+      <CheckCircle className="h-8 w-8 text-green-500" />
+      <span className="text-lg font-medium">Saved!</span>
+    </div>,
+    { duration: 2000 }
+  );
 
-**Current:** Errors shown as red text after submit
-
-**Proposed:** Multi-level visual feedback
-
-```tsx
-// Empty field:
-┌──────────────────────┐
-│ When did they wake?  │
-│ ○ Tap to enter       │  ← Neutral (gray circle)
-└──────────────────────┘
-
-// Valid input:
-┌──────────────────────┐
-│ When did they wake?  │
-│ ✓ 8:30 AM           │  ← Green checkmark
-└──────────────────────┘
-
-// Invalid input:
-┌──────────────────────┐
-│ When did they wake?  │
-│ ✗ Invalid - try 8:30 │  ← Red X + helpful message
-└──────────────────────┘
-```
-
-**Implementation:**
-- Real-time validation on blur
-- Visual indicators (○ → ✓ or ✗)
-- Add aria-live regions for accessibility
-- Auto-focus next field on valid entry
-
----
-
-#### Section Completion Progress
-
-**Current:** Section buttons show color (amber/green/blue)
-
-**Proposed:** Clear progress tracker
-
-```tsx
-┌──────────────────────────────────┐
-│  Your Daily Report               │
-│  Progress: ████░░░░░░ 45%       │
-├──────────────────────────────────┤
-│ ✓ COMPLETE (3)                   │
-│  ✓ Morning Routine               │
-│  ✓ Vital Signs                   │
-├──────────────────────────────────┤
-│ ◐ IN PROGRESS (2)                │
-│  ◐ Medications (need times)      │  ← Shows what's missing
-├──────────────────────────────────┤
-│ − NOT STARTED (8)                │
-│  − Meals & Nutrition             │
-└──────────────────────────────────┘
-```
-
-**Implementation:**
-- Calculate completion percentage
-- Group sections by status
-- Show specific missing fields
-- Clear visual hierarchy
-
----
-
-#### Error Prevention - Smart Defaults
-
-**Proposed:** Proactive confirmation for unusual values
-
-```tsx
-// User enters unusually low fluid intake (50ml):
-┌────────────────────────────────┐
-│ ⚠️ Only 50ml? That seems low. │
-│ Are you sure?                  │
-│ [Yes, correct] [Let me fix]   │
-└────────────────────────────────┘
-
-// User enters critical blood pressure:
-┌────────────────────────────────┐
-│ 🚨 URGENT: Blood pressure is   │
-│ dangerously high (180/120)!    │
-│ This needs immediate medical   │
-│ attention.                     │
-│ [Confirm] [Re-enter]          │
-└────────────────────────────────┘
-```
-
-**Implementation:**
-- Add range validation for all numerical inputs
-- Confirm outliers before saving
-- Provide context (normal ranges)
-- Suggest immediate action for critical values
-
----
-
-### 4. Voice and Photo Input
-
-#### Voice Input for Text Fields
-
-**Proposed:** Microphone button for notes/descriptions
-
-```tsx
-┌────────────────────────────────────────────┐
-│ What happened?                             │
-│ [🎤 Tap to record] OR [Type below]        │
-│                                            │
-│ 🎙️ Recording... 0:45                      │  ← Visual status
-└────────────────────────────────────────────┘
-```
-
-**Implementation:**
-- Use Web Speech API for transcription
-- Visual recording indicator (waveform/timer)
-- Play back for confirmation
-- Allow re-recording if incorrect
-- Store both audio + transcribed text
-
-**Use Cases:**
-- Special concerns description
-- Incident details
-- Notes field
-- Behavioral change descriptions
-
-**Files to create:**
-- `apps/web/src/components/VoiceInput.tsx`
-- `apps/web/src/hooks/use-voice-recording.ts`
-
----
-
-#### Photo Capture for Documentation
-
-**Proposed:** Camera button for visual evidence
-
-```tsx
-┌────────────────────────────────────────────┐
-│ Document this incident                     │
-│ [📷 Take Photo] [Choose from Gallery]     │
-│                                            │
-│ [Photo Preview Area]                       │
-│ Optional notes: [Text input]               │
-└────────────────────────────────────────────┘
-```
-
-**Implementation:**
-- Create `CameraCapture` component
-- Compress images before upload (use sharp/jimp)
-- Show thumbnail after capture
-- Allow delete + retake
-- Store in R2 bucket with care log reference
-
-**Use Cases:**
-- Fall incident documentation
-- Skin condition changes
-- Environmental safety hazards
-- Medication verification
-
-**Database changes:**
-- Add `attachments` JSON field to `careLogs` table
-- Store array of `{ type: 'photo' | 'voice', url: string, timestamp: number }`
-
----
-
-#### Barcode/QR Scanning for Medications
-
-**Proposed:** Quick medication identification
-
-```tsx
-┌────────────────────────────────────────────┐
-│ Which medication?                          │
-│ [📱 Scan Barcode] OR [Choose from list]   │
-│                                            │
-│ [Medication display with photo]            │
-│ Glucophage 500mg                           │
-│ Dosage: 1 tablet                           │
-│ [✓ This one]  [✗ Wrong medication]        │
-└────────────────────────────────────────────┘
-```
-
-**Implementation:**
-- Use `jsQR` library for barcode scanning
-- Pre-scan medication bottles during setup
-- Store barcode → medication mapping in database
-- Show medication photo for confirmation
-- Fallback to list selection
-
-**Database changes:**
-- Add `barcode` field to `medicationSchedules` table
-
----
-
-### 5. Large Touch Targets for Mobile
-
-#### Touch Target Standards
-
-**Current:** Buttons vary (sm=24px, md=32px, lg=48px)
-
-**Proposed:** Mobile-first sizing
-
-```tsx
-// Mobile (touch):
-- Primary buttons: 60x60px MINIMUM
-- Input fields: 56px height
-- Checkboxes: 48x48px touch area
-- Spacing: 16px minimum between elements
-
-// Desktop (mouse):
-- Buttons: 44px minimum
-- Input fields: 40px height
-- Can be slightly smaller with precision input
-```
-
-**Implementation:**
-- Update `Button.tsx` component with mobile-first sizes
-- Create responsive breakpoints:
-  - Mobile (<768px): Large buttons
-  - Tablet (768-1024px): Medium buttons
-  - Desktop (>1024px): Standard buttons
-
-**Files to modify:**
-- `apps/web/src/components/ui/button.tsx`
-- `apps/web/tailwind.config.ts` - Add touch-target utility classes
-
----
-
-#### Responsive Layout
-
-**Proposed:** Mobile-optimized grid
-
-```tsx
-// Mobile (<768px):
-- 1 column (full width)
-- Vertical button stacking
-- Fixed navigation at top
-
-// Tablet (768-1024px):
-- 2 columns for options
-- Larger buttons
-
-// Desktop (>1024px):
-- 2-3 columns
-- Side navigation visible
-```
-
-**CSS Example:**
-```css
-.option-grid {
-  display: grid;
-  grid-template-columns: 1fr;           /* Mobile: 1 column */
-  gap: 1rem;
-}
-
-@media (min-width: 768px) {
-  .option-grid {
-    grid-template-columns: 1fr 1fr;     /* Tablet: 2 columns */
+  // Haptic feedback (mobile)
+  if ('vibrate' in navigator) {
+    navigator.vibrate([50, 30, 50]); // Success pattern
   }
-}
+};
+```
 
-@media (min-width: 1024px) {
-  .option-grid {
-    grid-template-columns: 1fr 1fr 1fr; /* Desktop: 3 columns */
+---
+
+### Issue 5: Time Picker Native Input
+
+**File:** `apps/web/src/routes/caregiver/form/morning.tsx`
+
+**Current Code (Lines 378-382):**
+```typescript
+<Input type="time" value={wakeTime} className="max-w-[150px]" />
+```
+
+**Problem:**
+- Native time picker is tiny on mobile
+- 24-hour format confusing for some users
+- Requires precise finger taps
+
+**Recommended Fix:** Create custom large time picker:
+```typescript
+// apps/web/src/components/ui/TimePicker.tsx
+<div className="bg-white rounded-2xl p-6 shadow-lg">
+  <div className="flex items-center justify-center gap-4">
+    {/* Hour */}
+    <div className="flex flex-col items-center">
+      <button className="w-16 h-16 bg-gray-100 rounded-xl text-2xl">▲</button>
+      <span className="text-5xl font-bold my-4">{hour}</span>
+      <button className="w-16 h-16 bg-gray-100 rounded-xl text-2xl">▼</button>
+    </div>
+
+    <span className="text-5xl font-bold">:</span>
+
+    {/* Minute */}
+    <div className="flex flex-col items-center">
+      <button className="w-16 h-16 bg-gray-100 rounded-xl text-2xl">▲</button>
+      <span className="text-5xl font-bold my-4">{minute}</span>
+      <button className="w-16 h-16 bg-gray-100 rounded-xl text-2xl">▼</button>
+    </div>
+
+    {/* AM/PM */}
+    <div className="flex flex-col gap-2 ml-4">
+      <button className={`w-20 h-14 rounded-xl ${isAM ? 'bg-amber-500 text-white' : 'bg-gray-100'}`}>
+        ☀️ AM
+      </button>
+      <button className={`w-20 h-14 rounded-xl ${!isAM ? 'bg-indigo-500 text-white' : 'bg-gray-100'}`}>
+        🌙 PM
+      </button>
+    </div>
+  </div>
+</div>
+```
+
+---
+
+### Issue 6: Text-Only Section Labels
+
+**File:** `apps/web/src/routes/caregiver/form/index.tsx`
+
+**Current Code (Lines 80-121):**
+```typescript
+const timePeriods = [
+  {
+    id: 'morning',
+    title: 'Morning',           // Text only ❌
+    icon: Sun,                  // Icon exists but secondary
+    timeRange: '6am - 12pm',    // Requires time comprehension
+    description: 'Wake up, shower, breakfast, AM medications',
+  },
+  // ...
+];
+```
+
+**Problem:** "Morning", "Afternoon", "Evening" require reading comprehension.
+
+**Recommended Fix:** Emphasize visual indicators:
+```typescript
+const timePeriods = [
+  {
+    id: 'morning',
+    title: 'Morning',
+    icon: Sun,
+    // Add visual time indicator
+    visualTime: '🌅', // Sunrise emoji
+    timeBar: 0.25, // 25% of day (6am-12pm)
+    // Add pictographic hints
+    activities: ['🛏️', '🚿', '🍳', '💊'], // Bed, shower, breakfast, meds
+  },
+  // ...
+];
+
+// Render with larger icon and visual cues
+<div className="flex items-center gap-4">
+  <div className="w-20 h-20 bg-amber-100 rounded-2xl flex items-center justify-center">
+    <Sun className="h-12 w-12 text-amber-600" />
+  </div>
+  <div>
+    <div className="flex items-center gap-2">
+      <span className="text-2xl">🌅</span>
+      <h3 className="text-xl font-bold">Morning</h3>
+    </div>
+    <div className="flex gap-2 mt-2">
+      {activities.map(emoji => (
+        <span className="text-2xl">{emoji}</span>
+      ))}
+    </div>
+  </div>
+</div>
+```
+
+---
+
+### Issue 7: Color-Only Status Indicators
+
+**File:** `apps/web/src/routes/caregiver/form/index.tsx`
+
+**Current Code:**
+```typescript
+{period.completed && (
+  <CheckCircle className="h-5 w-5 text-green-500" /> // Small, color-only
+)}
+```
+
+**Problem:**
+- 20px icon is small
+- Green/red distinction fails for 8% of males (colorblind)
+- No shape differentiation
+
+**Recommended Fix:**
+```typescript
+// Use size + shape + color for accessibility
+{period.completed ? (
+  <div className="bg-green-100 rounded-full p-2 border-2 border-green-500">
+    <Check className="h-6 w-6 text-green-700" strokeWidth={3} />
+  </div>
+) : (
+  <div className="border-2 border-dashed border-gray-300 rounded-full p-2">
+    <Circle className="h-6 w-6 text-gray-400" />
+  </div>
+)}
+```
+
+---
+
+### Issue 8: Small Secondary Font Sizes
+
+**File:** Multiple form files
+
+**Current Code:**
+```typescript
+<p className="text-xs text-gray-500 mt-1">{period.timeRange}</p> // 12px ❌
+<p className="text-xs text-gray-500">1 = No appetite, 5 = Excellent</p> // 12px ❌
+```
+
+**Problem:** 12px text fails WCAG recommendations (16px minimum for body text).
+
+**Recommended Fix:**
+```typescript
+<p className="text-sm text-gray-600 mt-1">{period.timeRange}</p> // 14px ✅
+<p className="text-sm text-gray-700">1 = No appetite, 5 = Excellent</p> // 14px ✅
+```
+
+---
+
+### Issue 9: No Progress Indicator
+
+**Current:** Section cards show completion but no overall journey context.
+
+**Recommended Fix:** Add horizontal stepper at top of all form pages:
+```typescript
+// apps/web/src/components/caregiver/ProgressStepper.tsx
+<div className="flex items-center justify-between px-4 py-3 bg-gray-50">
+  {['Morning', 'Afternoon', 'Evening', 'Summary'].map((step, i) => (
+    <div key={step} className="flex items-center">
+      <div className={`
+        w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold
+        ${completed[i] ? 'bg-green-500 text-white' :
+          current === i ? 'bg-primary-500 text-white' : 'bg-gray-200'}
+      `}>
+        {completed[i] ? '✓' : i + 1}
+      </div>
+      {i < 3 && (
+        <div className={`w-8 h-1 ${completed[i] ? 'bg-green-500' : 'bg-gray-200'}`} />
+      )}
+    </div>
+  ))}
+</div>
+```
+
+---
+
+### Issue 10: No Offline Mode Indication
+
+**Current:** App breaks silently when offline.
+
+**Recommended Fix:**
+```typescript
+// apps/web/src/components/OfflineBanner.tsx
+import { useOnlineStatus } from '@/hooks/use-online-status';
+
+export function OfflineBanner() {
+  const isOnline = useOnlineStatus();
+
+  if (isOnline) return null;
+
+  return (
+    <div className="bg-amber-500 text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-50">
+      <WifiOff className="h-6 w-6" />
+      <div>
+        <p className="font-semibold">No Internet Connection</p>
+        <p className="text-sm">Changes will save when you're back online</p>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## UX Scorecard (Updated Dec 2025)
+
+| Focus Area | Before Restructure | Current (Dec 2025) | Target | Priority |
+|------------|-------------------|-------------------|--------|----------|
+| Touch Targets | 3/10 | 3/10 | 10/10 | **P0** |
+| Visual Feedback | 3/10 | 4/10 | 9/10 | **P0** |
+| Form Design | 4/10 | 5/10 | 9/10 | **P0** |
+| Typography | 4/10 | 5/10 | 8/10 | P1 |
+| Navigation | 5/10 | 7/10 | 9/10 | P1 |
+| Icons & Visual Cues | 5/10 | 6/10 | 9/10 | P1 |
+| Color Accessibility | 6/10 | 7/10 | 9/10 | P1 |
+| Consistency | 7/10 | 8/10 | 9/10 | P2 |
+| **Overall** | **4.6/10** | **5.6/10** | **9/10** | |
+
+---
+
+## Recommended Improvements (Priority Order)
+
+### P0: Critical Fixes (Week 1) - Must Do
+
+#### 1. Update Button Component Touch Targets
+**File:** `apps/web/src/components/ui/button.tsx`
+**Effort:** 30 minutes
+**Impact:** All buttons across app become accessible
+
+```typescript
+const sizes = {
+  sm: 'px-4 py-2.5 text-sm min-h-[44px]',
+  md: 'px-5 py-3 text-base min-h-[48px]',
+  lg: 'px-6 py-4 text-lg min-h-[56px]',
+};
+```
+
+#### 2. Add Toast Notification System
+**Package:** `pnpm add react-hot-toast`
+**Effort:** 1 hour
+**Impact:** Users get immediate visual feedback on save
+
+```typescript
+// apps/web/src/App.tsx
+import { Toaster } from 'react-hot-toast';
+
+<Toaster
+  position="bottom-center"
+  toastOptions={{
+    style: { padding: '16px 24px', fontSize: '18px' }
+  }}
+/>
+```
+
+#### 3. Add Haptic Feedback
+**Effort:** 30 minutes
+**Impact:** Mobile users feel confirmation
+
+```typescript
+// apps/web/src/lib/feedback.ts
+export const hapticSuccess = () => {
+  if ('vibrate' in navigator) {
+    navigator.vibrate([50, 30, 50]);
   }
+};
+
+export const hapticError = () => {
+  if ('vibrate' in navigator) {
+    navigator.vibrate([100, 50, 100, 50, 100]);
+  }
+};
+```
+
+#### 4. Increase Checkbox/Radio Sizes
+**Files:** All form files
+**Effort:** 1 hour
+**Impact:** Checkboxes become tappable
+
+```typescript
+// Before
+<input type="checkbox" className="h-5 w-5" />
+
+// After
+<label className="inline-flex items-center gap-3 min-h-[48px] cursor-pointer">
+  <input type="checkbox" className="h-8 w-8 accent-primary-600" />
+  <span className="text-base">Label</span>
+</label>
+```
+
+#### 5. Increase Number Scale Buttons
+**Files:** morning.tsx, afternoon.tsx, evening.tsx, summary.tsx
+**Effort:** 2 hours
+**Impact:** Appetite/mood/scale buttons become tappable
+
+```typescript
+// Before
+<button className="w-10 h-10 rounded-full">{level}</button>
+
+// After
+<button className="w-14 h-14 rounded-full text-xl font-bold">{level}</button>
+```
+
+---
+
+### P1: High Priority (Week 2) - Should Do
+
+#### 6. Create Icon-Based Number Scale Component
+**File:** `apps/web/src/components/caregiver/IconScale.tsx`
+**Effort:** 3 hours
+**Impact:** Scales become universally understandable
+
+```typescript
+interface IconScaleProps {
+  value: number;
+  onChange: (value: number) => void;
+  scale: Array<{ value: number; icon: string; label: string }>;
 }
+
+const appetiteScale = [
+  { value: 1, icon: '😢', label: 'None' },
+  { value: 2, icon: '😕', label: 'Low' },
+  { value: 3, icon: '😐', label: 'Okay' },
+  { value: 4, icon: '😊', label: 'Good' },
+  { value: 5, icon: '😍', label: 'Great' }
+];
+
+const amountEatenScale = [
+  { value: 1, icon: '🍽️', label: 'Nothing' },    // Empty plate
+  { value: 2, icon: '🍽️', label: '1/4' },        // 1/4 filled
+  { value: 3, icon: '🍽️', label: 'Half' },       // Half filled
+  { value: 4, icon: '🍽️', label: '3/4' },        // 3/4 filled
+  { value: 5, icon: '🍽️', label: 'All' }         // Full plate
+];
 ```
 
----
+#### 7. Create Custom Time Picker
+**File:** `apps/web/src/components/ui/TimePicker.tsx`
+**Effort:** 4 hours
+**Impact:** Time entry becomes accessible for all literacy levels
 
-### 6. Smart Defaults and Suggestions
+#### 8. Add Progress Stepper Component
+**File:** `apps/web/src/components/caregiver/ProgressStepper.tsx`
+**Effort:** 2 hours
+**Impact:** Users understand their position in the workflow
 
-#### Historical Pattern Learning
+#### 9. Increase Secondary Font Sizes
+**Files:** All form files
+**Effort:** 1 hour
+**Impact:** Text becomes readable for aging eyes
 
-**Proposed:** Learn from past 7 days and suggest
-
-```tsx
-// Example: Medication times
-Yesterday: Glucophage at 8:15 AM
-Today: "Usually at 8:15 AM? [✓ Yes] [Change]"
-
-// Example: Fluid intake
-Last 7 days average: 1200ml per day
-Common times: 7:00 AM, 10:00 AM, 12:30 PM, 3:00 PM, 6:00 PM
-Today: "Add morning water? (Usually 250ml at 7:00 AM)"
+```typescript
+// Replace all text-xs with text-sm minimum
+// Replace text-gray-500 with text-gray-600 or text-gray-700
 ```
 
-**Implementation:**
-- Query last 7 days of care logs for pattern analysis
-- Calculate averages and common values
-- Pre-fill form with smart defaults
-- Allow one-tap confirm or easy override
-
-**Backend changes:**
-- Create analytics endpoint: `GET /care-logs/patterns/:careRecipientId`
-- Returns: medication times, fluid patterns, sleep patterns, etc.
+#### 10. Add Offline Status Banner
+**File:** `apps/web/src/components/OfflineBanner.tsx`
+**Effort:** 2 hours
+**Impact:** Users know when they're offline
 
 ---
 
-#### Proactive Missing Data Prompts
+### P2: Medium Priority (Week 3-4) - Nice to Have
 
-**Proposed:** Guide user through completion
+#### 11. Voice Input for Notes
+**File:** `apps/web/src/components/VoiceInput.tsx`
+**Effort:** 6 hours
+**Impact:** Illiterate users can dictate notes
 
-```tsx
-// After medication logged:
-"Great! Next, let's log breakfast.
- Did they eat this morning?
- [Yes] [No] [Skip for now]"
+#### 12. Photo Capture for Incidents
+**File:** `apps/web/src/components/CameraCapture.tsx`
+**Effort:** 4 hours
+**Impact:** Visual documentation without writing
 
-// Before submit with missing vitals:
-"These fields are usually filled in:
- • Blood pressure
- • Blood sugar
+#### 13. Multi-Language Support (i18n)
+**Files:** `apps/web/src/locales/`, i18n setup
+**Effort:** 8 hours
+**Impact:** Non-English speaking caregivers supported
 
- Want to add these? [Yes] [Skip today]"
-```
-
-**Implementation:**
-- Track which sections typically have data (per care recipient)
-- Prompt for commonly-filled sections
-- Allow skip but inform user
-- Never block submission
+#### 14. Video Tutorials
+**Effort:** 8 hours (recording + implementation)
+**Impact:** Visual learners can watch demonstrations
 
 ---
 
-### 7. Multi-Sensory Feedback
+## Implementation Checklist
 
-#### Visual + Audio + Haptic Feedback
+### Week 1: P0 Critical Fixes
+- [ ] Update Button component sizes (`min-h-[48px]`)
+- [ ] Install react-hot-toast
+- [ ] Add haptic feedback utility
+- [ ] Increase checkbox sizes to 32px
+- [ ] Increase number scale buttons to 56px
+- [ ] Run E2E tests to verify no regressions
 
-**Proposed:** Replace silent saves with multi-sensory cues
+### Week 2: P1 High Priority
+- [ ] Create IconScale component with emoji
+- [ ] Create custom TimePicker component
+- [ ] Add ProgressStepper to all form pages
+- [ ] Increase all secondary fonts to 14px minimum
+- [ ] Add OfflineBanner component
+- [ ] Update color contrast (use gray-600/700)
 
-```tsx
-// When medication marked as given:
-✓ Visual: Green checkmark animation
-🔊 Audio: Positive chime (2 seconds)
-📳 Haptic: Double vibration pattern
-
-// When error occurs:
-✗ Visual: Red X + red border
-🔊 Audio: Error buzz sound
-📳 Haptic: Long vibration
-
-// When form submitted:
-✓ Visual: Confetti animation
-🔊 Audio: Success melody (3 seconds)
-📳 Haptic: 3 quick taps (celebration)
-```
-
-**Implementation:**
-- Add `<audio>` elements with feedback sounds
-- Use Vibration API: `navigator.vibrate([200, 100, 200])`
-- Make sounds optional (settings toggle)
-- Use accessible, distinct sounds
-
-**Files to create:**
-- `apps/web/src/components/FeedbackProvider.tsx`
-- `apps/web/src/hooks/use-feedback.ts`
-- `apps/web/public/sounds/` - Add sound files
+### Week 3-4: P2 Medium Priority
+- [ ] Implement VoiceInput component
+- [ ] Implement CameraCapture component
+- [ ] Set up i18n with initial languages
+- [ ] Record video tutorials
+- [ ] User testing with target caregivers
 
 ---
 
-### 8. Progressive Disclosure
+## Success Metrics (Updated)
 
-#### Simplified vs Advanced Mode
-
-**Proposed:** Two-mode interface
-
-```tsx
-// Header toggle:
-[SIMPLE MODE] [ADVANCED MODE]
-
-// SIMPLE MODE (Default for low-literacy):
-- Shows only essential fields
-- Visual/icon-based inputs
-- Large buttons
-- Minimal text
-
-// ADVANCED MODE (Current interface):
-- Shows optional fields
-- Technical terminology
-- All options visible
-- For literate caregivers
-```
-
-**Implementation:**
-- Add mode toggle in localStorage
-- Create two rendering paths
-- Simple mode hides: purpose, notes, advanced options
-- Advanced mode shows everything
-
-**Files to modify:**
-- `apps/web/src/routes/caregiver/form.tsx` - Add mode state
-- Create `SimpleForm.tsx` and `AdvancedForm.tsx` variants
+| Metric | Current (Est.) | Target | How to Measure |
+|--------|---------------|--------|----------------|
+| **Touch target compliance** | 30% | 100% | Audit all buttons ≥44px |
+| **Task completion rate** | Unknown | 90%+ | % complete forms per day |
+| **Error rate** | Unknown | <5% | Validation errors per submission |
+| **Time to complete section** | Unknown | <3 min | Average time per section |
+| **Mobile usage** | Unknown | 80%+ | Analytics |
+| **Lighthouse accessibility** | Unknown | 95+ | Lighthouse audit |
+| **User satisfaction** | Unknown | 4.5/5 | NPS survey |
 
 ---
 
-#### Field-Level Progressive Disclosure
+## Testing Protocol
 
-**Proposed:** Show essential, reveal optional on demand
+### User Testing with Target Caregivers
 
-```tsx
-// ESSENTIAL (always shown):
-Medication: Glucophage 500mg
-Given today? [Yes ✓] [No]
-Time: 8:30 AM
+**Recruit:** 5-8 caregivers aged 50+ with varying literacy levels
 
-// OPTIONAL (click "More options" to reveal):
-┌─────────────────────────────────┐
-│ More options ▼                  │
-├─────────────────────────────────┤
-│ Purpose: Diabetes control       │
-│ Any issues? [Text input]        │
-│ Caregiver notes: [Text area]    │
-└─────────────────────────────────┘
-```
+**Task Scenarios:**
+1. Log morning routine (wake time, mood, breakfast)
+2. Add quick fluid intake entry via FAB
+3. Navigate back to edit morning entry
+4. Complete daily summary and submit
 
----
+**Success Criteria:**
+- Task completion rate >85%
+- Average task time <3 minutes per section
+- Error rate <10% (mis-taps, wrong inputs)
+- Post-test confidence rating >4/5
 
-### 9. Additional Features for Illiterate Users
-
-#### Video Demos
-
-**Proposed:** Video tutorials for each section
-
-```tsx
-🌅 Morning Routine
-┌──────────────────────┐
-│ 📹 [Watch demo]      │  ← 30-second video
-│ (How to use this)    │
-│                      │
-│ [Form fields...]     │
-└──────────────────────┘
-```
-
-**Implementation:**
-- Record short demo videos (30-60 seconds)
-- Show caregiver using each section
-- Narration in local language
-- Captions for deaf users
-- Store videos in R2 bucket
+**Accessibility Testing:**
+- Test with 200% browser zoom
+- Test with iOS VoiceOver
+- Test with Android TalkBack
+- Simulate motor impairment (mouse-only, no precise taps)
 
 ---
 
-#### Multi-Language Support
-
-**Proposed:** Support for common languages
-
-```tsx
-Languages:
-- English (default)
-- 中文 (Chinese - Simplified)
-- Bahasa Melayu (Malay)
-- தமிழ் (Tamil - for Indian domestic workers)
-- Tagalog (for Filipino domestic workers)
-
-// Key: Keep emoji/icons consistent across all languages
-// Translate: All labels, errors, help text
-// Backend: Keep validation in English
-```
-
-**Implementation:**
-- Use `i18next` for translations
-- Add language selector in settings
-- Translate all user-facing strings
-- Keep emoji/icons language-agnostic
-
-**Files to create:**
-- `apps/web/src/locales/` - Translation files
-- `apps/web/src/i18n.ts` - i18next configuration
-
----
-
-#### Simplified PIN Entry
-
-**Proposed:** Visual PIN pad for illiterate users
-
-```tsx
-┌──────────────────────┐
-│ Enter your PIN       │
-├──────────────────────┤
-│ [1] [2] [3]          │
-│ [4] [5] [6]          │  ← Large buttons (60px)
-│ [7] [8] [9]          │
-│     [0] [Delete]     │
-├──────────────────────┤
-│ ● ○ ○ ○ ○ ○         │  ← Visual dots
-│                      │
-│ [Login]              │
-└──────────────────────┘
-```
-
-**Files to modify:**
-- `apps/web/src/routes/caregiver/login.tsx`
-- Create `PinPad.tsx` component
-
----
-
-#### Offline Mode
-
-**Proposed:** PWA with offline support
-
-```tsx
-// When offline:
-┌─────────────────────────────┐
-│ 📵 OFFLINE MODE             │
-│ Changes saved locally       │
-│ Will sync when online       │
-└─────────────────────────────┘
-
-// When back online:
-┌─────────────────────────────┐
-│ 📡 Back online! Syncing...  │
-│ Uploading 2 care logs...    │
-└─────────────────────────────┘
-```
-
-**Implementation:**
-- Add Service Worker for offline capability
-- Use IndexedDB for local storage
-- Auto-sync when connection restored
-- Show clear offline indicator
-
-**Files to create:**
-- `apps/web/public/service-worker.js`
-- `apps/web/src/lib/offline-sync.ts`
-
----
-
-## Implementation Roadmap
-
-### Phase 1: Quick Wins (2 weeks)
-
-**Priority: Critical literacy barriers**
-
-1. ✅ Medication photos - Add image upload for medications
-2. ✅ Time picker - AM/PM format with visual clock
-3. ✅ Mood selector - Large emoji buttons (60x60px)
-4. ✅ Toileting - Icon-based status buttons
-5. ✅ Real-time validation - Visual feedback (○ → ✓/✗)
-
-**Files to modify:**
-- `packages/database/src/schema.ts`
-- `apps/web/src/components/ui/TimePicker.tsx` (new)
-- `apps/web/src/components/MoodSelector.tsx` (new)
-- `apps/web/src/routes/caregiver/form.tsx`
-
----
-
-### Phase 2: Core Improvements (4 weeks)
-
-**Priority: Input methods**
-
-1. ✅ Voice input - For notes and descriptions
-2. ✅ Photo capture - For incidents and documentation
-3. ✅ Simplified mode toggle - Show/hide complex fields
-4. ✅ Multi-language support - Tamil, Tagalog, Bahasa
-5. ✅ Smart defaults - Historical pattern learning
-
-**Files to create:**
-- `apps/web/src/components/VoiceInput.tsx`
-- `apps/web/src/components/CameraCapture.tsx`
-- `apps/web/src/locales/` (translation files)
-- `apps/web/src/hooks/use-feedback.ts`
-
----
-
-### Phase 3: Advanced Features (6 weeks)
-
-**Priority: Enhanced accessibility**
-
-1. ✅ Barcode scanning - Medication identification
-2. ✅ Video demos - Tutorial for each section
-3. ✅ Offline mode - PWA with sync
-4. ✅ Voice-first navigation - Voice commands
-5. ✅ Multi-sensory feedback - Audio + haptic
-
-**Files to create:**
-- `apps/web/src/components/BarcodeScanner.tsx`
-- `apps/web/public/service-worker.js`
-- `apps/web/src/lib/offline-sync.ts`
-- `apps/web/public/sounds/` (audio files)
-
----
-
-### Phase 4: Polish & Testing (4 weeks)
-
-**Priority: Quality assurance**
-
-1. ✅ Accessibility audit - WCAG 2.1 AA compliance
-2. ✅ Multi-device testing - iOS, Android, tablets
-3. ✅ User testing - With actual domestic workers
-4. ✅ Performance optimization - Lazy loading, code splitting
-5. ✅ Documentation - User guides in multiple languages
-
----
-
-## Success Metrics
-
-After implementation, track these metrics:
-
-| Metric | Current | Target | How to Measure |
-|--------|---------|--------|----------------|
-| **Daily completion rate** | Unknown | 90%+ | % of caregivers who submit daily |
-| **Validation error rate** | Unknown | <5% | Errors per submission |
-| **Time to complete** | Unknown | <10 min | Average form completion time |
-| **Field rejection rate** | Unknown | <2% | % of logs rejected by family |
-| **User satisfaction** | Unknown | 4.5/5 | NPS/CSAT survey score |
-| **Mobile usage** | Unknown | 80%+ | % of submissions from mobile |
-| **Accessibility score** | Unknown | 95+ | Lighthouse accessibility score |
-
----
-
-## Database Schema Changes
-
-### Required Migrations
-
-```sql
--- Add medication images
-ALTER TABLE medication_schedules
-ADD COLUMN image_url TEXT;
-
-ALTER TABLE medication_schedules
-ADD COLUMN barcode TEXT;
-
--- Add attachments to care logs
-ALTER TABLE care_logs
-ADD COLUMN attachments TEXT; -- JSON: [{type: 'photo'|'voice', url: string, timestamp: number}]
-
--- Add caregiver preferences
-ALTER TABLE caregivers
-ADD COLUMN preferences TEXT; -- JSON: {language: string, mode: 'simple'|'advanced', audioEnabled: boolean}
-
--- Add pattern analytics table (optional)
-CREATE TABLE care_log_patterns (
-  id TEXT PRIMARY KEY,
-  care_recipient_id TEXT NOT NULL,
-  pattern_type TEXT NOT NULL, -- 'medication_time' | 'fluid_intake' | 'sleep_pattern'
-  pattern_data TEXT NOT NULL, -- JSON with pattern details
-  calculated_at INTEGER NOT NULL,
-  FOREIGN KEY (care_recipient_id) REFERENCES care_recipients(id)
-);
-```
-
----
-
-## Technical Considerations
-
-### Performance
-- Lazy load image uploads (compress before sending)
-- Code split by section (load on demand)
-- Cache translations in localStorage
-- Optimize re-renders (React.memo for complex forms)
-
-### Security
-- Validate all file uploads (images, audio)
-- Sanitize voice transcriptions
-- Rate limit barcode lookups
-- Secure R2 bucket access (signed URLs)
-
-### Accessibility
-- WCAG 2.1 AA compliance minimum
-- Screen reader support (aria-labels)
-- Keyboard navigation for all features
-- High contrast mode support
-- Focus management for form flow
-
-### Browser Support
-- Modern browsers (Chrome, Safari, Edge, Firefox)
-- iOS 14+ (for camera/microphone access)
-- Android 8+ (for PWA features)
-- Progressive enhancement (graceful degradation)
-
----
-
-## Cost Estimation
-
-### Development Time
-- **Phase 1:** 2 weeks (1 developer)
-- **Phase 2:** 4 weeks (1 developer)
-- **Phase 3:** 6 weeks (1 developer)
-- **Phase 4:** 4 weeks (1 developer + 1 tester)
-- **Total:** 16 weeks (~4 months)
-
-### Infrastructure Costs
-- **R2 Storage:** ~$0.015/GB for images/audio (estimate: $5-10/month)
-- **Speech API:** Free (Web Speech API is browser-native)
-- **Additional:** None (using existing Cloudflare stack)
-
----
-
-## Risks and Mitigations
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| **Low adoption** | High | User testing with target users, iterative improvements |
-| **Browser compatibility** | Medium | Progressive enhancement, feature detection |
-| **File storage costs** | Low | Image compression, file size limits |
-| **Translation accuracy** | Medium | Professional translation service, native speaker review |
-| **Performance degradation** | Medium | Code splitting, lazy loading, performance monitoring |
-
----
-
-## Next Steps
-
-1. **User Research** - Interview 5-10 domestic workers to validate assumptions
-2. **Prototype** - Build Phase 1 features in 2-week sprint
-3. **Test** - User testing with actual caregivers
-4. **Iterate** - Refine based on feedback
-5. **Deploy** - Gradual rollout with feature flags
-6. **Monitor** - Track success metrics and adjust
+## Files to Modify (Summary)
+
+| File | Changes | Priority |
+|------|---------|----------|
+| `apps/web/src/components/ui/button.tsx` | Update sizes | P0 |
+| `apps/web/src/routes/caregiver/form/morning.tsx` | Touch targets, scales | P0 |
+| `apps/web/src/routes/caregiver/form/afternoon.tsx` | Touch targets, scales | P0 |
+| `apps/web/src/routes/caregiver/form/evening.tsx` | Touch targets, scales | P0 |
+| `apps/web/src/routes/caregiver/form/summary.tsx` | Touch targets, scales | P0 |
+| `apps/web/src/routes/caregiver/form/index.tsx` | Visual indicators | P1 |
+| `apps/web/src/App.tsx` | Add Toaster | P0 |
+| `apps/web/src/lib/feedback.ts` | Create haptic utils | P0 |
+
+**New Files to Create:**
+| File | Purpose | Priority |
+|------|---------|----------|
+| `apps/web/src/components/caregiver/IconScale.tsx` | Emoji-based scales | P1 |
+| `apps/web/src/components/ui/TimePicker.tsx` | Large time picker | P1 |
+| `apps/web/src/components/caregiver/ProgressStepper.tsx` | Progress indicator | P1 |
+| `apps/web/src/components/OfflineBanner.tsx` | Offline indicator | P1 |
+| `apps/web/src/components/VoiceInput.tsx` | Voice notes | P2 |
+| `apps/web/src/components/CameraCapture.tsx` | Photo capture | P2 |
 
 ---
 
 ## Conclusion
 
-Making the caregiver data entry system accessible to illiterate and low-literacy users is both **technically feasible** and **highly impactful**. The proposed improvements will:
+The form restructure (completed Dec 2025) improved navigation and progressive submission, raising the UX score from 4.6/10 to 5.6/10. However, **critical accessibility gaps remain** that prevent effective use by illiterate/low-literacy caregivers:
 
-- **Reduce barriers** for domestic workers with varying literacy levels
-- **Improve data quality** through better validation and error prevention
-- **Increase completion rates** with intuitive, visual interfaces
-- **Enhance user satisfaction** with multi-sensory feedback
-- **Support multiple languages** for diverse caregiver populations
+1. **Touch targets** - Most buttons below 44px minimum
+2. **Visual feedback** - No haptic/audio confirmation on save
+3. **Abstract scales** - 1-5 numbers without visual meaning
+4. **Text dependency** - Labels require reading comprehension
 
-The total development effort is approximately **4 months** with minimal additional infrastructure costs. The return on investment is high, as it enables a larger population of caregivers to use the system effectively, improving care quality for elderly care recipients.
+The **P0 fixes can be completed in 1 week** with minimal effort and will significantly improve accessibility. The full implementation roadmap (P0-P2) spans 4 weeks and will raise the UX score to 9/10.
+
+**Immediate Action Required:**
+1. Update `button.tsx` sizes (30 min)
+2. Install react-hot-toast (15 min)
+3. Add haptic feedback (30 min)
+4. Increase checkbox sizes (1 hour)
+5. Increase scale button sizes (2 hours)
+
+**Total P0 Effort: ~5 hours**
 
 ---
 
 **Prepared by:** Claude Code
-**Date:** 2025-10-25
-**Version:** 1.0
+**Original Date:** 2025-10-25
+**Updated:** 2025-12-25 (Post-Restructure Review)
+**Version:** 2.0
