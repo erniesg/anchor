@@ -373,13 +373,34 @@ function MorningFormComponent() {
     };
     const currentToken = token;
     const currentLogId = careLogId;
+    const currentCareRecipientId = careRecipient?.id;
 
     // Set new timeout for auto-save
     autoSaveTimeoutRef.current = setTimeout(async () => {
-      if (hasUnsavedChanges.current && currentLogId && currentToken && !isSaving) {
+      if (hasUnsavedChanges.current && currentToken && currentCareRecipientId && !isSaving) {
         try {
+          let logIdToUse = currentLogId;
+
+          // Create care log if it doesn't exist
+          if (!logIdToUse) {
+            const today = new Date().toISOString().split('T')[0];
+            const newLog = await authenticatedApiCall<CareLog>(
+              '/care-logs',
+              currentToken,
+              {
+                method: 'POST',
+                body: JSON.stringify({
+                  careRecipientId: currentCareRecipientId,
+                  logDate: today,
+                }),
+              }
+            );
+            logIdToUse = newLog.id;
+            setCareLogId(logIdToUse);
+          }
+
           await saveMutation.mutateAsync({
-            logId: currentLogId,
+            logId: logIdToUse,
             payload: currentPayload,
             authToken: currentToken,
           });
@@ -395,7 +416,7 @@ function MorningFormComponent() {
         clearTimeout(autoSaveTimeoutRef.current);
       }
     };
-  }, [wakeTime, mood, lastNightQuality, lastNightWakings, lastNightWakingReasons, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime, breakfastTime, breakfastAmount, breakfastAssistance, breakfastSwallowingIssues, medications, careLogId, isSaving, markDirty, token, saveMutation]);
+  }, [wakeTime, mood, lastNightQuality, lastNightWakings, lastNightWakingReasons, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime, breakfastTime, breakfastAmount, breakfastAssistance, breakfastSwallowingIssues, medications, careLogId, isSaving, markDirty, token, saveMutation, careRecipient]);
 
   // Submit section mutation - accepts ALL needed data to avoid stale closures
   const submitSectionMutation = useMutation({

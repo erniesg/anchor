@@ -124,9 +124,10 @@ test.describe('Comprehensive Form E2E Test', () => {
     // === WAKE UP SECTION ===
     console.log('Filling Wake Up section...');
 
-    // Wake Time (REQUIRED) - find textbox in the Wake Up section (h2 level)
-    const wakeUpSection = page.locator('h2:has-text("Wake Up")').locator('..').locator('..');
-    const wakeTimeInput = wakeUpSection.locator('input').first();
+    // Wake Time (REQUIRED) - find the first time input on the page (it's in the Wake Up section)
+    // Use a simple locator since wake time is the first time input on the morning form
+    const wakeTimeInput = page.locator('input[type="time"]').first();
+    await wakeTimeInput.waitFor({ state: 'visible', timeout: 10000 });
     await wakeTimeInput.click();
     await wakeTimeInput.fill('07:30');
     await wakeTimeInput.blur();
