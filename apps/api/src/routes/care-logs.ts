@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AppContext } from '../index';
 import { careLogs, caregivers, careLogAudit, careLogViews } from '@anchor/database/schema';
 import { createDbClient } from '@anchor/database';
-import { eq, desc, and, or, isNotNull, gt } from 'drizzle-orm';
+import { eq, desc, and, or, isNotNull, gt, sql } from 'drizzle-orm';
 import { caregiverOnly, familyAdminOnly, familyMemberAccess } from '../middleware/rbac';
 import { requireCareLogOwnership, requireLogInvalidation, requireCareRecipientAccess } from '../middleware/permissions';
 import { caregiverHasAccess, canAccessCareRecipient } from '../lib/access-control';
@@ -1149,22 +1149,42 @@ careLogsRoute.get('/recipient/:recipientId/today', ...familyMemberAccess, requir
     const db = c.get('db');
     const userId = c.get('userId');
 
-    // Get logs that are either submitted OR have completed sections
-    const log = await db
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+
+    // First try to get TODAY's log with completed sections or submitted status
+    let log = await db
       .select()
       .from(careLogs)
       .where(
         and(
           eq(careLogs.careRecipientId, recipientId),
+          sql`date(${careLogs.logDate}) = ${today}`,
           or(
             eq(careLogs.status, 'submitted'),
             isNotNull(careLogs.completedSections)
           )
         )
       )
-      .orderBy(desc(careLogs.logDate), desc(careLogs.updatedAt))
+      .orderBy(desc(careLogs.updatedAt))
       .limit(1)
       .get();
+
+    // If no today's log, fall back to most recent submitted log
+    if (!log) {
+      log = await db
+        .select()
+        .from(careLogs)
+        .where(
+          and(
+            eq(careLogs.careRecipientId, recipientId),
+            eq(careLogs.status, 'submitted')
+          )
+        )
+        .orderBy(desc(careLogs.logDate), desc(careLogs.updatedAt))
+        .limit(1)
+        .get();
+    }
 
     if (!log) {
       return c.json(null);
