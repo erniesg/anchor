@@ -178,7 +178,7 @@ function StatusBadge({ status }: { status?: string }) {
 
 function DashboardComponent() {
   const navigate = useNavigate();
-  const { user, token, careRecipient, setCareRecipient: setAuthCareRecipient, refreshCareRecipient } = useAuth();
+  const { user, token, careRecipient, setCareRecipient: setAuthCareRecipient } = useAuth();
   const [viewMode, setViewMode] = useState<'today' | 'week' | 'month'>('today');
   const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, -1 = last week, etc.
   const [showHistoryModal, setShowHistoryModal] = useState(false);

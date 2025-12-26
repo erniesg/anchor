@@ -12,7 +12,6 @@ import {
   Moon,
   FileText,
   CheckCircle,
-  Clock,
   Droplets,
   Activity,
   AlertTriangle,
