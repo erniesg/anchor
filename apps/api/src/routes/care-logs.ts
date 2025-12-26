@@ -1433,11 +1433,11 @@ careLogsRoute.post('/:id/submit-section', ...caregiverOnly, requireCareLogOwners
       submittedBy: caregiverId,
     };
 
-    // Update the log (JSON.stringify completedSections for DB storage)
+    // Update the log (Drizzle handles JSON serialization with mode: 'json')
     await db
       .update(careLogs)
       .set({
-        completedSections: JSON.stringify(completedSections),
+        completedSections: completedSections,
         updatedAt: new Date(),
       })
       .where(eq(careLogs.id, logId));
