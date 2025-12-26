@@ -275,19 +275,28 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
           </div>
         )}
 
-        {/* Main FAB */}
+        {/* Main FAB - bright orange/red for visibility */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all ${
-            isOpen ? 'bg-gray-700 rotate-45' : 'bg-primary-600 hover:bg-primary-700'
+          className={`w-16 h-16 rounded-full shadow-xl flex items-center justify-center transition-all border-4 border-white ${
+            isOpen ? 'bg-gray-700 rotate-45' : 'bg-orange-500 hover:bg-orange-600 animate-pulse'
           }`}
+          style={{ boxShadow: '0 4px 20px rgba(249, 115, 22, 0.5)' }}
         >
           {isOpen ? (
-            <X className="h-6 w-6 text-white" />
+            <X className="h-7 w-7 text-white" />
           ) : (
-            <Plus className="h-6 w-6 text-white" />
+            <Plus className="h-7 w-7 text-white" />
           )}
         </button>
+        {/* Label below FAB when closed */}
+        {!isOpen && (
+          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap">
+            <span className="text-xs font-bold text-orange-600 bg-white px-2 py-0.5 rounded shadow">
+              Quick Log
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Modals */}
