@@ -103,10 +103,24 @@ interface MedicationAdherenceData {
   missed?: number;
 }
 
+interface CompletedSection {
+  submittedAt: string;
+  submittedBy: string;
+}
+
+interface CompletedSections {
+  morning?: CompletedSection;
+  afternoon?: CompletedSection;
+  evening?: CompletedSection;
+  dailySummary?: CompletedSection;
+}
+
 interface CareLog {
   id: string;
   logDate: string;
   status?: string;
+  completedSections?: CompletedSections;
+  hasUnviewedChanges?: boolean;
   bloodPressure?: string;
   pulseRate?: number;
   oxygenLevel?: number;
@@ -532,6 +546,66 @@ function DashboardComponent() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Section Progress for Today */}
+            {viewMode === 'today' && todayLog?.completedSections && (
+              <Card className="border border-primary-100">
+                <CardContent className="py-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Caregiver Progress</h3>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { key: 'morning', label: 'Morning', icon: '🌅' },
+                      { key: 'afternoon', label: 'Afternoon', icon: '☀️' },
+                      { key: 'evening', label: 'Evening', icon: '🌙' },
+                      { key: 'dailySummary', label: 'Summary', icon: '📋' },
+                    ].map((section) => {
+                      const isComplete = !!todayLog.completedSections?.[section.key as keyof CompletedSections];
+                      const completedAt = todayLog.completedSections?.[section.key as keyof CompletedSections]?.submittedAt;
+                      return (
+                        <div
+                          key={section.key}
+                          className={`text-center p-2 rounded-lg transition-colors ${
+                            isComplete
+                              ? 'bg-green-100 border border-green-200'
+                              : 'bg-gray-50 border border-gray-200'
+                          }`}
+                        >
+                          <span className="text-lg block">{section.icon}</span>
+                          <span className={`text-xs font-medium ${isComplete ? 'text-green-800' : 'text-gray-500'}`}>
+                            {section.label}
+                          </span>
+                          {isComplete && completedAt && (
+                            <p className="text-[10px] text-green-600 mt-0.5">
+                              {new Date(completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                          {!isComplete && (
+                            <p className="text-[10px] text-gray-400 mt-0.5">Pending</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Progress bar */}
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                      <span>Day Progress</span>
+                      <span>
+                        {Object.keys(todayLog.completedSections || {}).length}/4 sections
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all ${
+                          todayLog.status === 'submitted' ? 'bg-green-500' : 'bg-primary-500'
+                        }`}
+                        style={{ width: `${(Object.keys(todayLog.completedSections || {}).length / 4) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Alerts */}
             {viewMode === 'today' && todayLog?.emergencyFlag && (

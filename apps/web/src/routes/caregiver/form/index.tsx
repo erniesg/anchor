@@ -36,12 +36,28 @@ interface CompletedSections {
   dailySummary?: CompletedSection;
 }
 
+interface FluidEntry {
+  name: string;
+  time: string;
+  amountMl: number;
+}
+
 interface TodayResponse {
   id: string;
   status: 'draft' | 'submitted' | 'invalidated';
   completedSections?: CompletedSections;
   careRecipientId: string;
   logDate: string;
+  // Data for Today's Progress card
+  fluids?: FluidEntry[];
+  totalFluidIntake?: number;
+  morningExerciseSession?: { exercises?: unknown[] };
+  afternoonExerciseSession?: { exercises?: unknown[] };
+  physicalActivity?: { exerciseType?: string[] };
+  nearFalls?: string;
+  actualFalls?: string;
+  bowelMovements?: { frequency?: number };
+  urination?: { frequency?: number };
 }
 
 function FormDashboardComponent() {
@@ -178,6 +194,7 @@ function FormDashboardComponent() {
 
   const completedCount = Object.keys(completedSections).length;
   const totalSections = 4;
+  const progressPercent = (completedCount / totalSections) * 100;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-accent-50 pb-24">
@@ -195,17 +212,6 @@ function FormDashboardComponent() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {logStatus === 'submitted' ? (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                  <CheckCircle className="h-4 w-4" />
-                  Submitted
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
-                  <Clock className="h-4 w-4" />
-                  {completedCount}/{totalSections} sections
-                </span>
-              )}
               <Button
                 onClick={() => navigate({ to: '/caregiver/pack-list' })}
                 variant="outline"
@@ -232,6 +238,42 @@ function FormDashboardComponent() {
               Logged in as: {caregiver.username}
             </p>
           )}
+
+          {/* Overall Day Progress Bar */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">
+                {logStatus === 'submitted' ? (
+                  <span className="flex items-center gap-1 text-green-700">
+                    <CheckCircle className="h-4 w-4" />
+                    Day Complete!
+                  </span>
+                ) : (
+                  `Today's Progress`
+                )}
+              </span>
+              <span className={`text-sm font-semibold ${
+                logStatus === 'submitted' ? 'text-green-600' :
+                completedCount === totalSections ? 'text-amber-600' : 'text-gray-600'
+              }`}>
+                {completedCount}/{totalSections} sections
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div
+                className={`h-3 rounded-full transition-all duration-500 ${
+                  logStatus === 'submitted' ? 'bg-green-500' :
+                  completedCount === totalSections ? 'bg-amber-500' : 'bg-primary-500'
+                }`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            {completedCount === totalSections && logStatus !== 'submitted' && (
+              <p className="text-xs text-amber-600 mt-1 text-center">
+                All sections done! Scroll down to submit the day.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -354,21 +396,43 @@ function FormDashboardComponent() {
         <div className="max-w-lg mx-auto px-4 mt-6">
           <Card>
             <CardContent className="py-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Today's Progress</h3>
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Droplets className="h-4 w-4 text-blue-500" />
-                  <span>Fluids logged</span>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Today's Activity</h3>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <Droplets className="h-5 w-5 text-blue-500 mx-auto mb-1" />
+                  <p className="text-lg font-bold text-blue-700">
+                    {todayLog.totalFluidIntake || (todayLog.fluids?.reduce((sum, f) => sum + (f.amountMl || 0), 0)) || 0}
+                  </p>
+                  <p className="text-xs text-blue-600">ml fluids</p>
                 </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Activity className="h-4 w-4 text-green-500" />
-                  <span>Exercise sessions</span>
+                <div className="p-2 bg-green-50 rounded-lg">
+                  <Activity className="h-5 w-5 text-green-500 mx-auto mb-1" />
+                  <p className="text-lg font-bold text-green-700">
+                    {(todayLog.morningExerciseSession?.exercises?.length || 0) +
+                     (todayLog.afternoonExerciseSession?.exercises?.length || 0) +
+                     (todayLog.physicalActivity?.exerciseType?.length || 0)}
+                  </p>
+                  <p className="text-xs text-green-600">exercises</p>
                 </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  <span>Incidents</span>
+                <div className="p-2 bg-purple-50 rounded-lg">
+                  <span className="text-xl block mb-1">🚽</span>
+                  <p className="text-lg font-bold text-purple-700">
+                    {(todayLog.bowelMovements?.frequency || 0) + (todayLog.urination?.frequency || 0)}
+                  </p>
+                  <p className="text-xs text-purple-600">bathroom</p>
                 </div>
               </div>
+              {/* Show incidents if any */}
+              {(todayLog.nearFalls && todayLog.nearFalls !== 'none') || (todayLog.actualFalls && todayLog.actualFalls !== 'none') ? (
+                <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm text-amber-800">
+                      {todayLog.actualFalls && todayLog.actualFalls !== 'none' ? 'Fall reported' : 'Near fall reported'}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </div>
