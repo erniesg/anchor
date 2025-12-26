@@ -179,7 +179,7 @@ function StatusBadge({ status }: { status?: string }) {
 function DashboardComponent() {
   const navigate = useNavigate();
   const { user, token, careRecipient, setCareRecipient: setAuthCareRecipient } = useAuth();
-  const [viewMode, setViewMode] = useState<'today' | 'week' | 'month'>('today');
+  const [viewMode, setViewMode] = useState<'today' | 'week' | 'activity'>('today');
   const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, -1 = last week, etc.
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
@@ -275,7 +275,7 @@ function DashboardComponent() {
         return [];
       }
     },
-    enabled: !!todayLog?.id && !!token && showHistoryModal,
+    enabled: !!todayLog?.id && !!token && (showHistoryModal || viewMode === 'activity'),
   });
 
   // Auto-mark as viewed after 3 seconds when there are unviewed changes
@@ -477,14 +477,14 @@ function DashboardComponent() {
                         Week
                       </button>
                       <button
-                        onClick={() => setViewMode('month')}
+                        onClick={() => setViewMode('activity')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          viewMode === 'month'
+                          viewMode === 'activity'
                             ? 'bg-white text-primary-700 shadow-sm'
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
                       >
-                        Month
+                        Activity
                       </button>
                     </div>
 
@@ -538,89 +538,143 @@ function DashboardComponent() {
               </CardContent>
             </Card>
 
-            {/* Section Progress for Today - Always show when in today view */}
-            {viewMode === 'today' && (
-              <Card className="border border-primary-100 bg-primary-50/30">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-gray-700">Caregiver Progress Today</h3>
-                    {todayLog?.id && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowHistoryModal(true)}
-                        className="text-xs"
-                      >
-                        <History className="h-3 w-3 mr-1" />
-                        View Changes
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { key: 'morning', label: 'Morning', icon: '🌅' },
-                      { key: 'afternoon', label: 'Afternoon', icon: '☀️' },
-                      { key: 'evening', label: 'Evening', icon: '🌙' },
-                      { key: 'dailySummary', label: 'Summary', icon: '📋' },
-                    ].map((section) => {
-                      const isComplete = !!todayLog?.completedSections?.[section.key as keyof CompletedSections];
-                      const completedAt = todayLog?.completedSections?.[section.key as keyof CompletedSections]?.submittedAt;
-                      return (
-                        <div
-                          key={section.key}
-                          className={`text-center p-2 rounded-lg transition-colors ${
-                            isComplete
-                              ? 'bg-green-100 border border-green-200'
-                              : 'bg-gray-50 border border-gray-200'
-                          }`}
+            {/* Unified Today's Progress - Contextual display based on state */}
+            {viewMode === 'today' && (() => {
+              const completedCount = Object.keys(todayLog?.completedSections || {}).length;
+              const hasAnytimeData = todayLog && (
+                (todayLog.fluids && (todayLog.fluids as FluidEntry[]).length > 0) ||
+                (todayLog.totalFluidIntake && todayLog.totalFluidIntake > 0) ||
+                todayLog.bowelMovements ||
+                todayLog.urination ||
+                todayLog.morningExerciseSession ||
+                todayLog.afternoonExerciseSession
+              );
+
+              // State 1: No log at all
+              if (!todayLog) {
+                return (
+                  <Card className="border-2 border-dashed border-gray-200">
+                    <CardContent className="py-8 text-center">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <span className="text-2xl">📋</span>
+                      </div>
+                      <h3 className="font-medium text-gray-700">Waiting for today's care log</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Caregiver will submit sections throughout the day
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
+              }
+
+              // State 2: Day fully submitted
+              if (todayLog.status === 'submitted') {
+                return (
+                  <Card className="border-2 border-green-300 bg-green-50">
+                    <CardContent className="py-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">✅</span>
+                          <div>
+                            <h3 className="font-semibold text-green-800">Day Complete</h3>
+                            <p className="text-xs text-green-600">All sections submitted</p>
+                          </div>
+                        </div>
+                        {todayLog.id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowHistoryModal(true)}
+                            className="text-xs"
+                          >
+                            <History className="h-3 w-3 mr-1" />
+                            Audit Log
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }
+
+              // State 3: Some progress (show unified progress)
+              return (
+                <Card className="border border-primary-100">
+                  <CardContent className="py-4">
+                    {/* Header with progress */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-700">Today's Progress</h3>
+                        <p className="text-xs text-gray-500">
+                          {completedCount === 0
+                            ? 'Logging in progress'
+                            : `${completedCount}/4 sections submitted`}
+                        </p>
+                      </div>
+                      {todayLog.id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowHistoryModal(true)}
+                          className="text-xs"
                         >
-                          <span className="text-lg block">{section.icon}</span>
-                          <span className={`text-xs font-medium ${isComplete ? 'text-green-800' : 'text-gray-500'}`}>
-                            {section.label}
-                          </span>
-                          {isComplete && completedAt && (
-                            <p className="text-[10px] text-green-600 mt-0.5">
-                              {new Date(completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </p>
+                          <History className="h-3 w-3 mr-1" />
+                          Changes
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Compact section indicators */}
+                    <div className="flex gap-1 mb-3">
+                      {[
+                        { key: 'morning', icon: '🌅' },
+                        { key: 'afternoon', icon: '☀️' },
+                        { key: 'evening', icon: '🌙' },
+                        { key: 'dailySummary', icon: '📋' },
+                      ].map((section) => {
+                        const isComplete = !!todayLog.completedSections?.[section.key as keyof CompletedSections];
+                        return (
+                          <div
+                            key={section.key}
+                            className={`flex-1 h-2 rounded-full ${
+                              isComplete ? 'bg-green-500' : 'bg-gray-200'
+                            }`}
+                            title={`${section.icon} ${isComplete ? 'Complete' : 'Pending'}`}
+                          />
+                        );
+                      })}
+                    </div>
+
+                    {/* Show anytime data if sections not yet complete */}
+                    {completedCount === 0 && hasAnytimeData && (
+                      <div className="bg-blue-50 rounded-lg p-3 mt-2">
+                        <p className="text-xs font-medium text-blue-800 mb-2">Live tracking:</p>
+                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                          {todayLog.totalFluidIntake !== undefined && todayLog.totalFluidIntake > 0 && (
+                            <div className="bg-white rounded p-2">
+                              <span className="text-lg">💧</span>
+                              <p className="font-medium text-blue-700">{todayLog.totalFluidIntake}ml</p>
+                            </div>
                           )}
-                          {!isComplete && (
-                            <p className="text-[10px] text-gray-400 mt-0.5">Pending</p>
+                          {(todayLog.bowelMovements || todayLog.urination) && (
+                            <div className="bg-white rounded p-2">
+                              <span className="text-lg">🚽</span>
+                              <p className="font-medium text-purple-700">Logged</p>
+                            </div>
+                          )}
+                          {(todayLog.morningExerciseSession || todayLog.afternoonExerciseSession) && (
+                            <div className="bg-white rounded p-2">
+                              <span className="text-lg">🏃</span>
+                              <p className="font-medium text-green-700">Active</p>
+                            </div>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
-                  {/* Progress bar */}
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                      <span>Day Progress</span>
-                      <span>
-                        {Object.keys(todayLog?.completedSections || {}).length}/4 sections
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all ${
-                          todayLog?.status === 'submitted' ? 'bg-green-500' : 'bg-primary-500'
-                        }`}
-                        style={{ width: `${(Object.keys(todayLog?.completedSections || {}).length / 4) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                  {/* No progress message */}
-                  {!todayLog && (
-                    <p className="text-xs text-gray-500 text-center mt-2">
-                      Waiting for caregiver to start today's log
-                    </p>
-                  )}
-                  {todayLog && Object.keys(todayLog.completedSections || {}).length === 0 && (
-                    <p className="text-xs text-amber-600 text-center mt-2">
-                      Caregiver has started logging but hasn't submitted any sections yet
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {/* Alerts */}
             {viewMode === 'today' && todayLog?.emergencyFlag && (
@@ -1086,24 +1140,7 @@ function DashboardComponent() {
                       <p className="text-gray-600">Loading today's care log...</p>
                     </CardContent>
                   </Card>
-                ) : !todayLog ? (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <div className="py-8">
-                    <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p className="text-gray-600 mb-2">Waiting for first section</p>
-                    <p className="text-sm text-gray-500">
-                      Data will appear here once the caregiver submits Morning, Afternoon, Evening, or Daily Summary
-                    </p>
-                    <p className="text-xs text-gray-400 mt-4">
-                      Check the Caregiver Progress section above for real-time status
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
+                ) : !todayLog ? null : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Morning Routine */}
                 <Card>
@@ -1229,7 +1266,7 @@ function DashboardComponent() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Amount Eaten:</span>
-                          <span className="font-medium">{todayLog.meals.breakfast.amountEaten}%</span>
+                          <span className="font-medium">{todayLog.meals.breakfast.amountEaten}/5</span>
                         </div>
                       </div>
                     ) : (
@@ -2571,13 +2608,185 @@ function DashboardComponent() {
               </>
             )}
 
-            {/* Month View - Coming Soon */}
-            {viewMode === 'month' && (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <p className="text-gray-600">Month view coming soon</p>
-                </CardContent>
-              </Card>
+            {/* Activity View - Audit History & Trends */}
+            {viewMode === 'activity' && (
+              <>
+                {/* Link to Trends */}
+                <Card className="border-2 border-primary-200 bg-gradient-to-r from-primary-50 to-accent-50">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+                          <span className="text-xl">📈</span>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">View Trends & Insights</h3>
+                          <p className="text-sm text-gray-600">See patterns over days, weeks, and months</p>
+                        </div>
+                      </div>
+                      <Link to="/family/trends" className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors">
+                        View Trends →
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Today's Audit History */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <History className="h-5 w-5 text-primary-600" />
+                      <h3 className="font-semibold text-gray-900">Today's Activity Log</h3>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {!todayLog ? (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500">No care log for today yet</p>
+                      </div>
+                    ) : historyLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
+                        <p className="text-gray-500 text-sm">Loading activity...</p>
+                      </div>
+                    ) : !auditHistory || auditHistory.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500">No changes recorded yet</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {auditHistory.map((entry) => {
+                          const actionLabels: Record<string, { label: string; color: string; icon: string }> = {
+                            create: { label: 'Created', color: 'bg-green-100 text-green-800', icon: '📝' },
+                            update: { label: 'Updated', color: 'bg-blue-100 text-blue-800', icon: '✏️' },
+                            submit: { label: 'Day Submitted', color: 'bg-purple-100 text-purple-800', icon: '✅' },
+                            submit_section: { label: 'Section Submitted', color: 'bg-indigo-100 text-indigo-800', icon: '📋' },
+                          };
+                          const actionInfo = actionLabels[entry.action] || { label: entry.action, color: 'bg-gray-100 text-gray-800', icon: '•' };
+
+                          // Get section name if submit_section
+                          let sectionName = '';
+                          if (entry.action === 'submit_section' && entry.snapshot) {
+                            const section = (entry.snapshot as Record<string, unknown>).section as string;
+                            if (section === 'morning') sectionName = '🌅 Morning';
+                            else if (section === 'afternoon') sectionName = '☀️ Afternoon';
+                            else if (section === 'evening') sectionName = '🌙 Evening';
+                            else if (section === 'dailySummary') sectionName = '📋 Daily Summary';
+                          }
+
+                          return (
+                            <div key={entry.id} className="border rounded-lg p-3 bg-gray-50">
+                              <div className="flex items-start justify-between mb-2">
+                                <div>
+                                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${actionInfo.color}`}>
+                                    <span>{actionInfo.icon}</span>
+                                    {actionInfo.label}
+                                  </span>
+                                  {sectionName && (
+                                    <span className="ml-2 text-sm text-gray-600">{sectionName}</span>
+                                  )}
+                                </div>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(entry.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+
+                              {/* Show changes for update actions */}
+                              {entry.changes && Object.keys(entry.changes).length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                  {Object.entries(entry.changes).slice(0, 3).map(([field, change]) => {
+                                    const typedChange = change as { old: unknown; new: unknown };
+                                    const fieldLabel = field
+                                      .replace(/([A-Z])/g, ' $1')
+                                      .replace(/^./, (str) => str.toUpperCase())
+                                      .trim();
+
+                                    return (
+                                      <div key={field} className="text-xs bg-white rounded p-2 border">
+                                        <span className="font-medium text-gray-700">{fieldLabel}:</span>
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <span className="text-red-600 line-through truncate max-w-[100px]">
+                                            {typedChange.old === null || typedChange.old === undefined
+                                              ? '(empty)'
+                                              : typeof typedChange.old === 'object'
+                                                ? JSON.stringify(typedChange.old).slice(0, 20) + '...'
+                                                : String(typedChange.old).slice(0, 20)}
+                                          </span>
+                                          <span className="text-gray-400">→</span>
+                                          <span className="text-green-600 font-medium truncate max-w-[100px]">
+                                            {typedChange.new === null || typedChange.new === undefined
+                                              ? '(empty)'
+                                              : typeof typedChange.new === 'object'
+                                                ? JSON.stringify(typedChange.new).slice(0, 20) + '...'
+                                                : String(typedChange.new).slice(0, 20)}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                  {Object.keys(entry.changes).length > 3 && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      +{Object.keys(entry.changes).length - 3} more changes
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Section Progression Summary */}
+                <Card>
+                  <CardHeader>
+                    <h3 className="font-semibold text-gray-900">📊 Section Progression</h3>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {[
+                        { key: 'morning', label: 'Morning', icon: '🌅', time: '6am - 12pm' },
+                        { key: 'afternoon', label: 'Afternoon', icon: '☀️', time: '12pm - 6pm' },
+                        { key: 'evening', label: 'Evening', icon: '🌙', time: '6pm - Bedtime' },
+                        { key: 'dailySummary', label: 'Daily Summary', icon: '📋', time: 'End of day' },
+                      ].map((section) => {
+                        const sectionData = todayLog?.completedSections?.[section.key as keyof CompletedSections];
+                        const isComplete = !!sectionData;
+                        return (
+                          <div
+                            key={section.key}
+                            className={`flex items-center justify-between p-3 rounded-lg border ${
+                              isComplete ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-xl">{section.icon}</span>
+                              <div>
+                                <p className="font-medium text-gray-900">{section.label}</p>
+                                <p className="text-xs text-gray-500">{section.time}</p>
+                              </div>
+                            </div>
+                            {isComplete ? (
+                              <div className="text-right">
+                                <span className="inline-flex items-center gap-1 text-xs text-green-700 font-medium">
+                                  ✅ Complete
+                                </span>
+                                <p className="text-xs text-gray-500">
+                                  {new Date(sectionData.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400">Pending</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
             )}
           </div>
         )}

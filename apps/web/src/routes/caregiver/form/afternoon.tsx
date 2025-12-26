@@ -88,14 +88,30 @@ function AfternoonFormComponent() {
 
   // Lunch
   const [lunchTime, setLunchTime] = useState('');
-  const [lunchAppetite, setLunchAppetite] = useState(3);
   const [lunchAmount, setLunchAmount] = useState(3);
   const [lunchAssistance, setLunchAssistance] = useState<'none' | 'some' | 'full'>('none');
+  const [lunchSwallowingIssues, setLunchSwallowingIssues] = useState<string[]>([]);
 
   // Tea Break
   const [teaBreakTime, setTeaBreakTime] = useState('');
-  const [teaBreakAppetite, setTeaBreakAppetite] = useState(3);
   const [teaBreakAmount, setTeaBreakAmount] = useState(3);
+
+  // Swallowing issue options
+  const swallowingIssueOptions = [
+    'Choking',
+    'Coughing',
+    'Drooling',
+    'Spitting out',
+    'Difficulty swallowing',
+    'Refusing food',
+    'Pocketing food',
+  ];
+
+  const toggleSwallowingIssue = (issue: string) => {
+    setLunchSwallowingIssues(prev =>
+      prev.includes(issue) ? prev.filter(i => i !== issue) : [...prev, issue]
+    );
+  };
 
   // Afternoon Rest
   const [restEnabled, setRestEnabled] = useState(false);
@@ -156,15 +172,14 @@ function AfternoonFormComponent() {
       // Load lunch from meals object
       if (todayLog.meals?.lunch) {
         setLunchTime(todayLog.meals.lunch.time || '');
-        setLunchAppetite(todayLog.meals.lunch.appetite || 3);
         setLunchAmount(todayLog.meals.lunch.amountEaten || 3);
         setLunchAssistance(todayLog.meals.lunch.assistance || 'none');
+        setLunchSwallowingIssues(todayLog.meals.lunch.swallowingIssues || []);
       }
 
       // Load tea break from meals object
       if (todayLog.meals?.teaBreak) {
         setTeaBreakTime(todayLog.meals.teaBreak.time || '');
-        setTeaBreakAppetite(todayLog.meals.teaBreak.appetite || 3);
         setTeaBreakAmount(todayLog.meals.teaBreak.amountEaten || 3);
       }
 
@@ -223,16 +238,14 @@ function AfternoonFormComponent() {
       if (lunchTime) {
         mealsData.lunch = {
           time: lunchTime,
-          appetite: lunchAppetite,
           amountEaten: lunchAmount,
           assistance: lunchAssistance,
-          swallowingIssues: [],
+          swallowingIssues: lunchSwallowingIssues,
         };
       }
       if (teaBreakTime) {
         mealsData.teaBreak = {
           time: teaBreakTime,
-          appetite: teaBreakAppetite,
           amountEaten: teaBreakAmount,
           swallowingIssues: [],
         };
@@ -398,26 +411,6 @@ function AfternoonFormComponent() {
             </div>
 
             <div>
-              <RequiredLabel required>Appetite (1-5)</RequiredLabel>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((level) => (
-                  <button
-                    key={level}
-                    type="button"
-                    onClick={() => setLunchAppetite(level)}
-                    className={`w-10 h-10 rounded-full font-medium transition-colors ${
-                      lunchAppetite === level
-                        ? 'bg-sky-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
               <RequiredLabel required>Amount Eaten (1-5)</RequiredLabel>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((level) => (
@@ -435,6 +428,7 @@ function AfternoonFormComponent() {
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-gray-500 mt-1">1 = Nothing, 5 = Everything</p>
             </div>
 
             <div>
@@ -456,6 +450,27 @@ function AfternoonFormComponent() {
                 ))}
               </div>
             </div>
+
+            <div>
+              <Label>Swallowing Issues</Label>
+              <div className="flex flex-wrap gap-2">
+                {swallowingIssueOptions.map((issue) => (
+                  <button
+                    key={issue}
+                    type="button"
+                    onClick={() => toggleSwallowingIssue(issue)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      lunchSwallowingIssues.includes(issue)
+                        ? 'bg-red-100 border-red-500 text-red-800 border'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {issue}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Select any issues observed during meal</p>
+            </div>
           </CardContent>
         </Card>
 
@@ -476,47 +491,26 @@ function AfternoonFormComponent() {
             </div>
 
             {teaBreakTime && (
-              <>
-                <div>
-                  <Label>Appetite (1-5)</Label>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((level) => (
-                      <button
-                        key={level}
-                        type="button"
-                        onClick={() => setTeaBreakAppetite(level)}
-                        className={`w-10 h-10 rounded-full font-medium transition-colors ${
-                          teaBreakAppetite === level
-                            ? 'bg-sky-500 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {level}
-                      </button>
-                    ))}
-                  </div>
+              <div>
+                <Label>Amount Eaten (1-5)</Label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => setTeaBreakAmount(level)}
+                      className={`w-10 h-10 rounded-full font-medium transition-colors ${
+                        teaBreakAmount === level
+                          ? 'bg-sky-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {level}
+                    </button>
+                  ))}
                 </div>
-
-                <div>
-                  <Label>Amount Eaten (1-5)</Label>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((level) => (
-                      <button
-                        key={level}
-                        type="button"
-                        onClick={() => setTeaBreakAmount(level)}
-                        className={`w-10 h-10 rounded-full font-medium transition-colors ${
-                          teaBreakAmount === level
-                            ? 'bg-sky-500 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {level}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
+                <p className="text-xs text-gray-500 mt-1">1 = Nothing, 5 = Everything</p>
+              </div>
             )}
           </CardContent>
         </Card>

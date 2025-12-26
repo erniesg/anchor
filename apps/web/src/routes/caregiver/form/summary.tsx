@@ -19,6 +19,7 @@ import {
   Shield,
   Droplets,
   AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 
 export const Route = createFileRoute('/caregiver/form/summary')({
@@ -76,6 +77,14 @@ interface CareLog {
     mobilityAids: { checked: boolean; action: string };
     emergencyEquipment: { checked: boolean; action: string };
   };
+  // Personal Hygiene
+  personalHygiene?: {
+    bathOrShower: boolean;
+    hairWashed: boolean;
+    oralCare: 'none' | 'am' | 'pm' | 'both';
+    skinCare: boolean;
+    notes?: string;
+  };
   // Caregiver notes
   whatWentWell?: string;
   challengesFaced?: string;
@@ -117,6 +126,13 @@ function SummaryFormComponent() {
     mobilityAids: { checked: false, action: '' },
     emergencyEquipment: { checked: false, action: '' },
   });
+
+  // Personal Hygiene (moved from Morning - not daily)
+  const [bathOrShower, setBathOrShower] = useState(false);
+  const [hairWashed, setHairWashed] = useState(false);
+  const [oralCare, setOralCare] = useState<'none' | 'am' | 'pm' | 'both'>('none');
+  const [skinCare, setSkinCare] = useState(false);
+  const [hygieneNotes, setHygieneNotes] = useState('');
 
   // Caregiver Notes
   const [whatWentWell, setWhatWentWell] = useState('');
@@ -202,6 +218,15 @@ function SummaryFormComponent() {
         setSafetyChecks(todayLog.safetyChecks);
       }
 
+      // Load personal hygiene
+      if (todayLog.personalHygiene) {
+        setBathOrShower(todayLog.personalHygiene.bathOrShower || false);
+        setHairWashed(todayLog.personalHygiene.hairWashed || false);
+        setOralCare(todayLog.personalHygiene.oralCare || 'none');
+        setSkinCare(todayLog.personalHygiene.skinCare || false);
+        setHygieneNotes(todayLog.personalHygiene.notes || '');
+      }
+
       // Load caregiver notes
       if (todayLog.whatWentWell) setWhatWentWell(todayLog.whatWentWell);
       if (todayLog.challengesFaced) setChallengesFaced(todayLog.challengesFaced);
@@ -252,6 +277,13 @@ function SummaryFormComponent() {
         })) : undefined,
         unaccompaniedIncidents: unaccompaniedIncidents || undefined,
         safetyChecks,
+        personalHygiene: {
+          bathOrShower,
+          hairWashed,
+          oralCare,
+          skinCare,
+          notes: hygieneNotes || undefined,
+        },
         whatWentWell: whatWentWell || undefined,
         challengesFaced: challengesFaced || undefined,
         recommendationsForTomorrow: recommendationsForTomorrow || undefined,
@@ -612,6 +644,103 @@ function SummaryFormComponent() {
                   </button>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Personal Hygiene */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-pink-500" />
+              <h2 className="text-lg font-semibold text-gray-900">Personal Hygiene</h2>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div
+                onClick={() => setBathOrShower(!bathOrShower)}
+                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  bathOrShower
+                    ? 'bg-pink-50 border-pink-300'
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Bath/Shower</span>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                    bathOrShower ? 'bg-pink-500 text-white' : 'bg-gray-200'
+                  }`}>
+                    {bathOrShower && <CheckCircle className="h-4 w-4" />}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setHairWashed(!hairWashed)}
+                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  hairWashed
+                    ? 'bg-pink-50 border-pink-300'
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Hair Washed</span>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                    hairWashed ? 'bg-pink-500 text-white' : 'bg-gray-200'
+                  }`}>
+                    {hairWashed && <CheckCircle className="h-4 w-4" />}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setSkinCare(!skinCare)}
+                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  skinCare
+                    ? 'bg-pink-50 border-pink-300'
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Skin Care</span>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                    skinCare ? 'bg-pink-500 text-white' : 'bg-gray-200'
+                  }`}>
+                    {skinCare && <CheckCircle className="h-4 w-4" />}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <span className="block text-sm font-medium text-gray-700 mb-2">Oral Care</span>
+              <div className="flex gap-2">
+                {(['none', 'am', 'pm', 'both'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setOralCare(option)}
+                    className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      oralCare === option
+                        ? 'bg-pink-100 border-pink-500 text-pink-800'
+                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {option === 'none' ? 'None' : option === 'am' ? 'AM' : option === 'pm' ? 'PM' : 'Both'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <span className="block text-sm font-medium text-gray-700 mb-1">Notes</span>
+              <Input
+                type="text"
+                value={hygieneNotes}
+                onChange={(e) => setHygieneNotes(e.target.value)}
+                placeholder="Any hygiene notes..."
+              />
             </div>
           </CardContent>
         </Card>

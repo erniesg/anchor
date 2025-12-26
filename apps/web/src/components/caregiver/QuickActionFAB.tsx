@@ -253,6 +253,17 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
     { id: 'incident', icon: '⚠️', label: 'Incident', color: 'bg-amber-500' },
   ];
 
+  // Expose methods to open modals programmatically (for inline quick action buttons)
+  const openModal = (modalType: ModalType) => {
+    setActiveModal(modalType);
+    setIsOpen(true);
+  };
+
+  // Make openModal available globally for inline buttons
+  if (typeof window !== 'undefined') {
+    (window as unknown as { openQuickActionModal?: (type: ModalType) => void }).openQuickActionModal = openModal;
+  }
+
   const isLoading = createLogMutation.isPending || updateLogMutation.isPending;
 
   return (
@@ -279,7 +290,7 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={`w-16 h-16 rounded-full shadow-xl flex items-center justify-center transition-all border-4 border-white ${
-            isOpen ? 'bg-gray-700 rotate-45' : 'bg-orange-500 hover:bg-orange-600 animate-pulse'
+            isOpen ? 'bg-gray-700 rotate-45' : 'bg-orange-500 hover:bg-orange-600'
           }`}
           style={{ boxShadow: '0 4px 20px rgba(249, 115, 22, 0.5)' }}
         >

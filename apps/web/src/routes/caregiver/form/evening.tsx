@@ -90,17 +90,31 @@ function EveningFormComponent() {
 
   // Dinner
   const [dinnerTime, setDinnerTime] = useState('');
-  const [dinnerAppetite, setDinnerAppetite] = useState(3);
   const [dinnerAmount, setDinnerAmount] = useState(3);
   const [dinnerAssistance, setDinnerAssistance] = useState<'none' | 'some' | 'full'>('none');
+  const [dinnerSwallowingIssues, setDinnerSwallowingIssues] = useState<string[]>([]);
 
-  // Night Sleep Setup
+  // Bedtime Setup (simplified - no previous night wakings, that's in morning form)
   const [bedtime, setBedtime] = useState('');
-  const [sleepQuality, setSleepQuality] = useState<'deep' | 'light' | 'restless' | 'no_sleep'>('light');
-  const [wakings, setWakings] = useState(0);
-  const [wakingReasons, setWakingReasons] = useState<string[]>([]);
   const [behaviors, setBehaviors] = useState<string[]>([]);
   const [sleepNotes, setSleepNotes] = useState('');
+
+  // Swallowing issue options
+  const swallowingIssueOptions = [
+    'Choking',
+    'Coughing',
+    'Drooling',
+    'Spitting out',
+    'Difficulty swallowing',
+    'Refusing food',
+    'Pocketing food',
+  ];
+
+  const toggleSwallowingIssue = (issue: string) => {
+    setDinnerSwallowingIssues(prev =>
+      prev.includes(issue) ? prev.filter(i => i !== issue) : [...prev, issue]
+    );
+  };
 
   // Evening medications
   const [medications, setMedications] = useState<Array<{
@@ -121,16 +135,6 @@ function EveningFormComponent() {
   const canSubmit = missingFields.length === 0;
   const completedFieldsCount = [dinnerTime].filter(Boolean).length;
   const totalRequiredFields = 1;
-
-  const wakingReasonOptions = [
-    'Bathroom',
-    'Thirsty',
-    'Pain',
-    'Nightmare',
-    'Noise',
-    'Too hot/cold',
-    'Unknown',
-  ];
 
   const behaviorOptions = [
     'Calm',
@@ -167,17 +171,14 @@ function EveningFormComponent() {
       // Load dinner from meals object
       if (todayLog.meals?.dinner) {
         setDinnerTime(todayLog.meals.dinner.time || '');
-        setDinnerAppetite(todayLog.meals.dinner.appetite || 3);
         setDinnerAmount(todayLog.meals.dinner.amountEaten || 3);
         setDinnerAssistance(todayLog.meals.dinner.assistance || 'none');
+        setDinnerSwallowingIssues(todayLog.meals.dinner.swallowingIssues || []);
       }
 
-      // Load night sleep
+      // Load bedtime setup (simplified - no wakings, that's in morning)
       if (todayLog.nightSleep) {
         setBedtime(todayLog.nightSleep.bedtime || '');
-        setSleepQuality(todayLog.nightSleep.quality || 'light');
-        setWakings(todayLog.nightSleep.wakings || 0);
-        setWakingReasons(todayLog.nightSleep.wakingReasons || []);
         setBehaviors(todayLog.nightSleep.behaviors || []);
         setSleepNotes(todayLog.nightSleep.notes || '');
       }
@@ -228,17 +229,14 @@ function EveningFormComponent() {
         meals: dinnerTime ? {
           dinner: {
             time: dinnerTime,
-            appetite: dinnerAppetite,
             amountEaten: dinnerAmount,
             assistance: dinnerAssistance,
-            swallowingIssues: [],
+            swallowingIssues: dinnerSwallowingIssues,
           },
         } : undefined,
+        // Bedtime setup (simplified - wakings tracked in morning form)
         nightSleep: bedtime ? {
           bedtime,
-          quality: sleepQuality,
-          wakings,
-          wakingReasons,
           behaviors,
           notes: sleepNotes || undefined,
         } : undefined,
@@ -314,14 +312,6 @@ function EveningFormComponent() {
       time: !updated[index].given ? new Date().toTimeString().slice(0, 5) : null,
     };
     setMedications(updated);
-  };
-
-  const toggleWakingReason = (reason: string) => {
-    setWakingReasons(prev =>
-      prev.includes(reason)
-        ? prev.filter(r => r !== reason)
-        : [...prev, reason]
-    );
   };
 
   const toggleBehavior = (behavior: string) => {
@@ -409,26 +399,6 @@ function EveningFormComponent() {
             </div>
 
             <div>
-              <RequiredLabel required>Appetite (1-5)</RequiredLabel>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((level) => (
-                  <button
-                    key={level}
-                    type="button"
-                    onClick={() => setDinnerAppetite(level)}
-                    className={`w-10 h-10 rounded-full font-medium transition-colors ${
-                      dinnerAppetite === level
-                        ? 'bg-indigo-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
               <RequiredLabel required>Amount Eaten (1-5)</RequiredLabel>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((level) => (
@@ -446,6 +416,7 @@ function EveningFormComponent() {
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-gray-500 mt-1">1 = Nothing, 5 = Everything</p>
             </div>
 
             <div>
@@ -466,6 +437,27 @@ function EveningFormComponent() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <Label>Swallowing Issues</Label>
+              <div className="flex flex-wrap gap-2">
+                {swallowingIssueOptions.map((issue) => (
+                  <button
+                    key={issue}
+                    type="button"
+                    onClick={() => toggleSwallowingIssue(issue)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      dinnerSwallowingIssues.includes(issue)
+                        ? 'bg-red-100 border-red-500 text-red-800 border'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {issue}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Select any issues observed during meal</p>
             </div>
           </CardContent>
         </Card>
@@ -489,69 +481,7 @@ function EveningFormComponent() {
             {bedtime && (
               <>
                 <div>
-                  <Label>Expected Sleep Quality</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['deep', 'light', 'restless', 'no_sleep'] as const).map((quality) => (
-                      <button
-                        key={quality}
-                        type="button"
-                        onClick={() => setSleepQuality(quality)}
-                        className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                          sleepQuality === quality
-                            ? 'bg-indigo-100 border-indigo-500 text-indigo-800'
-                            : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        {quality === 'no_sleep' ? 'No Sleep' : quality.charAt(0).toUpperCase() + quality.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Night Wakings (if known from previous night)</Label>
-                  <div className="flex gap-2">
-                    {[0, 1, 2, 3, 4, 5].map((num) => (
-                      <button
-                        key={num}
-                        type="button"
-                        onClick={() => setWakings(num)}
-                        className={`w-10 h-10 rounded-full font-medium transition-colors ${
-                          wakings === num
-                            ? 'bg-indigo-500 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {num === 5 ? '5+' : num}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {wakings > 0 && (
-                  <div>
-                    <Label>Reasons for Waking</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {wakingReasonOptions.map((reason) => (
-                        <button
-                          key={reason}
-                          type="button"
-                          onClick={() => toggleWakingReason(reason)}
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                            wakingReasons.includes(reason)
-                              ? 'bg-indigo-100 border-indigo-500 text-indigo-800 border'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {reason}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <Label>Behaviors Before Sleep</Label>
+                  <Label>Behavior Before Sleep</Label>
                   <div className="flex flex-wrap gap-2">
                     {behaviorOptions.map((behavior) => (
                       <button
@@ -576,11 +506,12 @@ function EveningFormComponent() {
                     type="text"
                     value={sleepNotes}
                     onChange={(e) => setSleepNotes(e.target.value)}
-                    placeholder="Any notes about sleep or bedtime..."
+                    placeholder="Any notes about bedtime..."
                   />
                 </div>
               </>
             )}
+            <p className="text-xs text-gray-500">Sleep quality and wakings are recorded in the Morning form</p>
           </CardContent>
         </Card>
 

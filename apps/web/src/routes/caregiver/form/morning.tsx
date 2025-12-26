@@ -57,8 +57,12 @@ interface CareLog {
   // Morning fields
   wakeTime?: string;
   mood?: string;
-  showerTime?: string;
-  hairWash?: boolean;
+  // Last night's sleep (recorded in morning)
+  lastNightSleep?: {
+    quality: 'deep' | 'light' | 'restless' | 'no_sleep';
+    wakings: number;
+    wakingReasons: string[];
+  };
   // Vitals
   bloodPressure?: string;
   pulseRate?: string;
@@ -92,8 +96,11 @@ function MorningFormComponent() {
   const [careLogId, setCareLogId] = useState<string | null>(null);
   const [wakeTime, setWakeTime] = useState('');
   const [mood, setMood] = useState('');
-  const [showerTime, setShowerTime] = useState('');
-  const [hairWash, setHairWash] = useState(false);
+
+  // Last Night's Sleep (moved from evening - makes more sense here)
+  const [lastNightQuality, setLastNightQuality] = useState<'deep' | 'light' | 'restless' | 'no_sleep' | ''>('');
+  const [lastNightWakings, setLastNightWakings] = useState(0);
+  const [lastNightWakingReasons, setLastNightWakingReasons] = useState<string[]>([]);
 
   // Vitals
   const [bloodPressure, setBloodPressure] = useState('');
@@ -104,9 +111,31 @@ function MorningFormComponent() {
 
   // Breakfast
   const [breakfastTime, setBreakfastTime] = useState('');
-  const [breakfastAppetite, setBreakfastAppetite] = useState(3);
   const [breakfastAmount, setBreakfastAmount] = useState(3);
   const [breakfastAssistance, setBreakfastAssistance] = useState<'none' | 'some' | 'full'>('none');
+  const [breakfastSwallowingIssues, setBreakfastSwallowingIssues] = useState<string[]>([]);
+
+  // Swallowing issue options
+  const swallowingIssueOptions = [
+    'Choking',
+    'Coughing',
+    'Drooling',
+    'Spitting out',
+    'Difficulty swallowing',
+    'Refusing food',
+    'Pocketing food',
+  ];
+
+  // Waking reason options
+  const wakingReasonOptions = [
+    'Bathroom',
+    'Thirsty',
+    'Pain',
+    'Nightmare',
+    'Noise',
+    'Too hot/cold',
+    'Unknown',
+  ];
 
   // Morning medications
   const [medications, setMedications] = useState<Array<{
@@ -134,7 +163,7 @@ function MorningFormComponent() {
   const hasUnsavedChanges = useRef(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoad = useRef(true);
-  const saveMutationRef = useRef<((logId: string) => Promise<void>) | null>(null);
+  // Note: No longer using saveMutationRef - all values are captured at effect time to avoid stale closures
 
   // Mark form as dirty when any field changes
   const markDirty = useCallback(() => {
@@ -170,8 +199,13 @@ function MorningFormComponent() {
       // Load morning fields
       if (todayLog.wakeTime) setWakeTime(todayLog.wakeTime);
       if (todayLog.mood) setMood(todayLog.mood);
-      if (todayLog.showerTime) setShowerTime(todayLog.showerTime);
-      if (todayLog.hairWash) setHairWash(todayLog.hairWash);
+
+      // Load last night's sleep
+      if (todayLog.lastNightSleep) {
+        setLastNightQuality(todayLog.lastNightSleep.quality || '');
+        setLastNightWakings(todayLog.lastNightSleep.wakings || 0);
+        setLastNightWakingReasons(todayLog.lastNightSleep.wakingReasons || []);
+      }
 
       // Load vitals
       if (todayLog.bloodPressure) setBloodPressure(todayLog.bloodPressure);
@@ -183,9 +217,9 @@ function MorningFormComponent() {
       // Load breakfast from meals object
       if (todayLog.meals?.breakfast) {
         setBreakfastTime(todayLog.meals.breakfast.time || '');
-        setBreakfastAppetite(todayLog.meals.breakfast.appetite || 3);
         setBreakfastAmount(todayLog.meals.breakfast.amountEaten || 3);
         setBreakfastAssistance(todayLog.meals.breakfast.assistance || 'none');
+        setBreakfastSwallowingIssues(todayLog.meals.breakfast.swallowingIssues || []);
       }
 
       // Load morning medications
@@ -206,35 +240,6 @@ function MorningFormComponent() {
 
     return () => clearTimeout(timer);
   }, [todayLog]);
-
-  // Debounced auto-save effect - saves 3 seconds after last change
-  useEffect(() => {
-    // Track changes to trigger auto-save
-    markDirty();
-
-    // Clear existing timeout
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
-    }
-
-    // Set new timeout for auto-save
-    autoSaveTimeoutRef.current = setTimeout(async () => {
-      if (hasUnsavedChanges.current && careLogId && !isSaving) {
-        try {
-          await saveMutationRef.current?.(careLogId);
-          hasUnsavedChanges.current = false;
-        } catch {
-          // Silent fail for auto-save - user can manually retry
-        }
-      }
-    }, 3000);
-
-    return () => {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-    };
-  }, [wakeTime, mood, showerTime, hairWash, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime, breakfastTime, breakfastAppetite, breakfastAmount, breakfastAssistance, medications, careLogId, isSaving, markDirty]);
 
   // Create care log if none exists
   const createLogMutation = useMutation({
@@ -260,41 +265,42 @@ function MorningFormComponent() {
     },
   });
 
-  // Build payload for saving
-  const buildPayload = useCallback(() => ({
-    wakeTime: wakeTime || undefined,
-    mood: mood || undefined,
-    showerTime: showerTime || undefined,
-    hairWash: hairWash || undefined,
-    bloodPressure: bloodPressure || undefined,
-    pulseRate: pulseRate || undefined,
-    oxygenLevel: oxygenLevel || undefined,
-    bloodSugar: bloodSugar || undefined,
-    vitalsTime: vitalsTime || undefined,
-    // API expects meals as nested object
-    meals: breakfastTime ? {
+  // Type for the morning form payload
+  type MorningPayload = {
+    wakeTime?: string;
+    mood?: string;
+    lastNightSleep?: {
+      quality: string;
+      wakings: number;
+      wakingReasons: string[];
+    };
+    bloodPressure?: string;
+    pulseRate?: string | number;
+    oxygenLevel?: string | number;
+    bloodSugar?: string | number;
+    vitalsTime?: string;
+    meals?: {
       breakfast: {
-        time: breakfastTime,
-        appetite: breakfastAppetite,
-        amountEaten: breakfastAmount,
-        assistance: breakfastAssistance,
-        swallowingIssues: [],
-      },
-    } : undefined,
-    medications: medications.length > 0 ? medications : undefined,
-  }), [wakeTime, mood, showerTime, hairWash, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime, breakfastTime, breakfastAppetite, breakfastAmount, breakfastAssistance, medications]);
+        time: string;
+        amountEaten: number;
+        assistance: string;
+        swallowingIssues: string[];
+      };
+    };
+    medications?: typeof medications;
+  };
 
-  // Save mutation
+  // Save mutation - accepts ALL needed data as arguments to avoid stale closures
   const saveMutation = useMutation({
-    mutationFn: async (logId: string) => {
-      if (!token) throw new Error('Not authenticated');
+    mutationFn: async ({ logId, payload, authToken }: { logId: string; payload: MorningPayload; authToken: string }) => {
+      if (!authToken) throw new Error('Not authenticated');
 
       return authenticatedApiCall(
         `/care-logs/${logId}`,
-        token,
+        authToken,
         {
           method: 'PATCH',
-          body: JSON.stringify(buildPayload()),
+          body: JSON.stringify(payload),
         }
       );
     },
@@ -305,24 +311,103 @@ function MorningFormComponent() {
     },
   });
 
-  // Assign to ref for auto-save
+  // Helper to build payload with current values - used at call site
+  const buildCurrentPayload = (): MorningPayload => ({
+    wakeTime: wakeTime || undefined,
+    mood: mood || undefined,
+    lastNightSleep: lastNightQuality ? {
+      quality: lastNightQuality,
+      wakings: lastNightWakings,
+      wakingReasons: lastNightWakingReasons,
+    } : undefined,
+    bloodPressure: bloodPressure || undefined,
+    pulseRate: pulseRate || undefined,
+    oxygenLevel: oxygenLevel || undefined,
+    bloodSugar: bloodSugar || undefined,
+    vitalsTime: vitalsTime || undefined,
+    meals: breakfastTime ? {
+      breakfast: {
+        time: breakfastTime,
+        amountEaten: breakfastAmount,
+        assistance: breakfastAssistance,
+        swallowingIssues: breakfastSwallowingIssues,
+      },
+    } : undefined,
+    medications: medications.length > 0 ? medications : undefined,
+  });
+
+  // Debounced auto-save effect - saves 3 seconds after last change
+  // IMPORTANT: Capture all values at effect time to avoid stale closure issues
   useEffect(() => {
-    saveMutationRef.current = async (logId: string) => {
-      await saveMutation.mutateAsync(logId);
+    // Track changes to trigger auto-save
+    markDirty();
+
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Capture current values NOW (at effect time, not in the timeout callback)
+    const currentPayload: MorningPayload = {
+      wakeTime: wakeTime || undefined,
+      mood: mood || undefined,
+      lastNightSleep: lastNightQuality ? {
+        quality: lastNightQuality,
+        wakings: lastNightWakings,
+        wakingReasons: lastNightWakingReasons,
+      } : undefined,
+      bloodPressure: bloodPressure || undefined,
+      pulseRate: pulseRate || undefined,
+      oxygenLevel: oxygenLevel || undefined,
+      bloodSugar: bloodSugar || undefined,
+      vitalsTime: vitalsTime || undefined,
+      meals: breakfastTime ? {
+        breakfast: {
+          time: breakfastTime,
+          amountEaten: breakfastAmount,
+          assistance: breakfastAssistance,
+          swallowingIssues: breakfastSwallowingIssues,
+        },
+      } : undefined,
+      medications: medications.length > 0 ? medications : undefined,
     };
-  }, [saveMutation]);
+    const currentToken = token;
+    const currentLogId = careLogId;
 
-  // Submit section mutation
+    // Set new timeout for auto-save
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      if (hasUnsavedChanges.current && currentLogId && currentToken && !isSaving) {
+        try {
+          await saveMutation.mutateAsync({
+            logId: currentLogId,
+            payload: currentPayload,
+            authToken: currentToken,
+          });
+          hasUnsavedChanges.current = false;
+        } catch {
+          // Silent fail for auto-save - user can manually retry
+        }
+      }
+    }, 3000);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [wakeTime, mood, lastNightQuality, lastNightWakings, lastNightWakingReasons, bloodPressure, pulseRate, oxygenLevel, bloodSugar, vitalsTime, breakfastTime, breakfastAmount, breakfastAssistance, breakfastSwallowingIssues, medications, careLogId, isSaving, markDirty, token, saveMutation]);
+
+  // Submit section mutation - accepts ALL needed data to avoid stale closures
   const submitSectionMutation = useMutation({
-    mutationFn: async (logId: string) => {
-      if (!token) throw new Error('Not authenticated');
+    mutationFn: async ({ logId, payload, authToken }: { logId: string; payload: MorningPayload; authToken: string }) => {
+      if (!authToken) throw new Error('Not authenticated');
 
-      // First save, then submit section
-      await saveMutation.mutateAsync(logId);
+      // First save with current payload, then submit section
+      await saveMutation.mutateAsync({ logId, payload, authToken });
 
       return authenticatedApiCall(
         `/care-logs/${logId}/submit-section`,
-        token,
+        authToken,
         {
           method: 'POST',
           body: JSON.stringify({ section: 'morning' }),
@@ -336,6 +421,7 @@ function MorningFormComponent() {
   });
 
   const handleSave = async () => {
+    if (!token) return;
     setIsSaving(true);
     try {
       let logId = careLogId;
@@ -346,24 +432,38 @@ function MorningFormComponent() {
         logId = newLog.id;
       }
 
-      await saveMutation.mutateAsync(logId);
+      // Build payload at call time to get current state values
+      await saveMutation.mutateAsync({ logId, payload: buildCurrentPayload(), authToken: token });
     } finally {
       setIsSaving(false);
     }
   };
 
   // Check if form has any data worth saving
-  const hasFormData = wakeTime || mood || showerTime || hairWash ||
+  const hasFormData = wakeTime || mood || lastNightQuality ||
     bloodPressure || pulseRate || oxygenLevel || bloodSugar || vitalsTime ||
     breakfastTime;
+
+  // Toggle functions
+  const toggleWakingReason = (reason: string) => {
+    setLastNightWakingReasons(prev =>
+      prev.includes(reason) ? prev.filter(r => r !== reason) : [...prev, reason]
+    );
+  };
+
+  const toggleSwallowingIssue = (issue: string) => {
+    setBreakfastSwallowingIssues(prev =>
+      prev.includes(issue) ? prev.filter(i => i !== issue) : [...prev, issue]
+    );
+  };
 
   // Navigate with auto-save - always save if there's data
   const handleNavigateBack = async () => {
     // Save if we have a log and there's data or unsaved changes
-    if (careLogId && (hasUnsavedChanges.current || hasFormData)) {
+    if (token && careLogId && (hasUnsavedChanges.current || hasFormData)) {
       setIsSaving(true);
       try {
-        await saveMutation.mutateAsync(careLogId);
+        await saveMutation.mutateAsync({ logId: careLogId, payload: buildCurrentPayload(), authToken: token });
         hasUnsavedChanges.current = false;
       } catch (err) {
         console.error('Auto-save failed:', err);
@@ -376,7 +476,7 @@ function MorningFormComponent() {
 
   const handleNavigateToAfternoon = async () => {
     // Always save if there's any form data
-    if (hasFormData || hasUnsavedChanges.current) {
+    if (token && (hasFormData || hasUnsavedChanges.current)) {
       setIsSaving(true);
       try {
         let logId = careLogId;
@@ -384,7 +484,7 @@ function MorningFormComponent() {
           const newLog = await createLogMutation.mutateAsync();
           logId = newLog.id;
         }
-        await saveMutation.mutateAsync(logId);
+        await saveMutation.mutateAsync({ logId, payload: buildCurrentPayload(), authToken: token });
         hasUnsavedChanges.current = false;
       } catch (err) {
         console.error('Auto-save failed:', err);
@@ -396,15 +496,30 @@ function MorningFormComponent() {
   };
 
   const handleSubmitSection = async () => {
-    let logId = careLogId;
-
-    // Create log if it doesn't exist
-    if (!logId) {
-      const newLog = await createLogMutation.mutateAsync();
-      logId = newLog.id;
+    if (!token) {
+      console.error('No auth token');
+      return;
     }
+    try {
+      let logId = careLogId;
 
-    await submitSectionMutation.mutateAsync(logId);
+      // Create log if it doesn't exist
+      if (!logId) {
+        console.log('Creating new care log...');
+        const newLog = await createLogMutation.mutateAsync();
+        logId = newLog.id;
+        console.log('Created log:', logId);
+      }
+
+      // Build payload at call time to ensure current state values
+      const payload = buildCurrentPayload();
+      console.log('Submitting morning section with payload:', JSON.stringify(payload));
+      await submitSectionMutation.mutateAsync({ logId, payload, authToken: token });
+      console.log('Morning section submitted successfully');
+    } catch (error) {
+      console.error('Failed to submit morning section:', error);
+      throw error; // Re-throw so mutation error state is set
+    }
   };
 
   const toggleMedication = (index: number) => {
@@ -516,34 +631,73 @@ function MorningFormComponent() {
           </CardContent>
         </Card>
 
-        {/* Shower */}
+        {/* Last Night's Sleep */}
         <Card>
           <CardHeader className="pb-3">
-            <h2 className="text-lg font-semibold text-gray-900">Morning Hygiene</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Last Night's Sleep</h2>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Shower Time</Label>
-              <Input
-                type="time"
-                value={showerTime}
-                onChange={(e) => setShowerTime(e.target.value)}
-                className="max-w-[150px]"
-              />
+              <Label>Sleep Quality</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {(['deep', 'light', 'restless', 'no_sleep'] as const).map((quality) => (
+                  <button
+                    key={quality}
+                    type="button"
+                    onClick={() => setLastNightQuality(quality)}
+                    className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      lastNightQuality === quality
+                        ? 'bg-amber-100 border-amber-500 text-amber-800'
+                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {quality === 'no_sleep' ? 'No Sleep' : quality.charAt(0).toUpperCase() + quality.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="hairWash"
-                checked={hairWash}
-                onChange={(e) => setHairWash(e.target.checked)}
-                className="h-5 w-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
-              />
-              <label htmlFor="hairWash" className="text-sm text-gray-700">
-                Hair washed today
-              </label>
+            <div>
+              <Label>Night Wakings</Label>
+              <div className="flex gap-2">
+                {[0, 1, 2, 3, 4, 5].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setLastNightWakings(num)}
+                    className={`w-10 h-10 rounded-full font-medium transition-colors ${
+                      lastNightWakings === num
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {num === 5 ? '5+' : num}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {lastNightWakings > 0 && (
+              <div>
+                <Label>Reasons for Waking</Label>
+                <div className="flex flex-wrap gap-2">
+                  {wakingReasonOptions.map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      onClick={() => toggleWakingReason(reason)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        lastNightWakingReasons.includes(reason)
+                          ? 'bg-amber-100 border-amber-500 text-amber-800 border'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -622,27 +776,6 @@ function MorningFormComponent() {
             </div>
 
             <div>
-              <RequiredLabel required>Appetite (1-5)</RequiredLabel>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((level) => (
-                  <button
-                    key={level}
-                    type="button"
-                    onClick={() => setBreakfastAppetite(level)}
-                    className={`w-10 h-10 rounded-full font-medium transition-colors ${
-                      breakfastAppetite === level
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">1 = No appetite, 5 = Excellent</p>
-            </div>
-
-            <div>
               <RequiredLabel required>Amount Eaten (1-5)</RequiredLabel>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((level) => (
@@ -681,6 +814,27 @@ function MorningFormComponent() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <Label>Swallowing Issues</Label>
+              <div className="flex flex-wrap gap-2">
+                {swallowingIssueOptions.map((issue) => (
+                  <button
+                    key={issue}
+                    type="button"
+                    onClick={() => toggleSwallowingIssue(issue)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      breakfastSwallowingIssues.includes(issue)
+                        ? 'bg-red-100 border-red-500 text-red-800 border'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {issue}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Select any issues observed during meal</p>
             </div>
           </CardContent>
         </Card>

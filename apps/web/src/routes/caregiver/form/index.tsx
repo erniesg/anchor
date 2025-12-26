@@ -12,9 +12,6 @@ import {
   Moon,
   FileText,
   CheckCircle,
-  Droplets,
-  Activity,
-  AlertTriangle,
   LogOut,
   CheckCircle2,
 } from 'lucide-react';
@@ -379,63 +376,64 @@ function FormDashboardComponent() {
         </div>
       )}
 
-      {/* Go to Full Form Link */}
+      {/* QUICK LOG ANYTIME - Prominent Section */}
       <div className="max-w-lg mx-auto px-4 mt-8">
-        <Button
-          onClick={() => navigate({ to: '/caregiver/form-legacy', search: { section: 1 } })}
-          variant="outline"
-          className="w-full"
-        >
-          Open Full Form (All Sections)
-        </Button>
+        <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
+          <h3 className="text-sm font-bold text-orange-800 mb-3 text-center">⚡ Quick Log Anytime</h3>
+          <div className="grid grid-cols-4 gap-2">
+            <button
+              onClick={() => {
+                const win = window as unknown as { openQuickActionModal?: (type: string) => void };
+                if (win.openQuickActionModal) win.openQuickActionModal('toileting');
+              }}
+              className="flex flex-col items-center p-3 bg-purple-100 hover:bg-purple-200 rounded-xl transition-colors"
+            >
+              <span className="text-2xl mb-1">🚽</span>
+              <span className="text-xs font-medium text-purple-800">Toilet</span>
+            </button>
+            <button
+              onClick={() => {
+                const win = window as unknown as { openQuickActionModal?: (type: string) => void };
+                if (win.openQuickActionModal) win.openQuickActionModal('fluid');
+              }}
+              className="flex flex-col items-center p-3 bg-blue-100 hover:bg-blue-200 rounded-xl transition-colors"
+            >
+              <span className="text-2xl mb-1">💧</span>
+              <span className="text-xs font-medium text-blue-800">Fluid</span>
+            </button>
+            <button
+              onClick={() => {
+                const win = window as unknown as { openQuickActionModal?: (type: string) => void };
+                if (win.openQuickActionModal) win.openQuickActionModal('exercise');
+              }}
+              className="flex flex-col items-center p-3 bg-green-100 hover:bg-green-200 rounded-xl transition-colors"
+            >
+              <span className="text-2xl mb-1">🏃</span>
+              <span className="text-xs font-medium text-green-800">Exercise</span>
+            </button>
+            <button
+              onClick={() => {
+                const win = window as unknown as { openQuickActionModal?: (type: string) => void };
+                if (win.openQuickActionModal) win.openQuickActionModal('incident');
+              }}
+              className="flex flex-col items-center p-3 bg-amber-100 hover:bg-amber-200 rounded-xl transition-colors"
+            >
+              <span className="text-2xl mb-1">⚠️</span>
+              <span className="text-xs font-medium text-amber-800">Incident</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Today's Stats (if data exists) */}
-      {todayLog && (
-        <div className="max-w-lg mx-auto px-4 mt-6">
-          <Card>
-            <CardContent className="py-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Today's Activity</h3>
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <Droplets className="h-5 w-5 text-blue-500 mx-auto mb-1" />
-                  <p className="text-lg font-bold text-blue-700">
-                    {todayLog.totalFluidIntake || (todayLog.fluids?.reduce((sum, f) => sum + (f.amountMl || 0), 0)) || 0}
-                  </p>
-                  <p className="text-xs text-blue-600">ml fluids</p>
-                </div>
-                <div className="p-2 bg-green-50 rounded-lg">
-                  <Activity className="h-5 w-5 text-green-500 mx-auto mb-1" />
-                  <p className="text-lg font-bold text-green-700">
-                    {(todayLog.morningExerciseSession?.exercises?.length || 0) +
-                     (todayLog.afternoonExerciseSession?.exercises?.length || 0) +
-                     (todayLog.physicalActivity?.exerciseType?.length || 0)}
-                  </p>
-                  <p className="text-xs text-green-600">exercises</p>
-                </div>
-                <div className="p-2 bg-purple-50 rounded-lg">
-                  <span className="text-xl block mb-1">🚽</span>
-                  <p className="text-lg font-bold text-purple-700">
-                    {(todayLog.bowelMovements?.frequency || 0) + (todayLog.urination?.frequency || 0)}
-                  </p>
-                  <p className="text-xs text-purple-600">bathroom</p>
-                </div>
-              </div>
-              {/* Show incidents if any */}
-              {(todayLog.nearFalls && todayLog.nearFalls !== 'none') || (todayLog.actualFalls && todayLog.actualFalls !== 'none') ? (
-                <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                    <span className="text-sm text-amber-800">
-                      {todayLog.actualFalls && todayLog.actualFalls !== 'none' ? 'Fall reported' : 'Near fall reported'}
-                    </span>
-                  </div>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Legacy Form Link - at bottom, de-emphasized */}
+      <div className="max-w-lg mx-auto px-4 mt-8 mb-4">
+        <button
+          onClick={() => navigate({ to: '/caregiver/form-legacy', search: { section: 1 } })}
+          className="w-full text-xs text-gray-400 hover:text-gray-600 py-2"
+        >
+          Open Legacy Full Form
+        </button>
+      </div>
 
       {/* Quick Action FAB */}
       <QuickActionFAB
