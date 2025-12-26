@@ -502,15 +502,6 @@ function DashboardComponent() {
                             )}
                           </div>
                         )}
-                        {todayLog?.id && (
-                          <button
-                            onClick={() => setShowHistoryModal(true)}
-                            className="mt-1 inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-800 hover:underline"
-                          >
-                            <History className="h-3 w-3" />
-                            View History
-                          </button>
-                        )}
                       </div>
                     )}
                   </div>
@@ -547,11 +538,24 @@ function DashboardComponent() {
               </CardContent>
             </Card>
 
-            {/* Section Progress for Today */}
-            {viewMode === 'today' && todayLog?.completedSections && (
-              <Card className="border border-primary-100">
+            {/* Section Progress for Today - Always show when in today view */}
+            {viewMode === 'today' && (
+              <Card className="border border-primary-100 bg-primary-50/30">
                 <CardContent className="py-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Caregiver Progress</h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-700">Caregiver Progress Today</h3>
+                    {todayLog?.id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowHistoryModal(true)}
+                        className="text-xs"
+                      >
+                        <History className="h-3 w-3 mr-1" />
+                        View Changes
+                      </Button>
+                    )}
+                  </div>
                   <div className="grid grid-cols-4 gap-2">
                     {[
                       { key: 'morning', label: 'Morning', icon: '🌅' },
@@ -559,8 +563,8 @@ function DashboardComponent() {
                       { key: 'evening', label: 'Evening', icon: '🌙' },
                       { key: 'dailySummary', label: 'Summary', icon: '📋' },
                     ].map((section) => {
-                      const isComplete = !!todayLog.completedSections?.[section.key as keyof CompletedSections];
-                      const completedAt = todayLog.completedSections?.[section.key as keyof CompletedSections]?.submittedAt;
+                      const isComplete = !!todayLog?.completedSections?.[section.key as keyof CompletedSections];
+                      const completedAt = todayLog?.completedSections?.[section.key as keyof CompletedSections]?.submittedAt;
                       return (
                         <div
                           key={section.key}
@@ -591,18 +595,29 @@ function DashboardComponent() {
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                       <span>Day Progress</span>
                       <span>
-                        {Object.keys(todayLog.completedSections || {}).length}/4 sections
+                        {Object.keys(todayLog?.completedSections || {}).length}/4 sections
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
                         className={`h-2 rounded-full transition-all ${
-                          todayLog.status === 'submitted' ? 'bg-green-500' : 'bg-primary-500'
+                          todayLog?.status === 'submitted' ? 'bg-green-500' : 'bg-primary-500'
                         }`}
-                        style={{ width: `${(Object.keys(todayLog.completedSections || {}).length / 4) * 100}%` }}
+                        style={{ width: `${(Object.keys(todayLog?.completedSections || {}).length / 4) * 100}%` }}
                       />
                     </div>
                   </div>
+                  {/* No progress message */}
+                  {!todayLog && (
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      Waiting for caregiver to start today's log
+                    </p>
+                  )}
+                  {todayLog && Object.keys(todayLog.completedSections || {}).length === 0 && (
+                    <p className="text-xs text-amber-600 text-center mt-2">
+                      Caregiver has started logging but hasn't submitted any sections yet
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -1078,8 +1093,13 @@ function DashboardComponent() {
                     <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <p className="text-gray-600 mb-2">No care log submitted today</p>
-                    <p className="text-sm text-gray-500">Waiting for caregiver to submit daily report</p>
+                    <p className="text-gray-600 mb-2">Waiting for first section</p>
+                    <p className="text-sm text-gray-500">
+                      Data will appear here once the caregiver submits Morning, Afternoon, Evening, or Daily Summary
+                    </p>
+                    <p className="text-xs text-gray-400 mt-4">
+                      Check the Caregiver Progress section above for real-time status
+                    </p>
                   </div>
                 </CardContent>
               </Card>
