@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
@@ -17,6 +17,7 @@ import {
   Activity,
   AlertTriangle,
   LogOut,
+  CheckCircle2,
 } from 'lucide-react';
 
 export const Route = createFileRoute('/caregiver/form/')({
@@ -46,6 +47,7 @@ interface TodayResponse {
 function FormDashboardComponent() {
   const { token, careRecipient, logoutCaregiver, caregiver } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const caregiverToken = token;
   const [careLogId, setCareLogId] = useState<string | null>(null);
 
@@ -75,6 +77,23 @@ function FormDashboardComponent() {
 
   const completedSections = todayLog?.completedSections || {};
   const logStatus = todayLog?.status || 'draft';
+
+  // Mutation to complete the day (final submit)
+  const completeDayMutation = useMutation({
+    mutationFn: async () => {
+      if (!caregiverToken || !todayLog?.id) {
+        throw new Error('No care log to submit');
+      }
+      return authenticatedApiCall(
+        `/care-logs/${todayLog.id}/submit`,
+        caregiverToken,
+        { method: 'POST' }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['caregiver-today-log'] });
+    },
+  });
 
   // Sync careLogId with fetched log
   if (todayLog?.id && careLogId !== todayLog.id) {
@@ -261,6 +280,63 @@ function FormDashboardComponent() {
           })}
         </div>
       </div>
+
+      {/* Complete Day Button - shows when all sections done but not yet submitted */}
+      {completedCount === totalSections && logStatus === 'draft' && todayLog?.id && (
+        <div className="max-w-lg mx-auto px-4 mt-6">
+          <Card className="border-2 border-green-300 bg-green-50">
+            <CardContent className="py-4">
+              <div className="text-center mb-3">
+                <CheckCircle2 className="h-10 w-10 text-green-600 mx-auto mb-2" />
+                <h3 className="text-lg font-semibold text-green-800">All Sections Complete!</h3>
+                <p className="text-sm text-green-700 mt-1">
+                  Ready to submit today's care log to the family
+                </p>
+              </div>
+              <Button
+                onClick={() => completeDayMutation.mutate()}
+                disabled={completeDayMutation.isPending}
+                variant="primary"
+                size="lg"
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                {completeDayMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-5 w-5 mr-2" />
+                    Complete Day & Submit
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-green-600 text-center mt-2">
+                You can still make edits after submission if needed
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Day Already Submitted */}
+      {logStatus === 'submitted' && (
+        <div className="max-w-lg mx-auto px-4 mt-6">
+          <Card className="border-2 border-green-400 bg-green-100">
+            <CardContent className="py-4 text-center">
+              <CheckCircle className="h-10 w-10 text-green-600 mx-auto mb-2" />
+              <h3 className="text-lg font-semibold text-green-800">Day Complete!</h3>
+              <p className="text-sm text-green-700 mt-1">
+                Today's care log has been submitted to the family
+              </p>
+              <p className="text-xs text-green-600 mt-2">
+                You can still make edits - changes will be tracked in the audit log
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Go to Full Form Link */}
       <div className="max-w-lg mx-auto px-4 mt-8">

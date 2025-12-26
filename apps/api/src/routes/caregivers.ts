@@ -13,6 +13,7 @@ const caregiversRoute = new Hono<AppContext>();
 const createCaregiverSchema = z.object({
   careRecipientId: z.string().uuid(),
   name: z.string().min(2),
+  username: z.string().min(5).max(30).optional(), // Optional custom username
   phone: z.string().optional(),
   email: z.string().email().optional(),
   language: z.string().default('en'),
@@ -39,18 +40,42 @@ caregiversRoute.post('/', ...familyAdminOnly, requireCaregiverManagement, async 
     const pin = generatePin();
     const hashedPin = await hashPin(pin);
 
-    // Generate unique username (retry if collision)
-    let username = generateUsername();
-    let attempts = 0;
-    while (attempts < 10) {
+    let username: string;
+
+    if (data.username) {
+      // Custom username provided - validate and check availability
+      username = normalizeUsername(data.username);
+
+      if (!isValidUsername(username)) {
+        return c.json({
+          error: 'Invalid username format. Use lowercase letters, numbers, and hyphens only (5-30 chars).',
+        }, 400);
+      }
+
+      // Check if username is already taken
       const existing = await db
         .select({ id: caregivers.id })
         .from(caregivers)
         .where(eq(caregivers.username, username))
         .get();
-      if (!existing) break;
+
+      if (existing) {
+        return c.json({ error: 'Username is already taken' }, 409);
+      }
+    } else {
+      // Auto-generate unique username (retry if collision)
       username = generateUsername();
-      attempts++;
+      let attempts = 0;
+      while (attempts < 10) {
+        const existing = await db
+          .select({ id: caregivers.id })
+          .from(caregivers)
+          .where(eq(caregivers.username, username))
+          .get();
+        if (!existing) break;
+        username = generateUsername();
+        attempts++;
+      }
     }
 
     const newCaregiver = await db

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Settings, Users, UserCog, User, LogOut, Heart } from 'lucide-react';
+import { Settings, Users, UserCog, User, LogOut, Heart, Trash2 } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
 
 export const Route = createFileRoute('/family/settings/')({
@@ -13,6 +13,13 @@ function SettingsIndexComponent() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('careRecipient');
+    window.location.href = '/auth/login';
+  };
+
+  const handleClearSession = () => {
+    // Clear ALL localStorage to fix any stale data issues
+    localStorage.clear();
+    // Force reload to clear React state
     window.location.href = '/auth/login';
   };
 
@@ -93,7 +100,7 @@ function SettingsIndexComponent() {
           <CardHeader>
             <h3 className="text-lg font-semibold text-red-600">Danger Zone</h3>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-gray-900">Log Out</p>
@@ -103,6 +110,18 @@ function SettingsIndexComponent() {
                 <LogOut className="h-4 w-4 mr-2" />
                 Log Out
               </Button>
+            </div>
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">Clear Session</p>
+                  <p className="text-sm text-gray-600">Fix data sync issues by clearing all cached data</p>
+                </div>
+                <Button onClick={handleClearSession} variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear & Refresh
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

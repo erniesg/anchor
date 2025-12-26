@@ -14,6 +14,7 @@ export const Route = createFileRoute('/family/onboarding/caregiver')({
 interface CaregiverData {
   careRecipientId: string;
   name: string;
+  username?: string;
   phone?: string;
   language: string;
 }
@@ -21,12 +22,14 @@ interface CaregiverData {
 function CaregiverOnboardingComponent() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
+  const [customUsername, setCustomUsername] = useState('');
   const [phone, setPhone] = useState('');
   const [language, setLanguage] = useState('en');
   const [generatedPin, setGeneratedPin] = useState<string | null>(null);
   const [caregiverId, setCaregiverId] = useState<string | null>(null);
+  const [caregiverUsername, setCaregiverUsername] = useState<string | null>(null);
   const [copiedPin, setCopiedPin] = useState(false);
-  const [copiedId, setCopiedId] = useState(false);
+  const [copiedUsername, setCopiedUsername] = useState(false);
 
   const createCaregiverMutation = useMutation({
     mutationFn: async (data: CaregiverData) => {
@@ -45,6 +48,7 @@ function CaregiverOnboardingComponent() {
     onSuccess: (data) => {
       setGeneratedPin(data.pin);
       setCaregiverId(data.id);
+      setCaregiverUsername(data.username);
     },
   });
 
@@ -60,6 +64,7 @@ function CaregiverOnboardingComponent() {
     createCaregiverMutation.mutate({
       careRecipientId: careRecipient.id,
       name,
+      username: customUsername.trim() || undefined,
       phone: phone || undefined,
       language,
     });
@@ -69,15 +74,15 @@ function CaregiverOnboardingComponent() {
     navigate({ to: '/family/dashboard' });
   };
 
-  const copyToClipboard = async (text: string, type: 'pin' | 'id') => {
+  const copyToClipboard = async (text: string, type: 'pin' | 'username') => {
     try {
       await navigator.clipboard.writeText(text);
       if (type === 'pin') {
         setCopiedPin(true);
         setTimeout(() => setCopiedPin(false), 2000);
       } else {
-        setCopiedId(true);
-        setTimeout(() => setCopiedId(false), 2000);
+        setCopiedUsername(true);
+        setTimeout(() => setCopiedUsername(false), 2000);
       }
     } catch (err) {
       console.error('Failed to copy:', err);
@@ -102,15 +107,15 @@ function CaregiverOnboardingComponent() {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* Caregiver ID */}
+              {/* Caregiver Username */}
               <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold text-blue-900">Caregiver ID</p>
+                  <p className="text-sm font-semibold text-blue-900">Username</p>
                   <button
-                    onClick={() => caregiverId && copyToClipboard(caregiverId, 'id')}
+                    onClick={() => caregiverUsername && copyToClipboard(caregiverUsername, 'username')}
                     className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium"
                   >
-                    {copiedId ? (
+                    {copiedUsername ? (
                       <>
                         <Check className="h-4 w-4" />
                         Copied!
@@ -123,7 +128,7 @@ function CaregiverOnboardingComponent() {
                     )}
                   </button>
                 </div>
-                <p className="text-sm font-mono text-blue-900 break-all">{caregiverId}</p>
+                <p className="text-2xl font-bold text-blue-700 font-mono text-center">{caregiverUsername}</p>
               </div>
 
               {/* PIN */}
@@ -182,7 +187,7 @@ function CaregiverOnboardingComponent() {
                   <div>
                     <p className="font-medium text-yellow-900 text-sm">Share BOTH credentials with {name}</p>
                     <p className="text-yellow-800 text-sm mt-1">
-                      They need <span className="font-semibold">both the Caregiver ID and PIN</span> to log in
+                      They need <span className="font-semibold">both the Username and PIN</span> to log in
                     </p>
                     <p className="text-yellow-800 text-sm mt-2">
                       💡 Tip: Use the copy buttons above to easily share via WhatsApp or SMS
@@ -231,6 +236,15 @@ function CaregiverOnboardingComponent() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Maria Santos"
+              />
+
+              <Input
+                label="Username"
+                type="text"
+                value={customUsername}
+                onChange={(e) => setCustomUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                placeholder="e.g., maria-helper or leave blank for auto-generate"
+                helperText="Optional - lowercase letters, numbers, hyphens only (5-30 chars). Leave blank to auto-generate like happy-panda-42"
               />
 
               <Input

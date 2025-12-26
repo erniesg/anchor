@@ -1,11 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { User, Save, Lock } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const Route = createFileRoute('/family/settings/profile')({
   component: ProfileSettingsComponent,
@@ -32,8 +33,7 @@ const timezones = [
 ];
 
 function ProfileSettingsComponent() {
-  const _queryClient = useQueryClient(); void _queryClient;
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user: authUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
@@ -51,40 +51,20 @@ function ProfileSettingsComponent() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
+  // Initialize form from AuthContext user
   useEffect(() => {
-    const user = localStorage.getItem('user');
-    if (user) {
-      const parsed = JSON.parse(user);
-      setUserId(parsed.id);
-      // Initialize form with localStorage data immediately
-      setName(parsed.name || '');
-      setEmail(parsed.email || '');
-      setTimezone(parsed.timezone || 'Asia/Singapore');
+    if (authUser) {
+      setName(authUser.name || '');
+      setEmail(authUser.email || '');
+      setPhone(authUser.phone || '');
+      setTimezone(authUser.timezone || 'Asia/Singapore');
+      setEmailNotifications(authUser.emailNotifications ?? true);
+      setSmsNotifications(authUser.smsNotifications ?? false);
     }
-  }, []);
+  }, [authUser]);
 
-  // Fetch user profile (disabled - using localStorage for now)
-  const { data: profile, isLoading } = useQuery({
-    queryKey: ['user-profile', userId],
-    queryFn: async () => {
-      // TODO: Implement users API endpoint
-      return null;
-    },
-    enabled: false, // Disabled until users API is implemented
-  });
-
-  // Initialize form when profile loads
-  useEffect(() => {
-    if (profile && typeof profile === 'object') {
-      const p = profile as UserProfile;
-      setName(p.name);
-      setEmail(p.email);
-      setPhone(p.phone || '');
-      setTimezone(p.timezone);
-      setEmailNotifications(p.emailNotifications);
-      setSmsNotifications(p.smsNotifications);
-    }
-  }, [profile]);
+  // Profile loading state (using AuthContext now)
+  const isLoading = !authUser;
 
   // Update profile mutation (disabled - using localStorage for now)
   const updateMutation = useMutation({
@@ -135,14 +115,13 @@ function ProfileSettingsComponent() {
   };
 
   const handleCancel = () => {
-    if (profile && typeof profile === 'object') {
-      const p = profile as UserProfile;
-      setName(p.name);
-      setEmail(p.email);
-      setPhone(p.phone || '');
-      setTimezone(p.timezone);
-      setEmailNotifications(p.emailNotifications);
-      setSmsNotifications(p.smsNotifications);
+    if (authUser) {
+      setName(authUser.name || '');
+      setEmail(authUser.email || '');
+      setPhone(authUser.phone || '');
+      setTimezone(authUser.timezone || 'Asia/Singapore');
+      setEmailNotifications(authUser.emailNotifications ?? true);
+      setSmsNotifications(authUser.smsNotifications ?? false);
     }
     setIsEditing(false);
   };

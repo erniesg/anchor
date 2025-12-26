@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ExternalLink, Copy, Check, Heart } from 'lucide-react';
+import { Copy, Check, Heart, History, X } from 'lucide-react';
 import { authenticatedApiCall } from '@/lib/api';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,19 +25,6 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks } from 'dat
 export const Route = createFileRoute('/family/dashboard')({
   component: DashboardComponent,
 });
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-}
-
-interface CareRecipient {
-  id: string;
-  name: string;
-  condition?: string;
-}
 
 interface FluidEntry {
   time?: string;
@@ -177,9 +164,10 @@ function StatusBadge({ status }: { status?: string }) {
 
 function DashboardComponent() {
   const navigate = useNavigate();
-  const { user, token, careRecipient, logoutFamily, setCareRecipient: setAuthCareRecipient, refreshCareRecipient } = useAuth();
+  const { user, token, careRecipient, setCareRecipient: setAuthCareRecipient, refreshCareRecipient } = useAuth();
   const [viewMode, setViewMode] = useState<'today' | 'week' | 'month'>('today');
   const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, -1 = last week, etc.
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   // Fetch care recipients from API to check onboarding status
   const { data: careRecipients } = useQuery({
@@ -251,6 +239,31 @@ function DashboardComponent() {
     },
   });
 
+  // Fetch audit history for the care log
+  interface AuditEntry {
+    id: string;
+    careLogId: string;
+    action: 'create' | 'update' | 'submit' | 'submit_section';
+    changes: Record<string, { old: unknown; new: unknown }> | null;
+    snapshot: Record<string, unknown> | null;
+    performedBy: string;
+    createdAt: string;
+  }
+
+  const { data: auditHistory, isLoading: historyLoading } = useQuery<AuditEntry[]>({
+    queryKey: ['care-log-history', todayLog?.id],
+    queryFn: async () => {
+      if (!todayLog?.id || !token) return [];
+      try {
+        return await authenticatedApiCall(`/care-logs/${todayLog.id}/history`, token);
+      } catch (error) {
+        console.error('Failed to fetch audit history:', error);
+        return [];
+      }
+    },
+    enabled: !!todayLog?.id && !!token && showHistoryModal,
+  });
+
   // Auto-mark as viewed after 3 seconds when there are unviewed changes
   useEffect(() => {
     if (todayLog?.id && todayLog?.hasUnviewedChanges && viewMode === 'today') {
@@ -315,26 +328,20 @@ function DashboardComponent() {
     setTimeout(() => setCopiedLoginUrl(false), 2000);
   };
 
-  const handleLogout = () => {
-    logoutFamily();
-    navigate({ to: '/auth/login' });
-  };
-
   return (
     <FamilyLayout>
       <div className="bg-gradient-to-br from-primary-50 to-accent-50 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* User Greeting */}
-          {user && (
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-primary-700">Welcome back, {user.name}</h1>
-              <div className="flex items-center gap-3 mt-2">
-                <Button onClick={handleLogout} variant="ghost" size="sm">
-                  Log out
-                </Button>
-              </div>
-            </div>
-          )}
+          {/* Page Header */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {careRecipient ? `${careRecipient.name}'s Care Dashboard` : 'Dashboard'}
+            </h1>
+            {user && (
+              <p className="text-sm text-gray-600 mt-1">Welcome back, {user.name}</p>
+            )}
+          </div>
+
         {!careRecipient ? (
           // Onboarding prompt
           <Card>
@@ -384,148 +391,145 @@ function DashboardComponent() {
         ) : (
           // Dashboard with care logs
           <div className="space-y-6">
-            {/* Care Recipient Info + View Toggle */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{careRecipient.name}</h2>
-                    <p className="text-sm text-gray-600">{careRecipient.condition || 'No condition specified'}</p>
-                  </div>
-                </div>
-
-                {/* View Mode Toggle */}
-                <div className="flex items-center justify-between">
-                  <div className="flex bg-gray-100 rounded-lg p-1">
-                    <button
-                      onClick={() => { setViewMode('today'); setWeekOffset(0); }}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                        viewMode === 'today'
-                          ? 'bg-white text-primary-700 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      Today
-                    </button>
-                    <button
-                      onClick={() => setViewMode('week')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                        viewMode === 'week'
-                          ? 'bg-white text-primary-700 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      Week
-                    </button>
-                    <button
-                      onClick={() => setViewMode('month')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                        viewMode === 'month'
-                          ? 'bg-white text-primary-700 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      Month
-                    </button>
-                  </div>
-
-                  {/* Week Navigation */}
-                  {viewMode === 'week' && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setWeekOffset(weekOffset - 1)}
-                        className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
-                      >
-                        ←
-                      </button>
-                      <span className="text-sm text-gray-700 min-w-[200px] text-center">
-                        {weekOffset === 0 ? 'This Week' : `${format(currentWeek.start, 'MMM dd')} - ${format(currentWeek.end, 'MMM dd')}`}
-                      </span>
-                      <button
-                        onClick={() => setWeekOffset(weekOffset + 1)}
-                        disabled={weekOffset >= 0}
-                        className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        →
-                      </button>
-                    </div>
-                  )}
-
-                  {viewMode === 'today' && (
-                    <div className="text-right">
-                      {todayLog?.status && (
-                        <div className="mb-2 flex items-center justify-end gap-2">
-                          <StatusBadge status={todayLog.status} />
-                          {todayLog.hasUnviewedChanges && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full animate-pulse">
-                              <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                              New Changes
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      <p className="text-sm text-gray-600">
-                        Last updated: {todayLog ? new Date(todayLog.updatedAt).toLocaleTimeString() : 'No data'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Caregiver Login Info Card */}
+            {/* 1. Caregiver Login Info Card - Actions/Notifications at top */}
             <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
                   <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                      <Heart className="h-6 w-6 text-white" />
+                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                      <Heart className="h-5 w-5 text-white" />
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold text-blue-900 mb-2">
-                      Caregiver Login
-                    </h3>
-                    <p className="text-sm text-gray-700 mb-4">
-                      Share this URL with your caregivers so they can submit daily care reports:
+                    <p className="text-sm text-gray-700">
+                      Share with caregivers:
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex items-center gap-2 mt-1">
                       <a
                         href={caregiverLoginUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 flex items-center gap-2 bg-white border-2 border-blue-300 rounded-lg px-4 py-3 hover:bg-blue-50 transition-colors group"
+                        className="text-blue-700 font-semibold text-sm hover:underline truncate"
                       >
-                        <span className="text-blue-700 font-semibold text-sm break-all">
-                          {caregiverLoginUrl}
-                        </span>
-                        <ExternalLink className="h-4 w-4 text-blue-600 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {caregiverLoginUrl}
                       </a>
                       <button
                         onClick={copyCaregiverLoginUrl}
-                        className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                        className="flex-shrink-0 flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
                       >
-                        {copiedLoginUrl ? (
-                          <>
-                            <Check className="h-4 w-4" />
-                            <span>Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-4 w-4" />
-                            <span>Copy</span>
-                          </>
-                        )}
+                        {copiedLoginUrl ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        {copiedLoginUrl ? 'Copied!' : 'Copy'}
                       </button>
                     </div>
-                    <p className="text-xs text-gray-600 mt-3">
-                      💡 Caregivers need their Caregiver ID and PIN to login. You can manage caregivers in{' '}
-                      <Link to="/family/settings/caregivers" search={{ recipientId: undefined, action: undefined }} className="text-blue-600 hover:text-blue-700 font-semibold underline">
-                        Settings → Caregivers
-                      </Link>
-                    </p>
+                  </div>
+                  <Link to="/family/settings/caregivers" search={{ recipientId: undefined, action: undefined }} className="flex-shrink-0 text-blue-600 hover:text-blue-700 text-sm font-medium">
+                    Manage →
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 2. Care Recipient Info + View Toggle + Data - All together */}
+            <Card>
+              <CardContent className="p-6">
+                {/* Header row: Care recipient name + View toggle */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">{careRecipient.name}</h2>
+                    <p className="text-sm text-gray-600">{careRecipient.condition || 'No condition specified'}</p>
+                  </div>
+
+                  {/* View Mode Toggle */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex bg-gray-100 rounded-lg p-1">
+                      <button
+                        onClick={() => { setViewMode('today'); setWeekOffset(0); }}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          viewMode === 'today'
+                            ? 'bg-white text-primary-700 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Today
+                      </button>
+                      <button
+                        onClick={() => setViewMode('week')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          viewMode === 'week'
+                            ? 'bg-white text-primary-700 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Week
+                      </button>
+                      <button
+                        onClick={() => setViewMode('month')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          viewMode === 'month'
+                            ? 'bg-white text-primary-700 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Month
+                      </button>
+                    </div>
+
+                    {/* Status for today view */}
+                    {viewMode === 'today' && (
+                      <div className="text-right">
+                        {todayLog?.status && (
+                          <div className="flex items-center gap-2">
+                            <StatusBadge status={todayLog.status} />
+                            {todayLog.hasUnviewedChanges && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full animate-pulse">
+                                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                                New
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {todayLog?.id && (
+                          <button
+                            onClick={() => setShowHistoryModal(true)}
+                            className="mt-1 inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-800 hover:underline"
+                          >
+                            <History className="h-3 w-3" />
+                            View History
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* Week Navigation */}
+                {viewMode === 'week' && (
+                  <div className="flex items-center justify-center gap-2 mb-6">
+                    <button
+                      onClick={() => setWeekOffset(weekOffset - 1)}
+                      className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                    >
+                      ←
+                    </button>
+                    <span className="text-sm text-gray-700 min-w-[200px] text-center">
+                      {weekOffset === 0 ? 'This Week' : `${format(currentWeek.start, 'MMM dd')} - ${format(currentWeek.end, 'MMM dd')}`}
+                    </span>
+                    <button
+                      onClick={() => setWeekOffset(weekOffset + 1)}
+                      disabled={weekOffset >= 0}
+                      className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      →
+                    </button>
+                  </div>
+                )}
+
+                {/* Last updated for today */}
+                {viewMode === 'today' && (
+                  <p className="text-xs text-gray-500 mb-4">
+                    Last updated: {todayLog ? new Date(todayLog.updatedAt).toLocaleTimeString() : 'No data'}
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -2485,6 +2489,114 @@ function DashboardComponent() {
         )}
         </div>
       </div>
+
+      {/* History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
+              <div className="flex items-center gap-2">
+                <History className="h-5 w-5 text-primary-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Change History</h2>
+              </div>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {historyLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
+                  <p className="text-gray-500 text-sm">Loading history...</p>
+                </div>
+              ) : !auditHistory || auditHistory.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No changes recorded yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {auditHistory.map((entry) => {
+                    const actionLabels: Record<string, { label: string; color: string; icon: string }> = {
+                      create: { label: 'Created', color: 'bg-green-100 text-green-800', icon: '📝' },
+                      update: { label: 'Updated', color: 'bg-blue-100 text-blue-800', icon: '✏️' },
+                      submit: { label: 'Submitted', color: 'bg-purple-100 text-purple-800', icon: '✅' },
+                      submit_section: { label: 'Section Submitted', color: 'bg-indigo-100 text-indigo-800', icon: '📋' },
+                    };
+                    const actionInfo = actionLabels[entry.action] || { label: entry.action, color: 'bg-gray-100 text-gray-800', icon: '•' };
+
+                    return (
+                      <div key={entry.id} className="border rounded-lg p-3 bg-gray-50">
+                        <div className="flex items-start justify-between mb-2">
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${actionInfo.color}`}>
+                            <span>{actionInfo.icon}</span>
+                            {actionInfo.label}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(entry.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+
+                        {/* Show changes for update actions */}
+                        {entry.changes && Object.keys(entry.changes).length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {Object.entries(entry.changes).map(([field, change]) => {
+                              const typedChange = change as { old: unknown; new: unknown };
+                              const fieldLabel = field
+                                .replace(/([A-Z])/g, ' $1')
+                                .replace(/^./, (str) => str.toUpperCase())
+                                .trim();
+
+                              return (
+                                <div key={field} className="text-xs bg-white rounded p-2 border">
+                                  <span className="font-medium text-gray-700">{fieldLabel}:</span>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-red-600 line-through">
+                                      {typedChange.old === null || typedChange.old === undefined
+                                        ? '(empty)'
+                                        : typeof typedChange.old === 'object'
+                                          ? JSON.stringify(typedChange.old)
+                                          : String(typedChange.old)}
+                                    </span>
+                                    <span className="text-gray-400">→</span>
+                                    <span className="text-green-600 font-medium">
+                                      {typedChange.new === null || typedChange.new === undefined
+                                        ? '(empty)'
+                                        : typeof typedChange.new === 'object'
+                                          ? JSON.stringify(typedChange.new)
+                                          : String(typedChange.new)}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-4 py-3 border-t bg-gray-50">
+              <Button
+                onClick={() => setShowHistoryModal(false)}
+                variant="outline"
+                className="w-full"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </FamilyLayout>
   );
 }

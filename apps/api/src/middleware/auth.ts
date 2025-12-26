@@ -4,6 +4,7 @@ import { verify } from 'hono/jwt';
 import { eq } from 'drizzle-orm';
 import { caregivers } from '@anchor/database/schema';
 import { isActiveUser, isActiveCaregiver } from '../lib/access-control';
+import bcrypt from 'bcryptjs';
 
 /**
  * Authentication Middleware
@@ -87,12 +88,9 @@ export const authCaregiver = createMiddleware<AppContext>(async (c, next) => {
     return c.json({ error: 'Unauthorized', message: 'Caregiver account is inactive' }, 401);
   }
 
-  // Verify PIN (in production, use bcrypt.compare)
-  // For now, direct comparison (PIN should be hashed in real implementation)
-  const crypto = await import('crypto');
-  const hash = crypto.createHash('sha256').update(pin).digest('hex');
-
-  if (hash !== caregiver.pinCode) {
+  // Verify PIN using bcrypt (PINs are stored as bcrypt hashes)
+  const isValid = await bcrypt.compare(pin, caregiver.pinCode);
+  if (!isValid) {
     return c.json({ error: 'Unauthorized', message: 'Invalid PIN' }, 401);
   }
 

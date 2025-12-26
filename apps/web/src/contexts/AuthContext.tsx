@@ -124,6 +124,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const userData = await authenticatedApiCall<User>(`/users/${userId}`, authToken);
       setUser(userData);
+      // Store in localStorage for persistence
+      localStorage.setItem(STORAGE_KEYS.familyUser, JSON.stringify(userData));
+      localStorage.setItem('user', JSON.stringify(userData));
       return userData;
     } catch (error) {
       console.error('Failed to fetch user:', error);
@@ -154,6 +157,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const storedFamilyToken = localStorage.getItem(STORAGE_KEYS.familyToken);
       if (storedFamilyToken && !isTokenExpired(storedFamilyToken)) {
         setFamilyToken(storedFamilyToken);
+
+        // First try to load cached user data
+        const cachedUser = localStorage.getItem(STORAGE_KEYS.familyUser) || localStorage.getItem('user');
+        if (cachedUser) {
+          try {
+            setUser(JSON.parse(cachedUser));
+          } catch {
+            // Invalid JSON, will fetch from API
+          }
+        }
+
+        // Then fetch fresh data from API
         const decoded = decodeJWT(storedFamilyToken);
         if (decoded?.sub) {
           await fetchUser(storedFamilyToken, decoded.sub);
@@ -196,9 +211,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
 
-    // Store family token
+    // Store family token and user data
     localStorage.setItem(STORAGE_KEYS.familyToken, response.token);
+    localStorage.setItem(STORAGE_KEYS.familyUser, JSON.stringify(response.user));
     localStorage.setItem(STORAGE_KEYS.activeContext, 'family');
+    // Also store in legacy keys for backward compatibility
+    localStorage.setItem('token', response.token);
+    localStorage.setItem('user', JSON.stringify(response.user));
     setFamilyToken(response.token);
     setUser(response.user);
     setActiveContext('family');
@@ -250,6 +269,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Store family token
     localStorage.setItem(STORAGE_KEYS.familyToken, response.token);
     localStorage.setItem(STORAGE_KEYS.activeContext, 'family');
+    // Also store in legacy keys for backward compatibility
+    localStorage.setItem('token', response.token);
+    localStorage.setItem('user', JSON.stringify(response.user));
     setFamilyToken(response.token);
     setUser(response.user);
     setActiveContext('family');

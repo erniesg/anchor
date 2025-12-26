@@ -295,14 +295,14 @@ auth.post('/forgot-password', async (c) => {
     const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
 
     await resend.emails.send({
-      from: 'Anchor Care <noreply@berlayar.ai>',
+      from: 'Anchor <noreply@berlayar.ai>',
       to: user.email,
-      subject: 'Reset Your Password - Anchor Care',
+      subject: 'Reset Your Password - Anchor',
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #1e40af;">Reset Your Password</h1>
           <p>Hi ${user.name},</p>
-          <p>You requested to reset your password for your Anchor Care account.</p>
+          <p>You requested to reset your password for your Anchor account.</p>
           <p>Click the button below to set a new password:</p>
           <p style="margin: 24px 0;">
             <a href="${resetUrl}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">
@@ -312,7 +312,7 @@ auth.post('/forgot-password', async (c) => {
           <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
           <p style="color: #666; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-          <p style="color: #999; font-size: 12px;">Anchor Care - Caring for your loved ones</p>
+          <p style="color: #999; font-size: 12px;">Anchor - Structure for Sanity, Connection for the Heart</p>
         </div>
       `,
     });

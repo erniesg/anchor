@@ -70,7 +70,11 @@ function CaregiversSettingsComponent() {
     name: '',
     phone: '',
     email: '',
+    username: '',
   });
+  const [editPinReset, setEditPinReset] = useState<string | null>(null);
+  const [editUsernameChanged, setEditUsernameChanged] = useState(false);
+  const [showUsernameConfirm, setShowUsernameConfirm] = useState(false);
 
   // Search, filter, and sort state
   const [searchQuery, setSearchQuery] = useState('');
@@ -219,22 +223,15 @@ function CaregiversSettingsComponent() {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ caregiverId, data }: { caregiverId: string; data: typeof editForm }) => {
+    mutationFn: async ({ caregiverId, data }: { caregiverId: string; data: Omit<typeof editForm, 'username'> }) => {
       if (!token) throw new Error('Not authenticated');
-      if (!token) throw new Error('No authentication token');
       return authenticatedApiCall(`/caregivers/${caregiverId}`, token, {
         method: 'PUT',
         body: JSON.stringify(data),
       });
     },
     onSuccess: () => {
-      setShowEditModal(false);
-      setSelectedCaregiver(null);
       queryClient.invalidateQueries({ queryKey: ['caregivers'] });
-      addToast({
-        type: 'success',
-        message: 'Caregiver details updated successfully.',
-      });
     },
     onError: (error) => {
       addToast({
@@ -309,6 +306,26 @@ function CaregiversSettingsComponent() {
     },
   });
 
+  // Update username mutation
+  const updateUsernameMutation = useMutation({
+    mutationFn: async ({ caregiverId, username }: { caregiverId: string; username: string }) => {
+      if (!token) throw new Error('Not authenticated');
+      return authenticatedApiCall<{ username: string }>(`/caregivers/${caregiverId}/username`, token, {
+        method: 'PUT',
+        body: JSON.stringify({ username }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['caregivers'] });
+    },
+    onError: (error) => {
+      addToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to update username.',
+      });
+    },
+  });
+
   const handleResetPin = (caregiver: Caregiver) => {
     setSelectedCaregiver(caregiver);
     setShowResetPinModal(true);
@@ -335,7 +352,11 @@ function CaregiversSettingsComponent() {
       name: caregiver.name,
       phone: caregiver.phone || '',
       email: caregiver.email || '',
+      username: caregiver.username || '',
     });
+    setEditPinReset(null);
+    setEditUsernameChanged(false);
+    setShowUsernameConfirm(false);
     setShowEditModal(true);
   };
 
@@ -354,12 +375,35 @@ function CaregiversSettingsComponent() {
     }
   };
 
-  const confirmEdit = () => {
-    if (selectedCaregiver) {
-      updateMutation.mutate({
+  const confirmEdit = async () => {
+    if (!selectedCaregiver) return;
+
+    try {
+      // Update basic info (name, phone, email)
+      const { username: _username, ...basicInfo } = editForm;
+      await updateMutation.mutateAsync({
         caregiverId: selectedCaregiver.id,
-        data: editForm,
+        data: basicInfo,
       });
+
+      // Update username if changed
+      if (editUsernameChanged && editForm.username && editForm.username !== (selectedCaregiver.username || '')) {
+        await updateUsernameMutation.mutateAsync({
+          caregiverId: selectedCaregiver.id,
+          username: editForm.username,
+        });
+      }
+
+      setShowEditModal(false);
+      setSelectedCaregiver(null);
+      setEditPinReset(null);
+      setEditUsernameChanged(false);
+      addToast({
+        type: 'success',
+        message: 'Caregiver details updated successfully.',
+      });
+    } catch {
+      // Error toast is handled by the mutations
     }
   };
 
@@ -939,46 +983,197 @@ function CaregiversSettingsComponent() {
         </div>
       )}
 
-      {/* Edit Caregiver Modal */}
+      {/* Edit Caregiver Modal - Unified Design */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md mx-4">
-            <CardHeader>
-              <h3 className="text-lg font-semibold text-gray-900">Edit Caregiver Details</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <CardHeader className="border-b">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Edit className="h-5 w-5 text-blue-600" />
+                Edit Caregiver
+              </h3>
+              <p className="text-sm text-gray-500">{selectedCaregiver?.name}</p>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                  <Input
-                    value={editForm.name}
-                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    placeholder="Caregiver name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <Input
-                    value={editForm.phone}
-                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                    placeholder="Phone number (optional)"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <Input
-                    type="email"
-                    value={editForm.email}
-                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                    placeholder="Email address (optional)"
-                  />
+            <CardContent className="pt-6">
+              {/* Section 1: Basic Information */}
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs font-bold">1</div>
+                  Basic Information
+                </h4>
+                <div className="space-y-4 pl-8">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                    <Input
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      placeholder="Caregiver name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <Input
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      placeholder="Phone number (optional)"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <Input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      placeholder="Email address (optional)"
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="flex gap-2">
+
+              {/* Section 2: Login Credentials */}
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-xs font-bold">2</div>
+                  Login Credentials
+                </h4>
+                <div className="space-y-4 pl-8">
+                  {/* Username */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <Input
+                          value={editForm.username}
+                          onChange={(e) => {
+                            setEditForm({ ...editForm, username: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') });
+                            setEditUsernameChanged(e.target.value !== (selectedCaregiver?.username || ''));
+                          }}
+                          placeholder="e.g., happy-panda-42"
+                          className="font-mono"
+                        />
+                        {editForm.username && (
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(editForm.username);
+                              setCopiedId(editForm.username);
+                              setTimeout(() => setCopiedId(null), 2000);
+                            }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            title="Copy username"
+                          >
+                            {copiedId === editForm.username ? (
+                              <Check className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (selectedCaregiver) {
+                            generateUsernameMutation.mutate(selectedCaregiver.id, {
+                              onSuccess: (data) => {
+                                setEditForm({ ...editForm, username: data.username });
+                                setEditUsernameChanged(true);
+                              },
+                            });
+                          }
+                        }}
+                        disabled={generateUsernameMutation.isPending}
+                        title="Generate new username"
+                        className="px-3"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${generateUsernameMutation.isPending ? 'animate-spin' : ''}`} />
+                      </Button>
+                    </div>
+                    {editUsernameChanged && editForm.username !== (selectedCaregiver?.username || '') && (
+                      <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        Username will be changed. Caregiver will need the new username to login.
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Lowercase letters, numbers, and hyphens only
+                    </p>
+                  </div>
+
+                  {/* PIN Reset */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">PIN</label>
+                    {editPinReset ? (
+                      <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-semibold text-green-800">New PIN Generated</p>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(editPinReset);
+                              setCopiedPin(true);
+                              setTimeout(() => setCopiedPin(false), 2000);
+                            }}
+                            className="flex items-center gap-1 text-green-600 hover:text-green-700 text-xs font-medium"
+                          >
+                            {copiedPin ? (
+                              <>
+                                <Check className="h-3 w-3" />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3" />
+                                Copy
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-2xl font-mono font-bold text-green-900 tracking-widest text-center">
+                          {editPinReset}
+                        </p>
+                        <p className="text-xs text-green-700 mt-2 text-center">
+                          Save this PIN securely!
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-gray-100 rounded-lg px-4 py-2 text-gray-500 text-sm">
+                          ******
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (selectedCaregiver) {
+                              resetPinMutation.mutate(selectedCaregiver.id, {
+                                onSuccess: (data) => {
+                                  setEditPinReset(data.pin);
+                                },
+                              });
+                            }
+                          }}
+                          disabled={resetPinMutation.isPending}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        >
+                          <Key className="h-4 w-4 mr-1" />
+                          {resetPinMutation.isPending ? 'Resetting...' : 'Reset PIN'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-4 border-t">
                 <Button
                   onClick={() => {
                     setShowEditModal(false);
                     setSelectedCaregiver(null);
+                    setEditPinReset(null);
+                    setEditUsernameChanged(false);
                   }}
                   variant="outline"
                   className="flex-1"
@@ -988,7 +1183,7 @@ function CaregiversSettingsComponent() {
                 <Button
                   onClick={confirmEdit}
                   disabled={!editForm.name.trim() || updateMutation.isPending}
-                  className="flex-1"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
                 >
                   {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </Button>

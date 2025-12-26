@@ -857,8 +857,9 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
         mood: data.mood,
         showerTime: data.showerTime,
         hairWash: data.hairWash,
-        medications: data.medications,
-        meals: data.meals,
+        // JSON fields must be stringified (consistent with POST handler)
+        medications: data.medications ? JSON.stringify(data.medications) : undefined,
+        meals: data.meals ? JSON.stringify(data.meals) : undefined,
         // Sprint 2 Day 1: Fluid Intake (added to PATCH handler)
         fluids: data.fluids ? JSON.stringify(data.fluids) : undefined,
         totalFluidIntake: data.fluids ? data.fluids.reduce((sum: number, f: { amountMl: number }) => sum + f.amountMl, 0) : undefined,
@@ -871,36 +872,36 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
         bloodSugar: data.bloodSugar,
         vitalsTime: data.vitalsTime,
         // Sprint 2 Day 5: Toileting & Hygiene
-        bowelMovements: data.bowelMovements,
-        urination: data.urination,
+        bowelMovements: data.bowelMovements ? JSON.stringify(data.bowelMovements) : undefined,
+        urination: data.urination ? JSON.stringify(data.urination) : undefined,
         // Sprint 1: Fall Risk & Safety fields
         balanceIssues: data.balanceIssues,
         nearFalls: data.nearFalls,
         actualFalls: data.actualFalls,
-        walkingPattern: data.walkingPattern,
+        walkingPattern: data.walkingPattern ? JSON.stringify(data.walkingPattern) : undefined,
         freezingEpisodes: data.freezingEpisodes,
-        unaccompaniedTime: data.unaccompaniedTime,
+        unaccompaniedTime: data.unaccompaniedTime ? JSON.stringify(data.unaccompaniedTime) : undefined,
         unaccompaniedIncidents: data.unaccompaniedIncidents,
-        safetyChecks: data.safetyChecks,
-        emergencyPrep: data.emergencyPrep,
+        safetyChecks: data.safetyChecks ? JSON.stringify(data.safetyChecks) : undefined,
+        emergencyPrep: data.emergencyPrep ? JSON.stringify(data.emergencyPrep) : undefined,
         emergencyFlag: data.emergencyFlag,
         emergencyNote: data.emergencyNote,
         // Sprint 3 Day 1: Spiritual & Emotional Well-Being
-        spiritualEmotional: data.spiritualEmotional,
+        spiritualEmotional: data.spiritualEmotional ? JSON.stringify(data.spiritualEmotional) : undefined,
         // Sprint 3 Day 2: Physical Activity & Exercise
-        physicalActivity: data.physicalActivity,
+        physicalActivity: data.physicalActivity ? JSON.stringify(data.physicalActivity) : undefined,
         // Sprint 3 Day 4: Detailed Exercise Sessions
-        morningExerciseSession: data.morningExerciseSession,
-        afternoonExerciseSession: data.afternoonExerciseSession,
-        movementDifficulties: data.movementDifficulties,
+        morningExerciseSession: data.morningExerciseSession ? JSON.stringify(data.morningExerciseSession) : undefined,
+        afternoonExerciseSession: data.afternoonExerciseSession ? JSON.stringify(data.afternoonExerciseSession) : undefined,
+        movementDifficulties: data.movementDifficulties ? JSON.stringify(data.movementDifficulties) : undefined,
         // Sprint 3 Day 3: Oral Care & Hygiene
-        oralCare: data.oralCare,
+        oralCare: data.oralCare ? JSON.stringify(data.oralCare) : undefined,
         // Sprint 3 Day 5: Special Concerns & Incidents
-        specialConcerns: data.specialConcerns,
+        specialConcerns: data.specialConcerns ? JSON.stringify(data.specialConcerns) : undefined,
         // Sprint 3 Day 3: Caregiver Notes
-        caregiverNotes: data.caregiverNotes,
+        caregiverNotes: data.caregiverNotes ? JSON.stringify(data.caregiverNotes) : undefined,
         // Sprint 3 Day 4: Activities
-        activities: data.activities,
+        activities: data.activities ? JSON.stringify(data.activities) : undefined,
         // Environment & Safety fields
         roomMaintenance: data.roomMaintenance ? JSON.stringify(data.roomMaintenance) : undefined,
         personalItemsCheck: data.personalItemsCheck ? JSON.stringify(data.personalItemsCheck) : undefined,
@@ -1432,11 +1433,11 @@ careLogsRoute.post('/:id/submit-section', ...caregiverOnly, requireCareLogOwners
       submittedBy: caregiverId,
     };
 
-    // Update the log
+    // Update the log (JSON.stringify completedSections for DB storage)
     await db
       .update(careLogs)
       .set({
-        completedSections: completedSections,
+        completedSections: JSON.stringify(completedSections),
         updatedAt: new Date(),
       })
       .where(eq(careLogs.id, logId));
