@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Shield,
   Droplets,
+  AlertCircle,
 } from 'lucide-react';
 
 export const Route = createFileRoute('/caregiver/form/summary')({
@@ -366,6 +367,14 @@ function SummaryFormComponent() {
     !!completedSections.afternoon,
     !!completedSections.evening,
   ].filter(Boolean).length;
+
+  // Validation - check all required fields
+  const missingFields: string[] = [];
+  if (balanceIssues === null) missingFields.push('Balance Issues');
+
+  const canSubmit = missingFields.length === 0;
+  const completedFieldsCount = [balanceIssues !== null].filter(Boolean).length;
+  const totalRequiredFields = 1;
 
   if (isLoading) {
     return (
@@ -747,19 +756,69 @@ function SummaryFormComponent() {
           </CardContent>
         </Card>
 
+        {/* Progress Indicator */}
+        <Card className={`border-2 ${canSubmit ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                {canSubmit ? (
+                  <CheckCircle className="h-5 w-5 text-emerald-600" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                )}
+                <span className={`font-medium ${canSubmit ? 'text-emerald-800' : 'text-amber-800'}`}>
+                  {canSubmit ? 'Ready to Submit' : 'Required Fields Missing'}
+                </span>
+              </div>
+              <span className="text-sm text-gray-600">
+                {completedFieldsCount}/{totalRequiredFields} required
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+              <div
+                className={`h-2 rounded-full transition-all ${canSubmit ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                style={{ width: `${(completedFieldsCount / totalRequiredFields) * 100}%` }}
+              />
+            </div>
+            {!canSubmit && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {missingFields.map((field) => (
+                  <span
+                    key={field}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 rounded text-xs"
+                  >
+                    <AlertCircle className="h-3 w-3" />
+                    {field}
+                  </span>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Submit Section Button */}
         <div className="space-y-3">
           <Button
             onClick={handleSubmitSection}
-            disabled={submitSectionMutation.isPending || balanceIssues === null}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-6 text-lg"
+            disabled={submitSectionMutation.isPending || !canSubmit}
+            className={`w-full py-6 text-lg ${
+              canSubmit
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
           >
             {submitSectionMutation.isPending ? (
               <Loader2 className="h-5 w-5 animate-spin mr-2" />
             ) : isSubmitted ? (
               <CheckCircle className="h-5 w-5 mr-2" />
+            ) : !canSubmit ? (
+              <AlertCircle className="h-5 w-5 mr-2" />
             ) : null}
-            {isSubmitted ? 'Update & Re-submit Summary' : 'Submit Daily Summary'}
+            {!canSubmit
+              ? 'Complete Required Fields'
+              : isSubmitted
+                ? 'Update & Re-submit Summary'
+                : 'Submit Daily Summary'}
           </Button>
 
           <Link to="/caregiver/form/evening" className="block">

@@ -16,6 +16,7 @@ import {
   Loader2,
   ChevronRight,
   ChevronLeft,
+  AlertCircle,
 } from 'lucide-react';
 
 export const Route = createFileRoute('/caregiver/form/afternoon')({
@@ -115,6 +116,19 @@ function AfternoonFormComponent() {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  // Validation - check all required fields
+  const missingFields: string[] = [];
+  if (!lunchTime) missingFields.push('Lunch Time');
+  if (restEnabled) {
+    if (!restStartTime) missingFields.push('Rest Start Time');
+    if (!restEndTime) missingFields.push('Rest End Time');
+  }
+
+  const canSubmit = missingFields.length === 0;
+  const requiredFieldsForProgress = restEnabled ? [lunchTime, restStartTime, restEndTime] : [lunchTime];
+  const completedFieldsCount = requiredFieldsForProgress.filter(Boolean).length;
+  const totalRequiredFields = requiredFieldsForProgress.length;
 
   // Fetch today's care log
   const { data: todayLog, isLoading } = useQuery({
@@ -620,19 +634,55 @@ function AfternoonFormComponent() {
           </Card>
         )}
 
+        {/* Progress Indicator */}
+        <Card className={`border-2 ${canSubmit ? 'border-green-200 bg-green-50' : 'border-sky-200 bg-sky-50'}`}>
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">Section Progress</span>
+              <span className={`text-sm font-bold ${canSubmit ? 'text-green-600' : 'text-sky-600'}`}>
+                {completedFieldsCount}/{totalRequiredFields} required
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+              <div
+                className={`h-2 rounded-full transition-all ${canSubmit ? 'bg-green-500' : 'bg-sky-500'}`}
+                style={{ width: `${(completedFieldsCount / totalRequiredFields) * 100}%` }}
+              />
+            </div>
+            {!canSubmit && (
+              <div className="flex items-start gap-2 text-sky-700 text-sm">
+                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <span>Missing: {missingFields.join(', ')}</span>
+              </div>
+            )}
+            {canSubmit && !isSubmitted && (
+              <div className="flex items-center gap-2 text-green-700 text-sm">
+                <CheckCircle className="h-4 w-4" />
+                <span>Ready to submit!</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Submit Section Button */}
         <div className="space-y-3">
           <Button
             onClick={handleSubmitSection}
-            disabled={submitSectionMutation.isPending || !lunchTime}
-            className="w-full bg-sky-600 hover:bg-sky-700 text-white py-6 text-lg"
+            disabled={submitSectionMutation.isPending || !canSubmit}
+            className={`w-full py-6 text-lg ${
+              canSubmit
+                ? 'bg-sky-600 hover:bg-sky-700 text-white'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
           >
             {submitSectionMutation.isPending ? (
               <Loader2 className="h-5 w-5 animate-spin mr-2" />
             ) : isSubmitted ? (
               <CheckCircle className="h-5 w-5 mr-2" />
+            ) : !canSubmit ? (
+              <AlertCircle className="h-5 w-5 mr-2" />
             ) : null}
-            {isSubmitted ? 'Update & Re-submit Afternoon' : 'Submit Afternoon Section'}
+            {isSubmitted ? 'Update & Re-submit Afternoon' : canSubmit ? 'Submit Afternoon Section' : 'Complete Required Fields'}
           </Button>
 
           <div className="flex gap-3">
