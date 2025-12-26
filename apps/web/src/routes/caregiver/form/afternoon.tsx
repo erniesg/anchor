@@ -31,11 +31,10 @@ const RequiredLabel = ({ children, required = false }: { children: React.ReactNo
   </span>
 );
 
-// Optional label helper
-const OptionalLabel = ({ children }: { children: React.ReactNode }) => (
+// Simple label (no "optional" text - required fields have red asterisk)
+const Label = ({ children }: { children: React.ReactNode }) => (
   <span className="block text-sm font-medium text-gray-700 mb-1">
     {children}
-    <span className="text-gray-400 font-normal text-xs ml-1">(optional)</span>
   </span>
 );
 
@@ -439,7 +438,7 @@ function AfternoonFormComponent() {
             </div>
 
             <div>
-              <OptionalLabel>Assistance Level</OptionalLabel>
+              <Label>Assistance Level</Label>
               <div className="flex gap-2">
                 {(['none', 'some', 'full'] as const).map((level) => (
                   <button
@@ -467,7 +466,7 @@ function AfternoonFormComponent() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <OptionalLabel>Time</OptionalLabel>
+              <Label>Time</Label>
               <Input
                 type="time"
                 value={teaBreakTime}
@@ -479,7 +478,7 @@ function AfternoonFormComponent() {
             {teaBreakTime && (
               <>
                 <div>
-                  <OptionalLabel>Appetite (1-5)</OptionalLabel>
+                  <Label>Appetite (1-5)</Label>
                   <div className="flex gap-2">
                     {[1, 2, 3, 4, 5].map((level) => (
                       <button
@@ -499,7 +498,7 @@ function AfternoonFormComponent() {
                 </div>
 
                 <div>
-                  <OptionalLabel>Amount Eaten (1-5)</OptionalLabel>
+                  <Label>Amount Eaten (1-5)</Label>
                   <div className="flex gap-2">
                     {[1, 2, 3, 4, 5].map((level) => (
                       <button
@@ -580,7 +579,7 @@ function AfternoonFormComponent() {
               </div>
 
               <div>
-                <OptionalLabel>Notes</OptionalLabel>
+                <Label>Notes</Label>
                 <Input
                   type="text"
                   value={restNotes}
@@ -676,13 +675,23 @@ function AfternoonFormComponent() {
             }`}
           >
             {submitSectionMutation.isPending ? (
-              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              <>
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                Submitting...
+              </>
             ) : isSubmitted ? (
-              <CheckCircle className="h-5 w-5 mr-2" />
+              <>
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Update & Re-submit Afternoon
+              </>
             ) : !canSubmit ? (
-              <AlertCircle className="h-5 w-5 mr-2" />
-            ) : null}
-            {isSubmitted ? 'Update & Re-submit Afternoon' : canSubmit ? 'Submit Afternoon Section' : 'Complete Required Fields'}
+              <>
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Complete Required Fields
+              </>
+            ) : (
+              'Submit Afternoon Section'
+            )}
           </Button>
 
           <div className="flex gap-3">

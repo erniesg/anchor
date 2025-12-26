@@ -31,11 +31,10 @@ const RequiredLabel = ({ children, required = false }: { children: React.ReactNo
   </span>
 );
 
-// Optional label helper
-const OptionalLabel = ({ children }: { children: React.ReactNode }) => (
+// Simple label (no "optional" text - required fields have red asterisk)
+const Label = ({ children }: { children: React.ReactNode }) => (
   <span className="block text-sm font-medium text-gray-700 mb-1">
     {children}
-    <span className="text-gray-400 font-normal text-xs ml-1">(optional)</span>
   </span>
 );
 
@@ -450,7 +449,7 @@ function EveningFormComponent() {
             </div>
 
             <div>
-              <OptionalLabel>Assistance Level</OptionalLabel>
+              <Label>Assistance Level</Label>
               <div className="flex gap-2">
                 {(['none', 'some', 'full'] as const).map((level) => (
                   <button
@@ -478,7 +477,7 @@ function EveningFormComponent() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <OptionalLabel>Bedtime</OptionalLabel>
+              <Label>Bedtime</Label>
               <Input
                 type="time"
                 value={bedtime}
@@ -490,7 +489,7 @@ function EveningFormComponent() {
             {bedtime && (
               <>
                 <div>
-                  <OptionalLabel>Expected Sleep Quality</OptionalLabel>
+                  <Label>Expected Sleep Quality</Label>
                   <div className="grid grid-cols-2 gap-2">
                     {(['deep', 'light', 'restless', 'no_sleep'] as const).map((quality) => (
                       <button
@@ -510,7 +509,7 @@ function EveningFormComponent() {
                 </div>
 
                 <div>
-                  <OptionalLabel>Night Wakings (if known from previous night)</OptionalLabel>
+                  <Label>Night Wakings (if known from previous night)</Label>
                   <div className="flex gap-2">
                     {[0, 1, 2, 3, 4, 5].map((num) => (
                       <button
@@ -531,7 +530,7 @@ function EveningFormComponent() {
 
                 {wakings > 0 && (
                   <div>
-                    <OptionalLabel>Reasons for Waking</OptionalLabel>
+                    <Label>Reasons for Waking</Label>
                     <div className="flex flex-wrap gap-2">
                       {wakingReasonOptions.map((reason) => (
                         <button
@@ -552,7 +551,7 @@ function EveningFormComponent() {
                 )}
 
                 <div>
-                  <OptionalLabel>Behaviors Before Sleep</OptionalLabel>
+                  <Label>Behaviors Before Sleep</Label>
                   <div className="flex flex-wrap gap-2">
                     {behaviorOptions.map((behavior) => (
                       <button
@@ -572,7 +571,7 @@ function EveningFormComponent() {
                 </div>
 
                 <div>
-                  <OptionalLabel>Notes</OptionalLabel>
+                  <Label>Notes</Label>
                   <Input
                     type="text"
                     value={sleepNotes}
@@ -671,13 +670,23 @@ function EveningFormComponent() {
             }`}
           >
             {submitSectionMutation.isPending ? (
-              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              <>
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                Submitting...
+              </>
             ) : isSubmitted ? (
-              <CheckCircle className="h-5 w-5 mr-2" />
+              <>
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Update & Re-submit Evening
+              </>
             ) : !canSubmit ? (
-              <AlertCircle className="h-5 w-5 mr-2" />
-            ) : null}
-            {isSubmitted ? 'Update & Re-submit Evening' : canSubmit ? 'Submit Evening Section' : 'Complete Required Fields'}
+              <>
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Complete Required Fields
+              </>
+            ) : (
+              'Submit Evening Section'
+            )}
           </Button>
 
           <div className="flex gap-3">

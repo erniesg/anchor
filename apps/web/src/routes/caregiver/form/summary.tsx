@@ -33,11 +33,10 @@ const RequiredLabel = ({ children, required = false }: { children: React.ReactNo
   </span>
 );
 
-// Optional label helper
-const OptionalLabel = ({ children }: { children: React.ReactNode }) => (
+// Simple label (no "optional" text - required fields have red asterisk)
+const Label = ({ children }: { children: React.ReactNode }) => (
   <span className="block text-sm font-medium text-gray-700 mb-1">
     {children}
-    <span className="text-gray-400 font-normal text-xs ml-1">(optional)</span>
   </span>
 );
 
@@ -559,7 +558,7 @@ function SummaryFormComponent() {
             </div>
 
             <div>
-              <OptionalLabel>Walking Pattern</OptionalLabel>
+              <Label>Walking Pattern</Label>
               <div className="flex flex-wrap gap-2">
                 {walkingPatternOptions.map((pattern) => (
                   <button
@@ -700,7 +699,7 @@ function SummaryFormComponent() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <OptionalLabel>What went well today?</OptionalLabel>
+              <Label>What went well today?</Label>
               <textarea
                 value={whatWentWell}
                 onChange={(e) => setWhatWentWell(e.target.value)}
@@ -711,7 +710,7 @@ function SummaryFormComponent() {
             </div>
 
             <div>
-              <OptionalLabel>Challenges faced</OptionalLabel>
+              <Label>Challenges faced</Label>
               <textarea
                 value={challengesFaced}
                 onChange={(e) => setChallengesFaced(e.target.value)}
@@ -722,7 +721,7 @@ function SummaryFormComponent() {
             </div>
 
             <div>
-              <OptionalLabel>Recommendations for tomorrow</OptionalLabel>
+              <Label>Recommendations for tomorrow</Label>
               <textarea
                 value={recommendationsForTomorrow}
                 onChange={(e) => setRecommendationsForTomorrow(e.target.value)}
@@ -733,7 +732,7 @@ function SummaryFormComponent() {
             </div>
 
             <div>
-              <OptionalLabel>Important info for family</OptionalLabel>
+              <Label>Important info for family</Label>
               <textarea
                 value={importantInfoForFamily}
                 onChange={(e) => setImportantInfoForFamily(e.target.value)}
@@ -744,7 +743,7 @@ function SummaryFormComponent() {
             </div>
 
             <div>
-              <OptionalLabel>Additional notes</OptionalLabel>
+              <Label>Additional notes</Label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -808,17 +807,23 @@ function SummaryFormComponent() {
             }`}
           >
             {submitSectionMutation.isPending ? (
-              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              <>
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                Submitting...
+              </>
             ) : isSubmitted ? (
-              <CheckCircle className="h-5 w-5 mr-2" />
+              <>
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Update & Re-submit Summary
+              </>
             ) : !canSubmit ? (
-              <AlertCircle className="h-5 w-5 mr-2" />
-            ) : null}
-            {!canSubmit
-              ? 'Complete Required Fields'
-              : isSubmitted
-                ? 'Update & Re-submit Summary'
-                : 'Submit Daily Summary'}
+              <>
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Complete Required Fields
+              </>
+            ) : (
+              'Submit Daily Summary'
+            )}
           </Button>
 
           <Link to="/caregiver/form/evening" className="block">

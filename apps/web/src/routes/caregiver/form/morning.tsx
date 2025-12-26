@@ -30,11 +30,10 @@ const RequiredLabel = ({ children, required = false }: { children: React.ReactNo
   </span>
 );
 
-// Optional label helper
-const OptionalLabel = ({ children }: { children: React.ReactNode }) => (
+// Simple label (no "optional" text - required fields have red asterisk)
+const Label = ({ children }: { children: React.ReactNode }) => (
   <span className="block text-sm font-medium text-gray-700 mb-1">
     {children}
-    <span className="text-gray-400 font-normal text-xs ml-1">(optional)</span>
   </span>
 );
 
@@ -524,7 +523,7 @@ function MorningFormComponent() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <OptionalLabel>Shower Time</OptionalLabel>
+              <Label>Shower Time</Label>
               <Input
                 type="time"
                 value={showerTime}
@@ -555,7 +554,7 @@ function MorningFormComponent() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <OptionalLabel>Time Taken</OptionalLabel>
+              <Label>Time Taken</Label>
               <Input
                 type="time"
                 value={vitalsTime}
@@ -566,7 +565,7 @@ function MorningFormComponent() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <OptionalLabel>Blood Pressure</OptionalLabel>
+                <Label>Blood Pressure</Label>
                 <Input
                   type="text"
                   placeholder="120/80"
@@ -575,7 +574,7 @@ function MorningFormComponent() {
                 />
               </div>
               <div>
-                <OptionalLabel>Pulse (bpm)</OptionalLabel>
+                <Label>Pulse (bpm)</Label>
                 <Input
                   type="number"
                   placeholder="72"
@@ -584,7 +583,7 @@ function MorningFormComponent() {
                 />
               </div>
               <div>
-                <OptionalLabel>Oxygen (%)</OptionalLabel>
+                <Label>Oxygen (%)</Label>
                 <Input
                   type="number"
                   placeholder="98"
@@ -593,7 +592,7 @@ function MorningFormComponent() {
                 />
               </div>
               <div>
-                <OptionalLabel>Blood Sugar (mmol/L)</OptionalLabel>
+                <Label>Blood Sugar (mmol/L)</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -665,7 +664,7 @@ function MorningFormComponent() {
             </div>
 
             <div>
-              <OptionalLabel>Assistance Level</OptionalLabel>
+              <Label>Assistance Level</Label>
               <div className="flex gap-2">
                 {(['none', 'some', 'full'] as const).map((level) => (
                   <button
@@ -772,13 +771,23 @@ function MorningFormComponent() {
             }`}
           >
             {submitSectionMutation.isPending ? (
-              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              <>
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                Submitting...
+              </>
             ) : isSubmitted ? (
-              <CheckCircle className="h-5 w-5 mr-2" />
+              <>
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Update & Re-submit Morning
+              </>
             ) : !canSubmit ? (
-              <AlertCircle className="h-5 w-5 mr-2" />
-            ) : null}
-            {isSubmitted ? 'Update & Re-submit Morning' : canSubmit ? 'Submit Morning Section' : 'Complete Required Fields'}
+              <>
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Complete Required Fields
+              </>
+            ) : (
+              'Submit Morning Section'
+            )}
           </Button>
 
           <Button
