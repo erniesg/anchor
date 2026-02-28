@@ -76,11 +76,11 @@ const afternoonRestSchema = z.object({
 });
 
 const nightSleepSchema = z.object({
-  bedtime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+  bedtime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)').optional(),
   quality: z.enum(['deep', 'light', 'restless', 'no_sleep'], {
     errorMap: () => ({ message: 'Quality must be one of: deep, light, restless, no_sleep' }),
-  }),
-  wakings: z.number().int().nonnegative({ message: 'Wakings must be non-negative' }),
+  }).optional(),
+  wakings: z.number().int().nonnegative({ message: 'Wakings must be non-negative' }).optional(),
   wakingReasons: z.array(z.string()).default([]), // toilet, pain, confusion, dreams, unknown
   behaviors: z.array(z.string()).default([]), // quiet, snoring, talking, mumbling, restless, dreaming, nightmares
   notes: z.string().optional(),
@@ -908,7 +908,11 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
         totalFluidIntake: data.fluids ? data.fluids.reduce((sum: number, f: { amountMl: number }) => sum + f.amountMl, 0) : undefined,
         // Sprint 2 Day 3: Sleep Tracking
         afternoonRest: data.afternoonRest ? JSON.stringify(data.afternoonRest) : undefined,
-        nightSleep: data.nightSleep ? JSON.stringify(data.nightSleep) : undefined,
+        // Merge nightSleep with existing data (morning writes quality/wakings, evening writes bedtime/behaviors)
+        nightSleep: data.nightSleep ? JSON.stringify({
+          ...(existingLog.nightSleep ? (typeof existingLog.nightSleep === 'string' ? JSON.parse(existingLog.nightSleep) : existingLog.nightSleep) : {}),
+          ...data.nightSleep,
+        }) : undefined,
         bloodPressure: data.bloodPressure,
         pulseRate: data.pulseRate,
         oxygenLevel: data.oxygenLevel,
