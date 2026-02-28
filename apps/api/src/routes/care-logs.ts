@@ -3,12 +3,31 @@ import { z } from 'zod';
 import type { AppContext } from '../index';
 import { careLogs, caregivers, careLogAudit, careLogViews } from '@anchor/database/schema';
 import { createDbClient } from '@anchor/database';
-import { eq, desc, and, or, isNotNull, gt } from 'drizzle-orm';
+import { eq, desc, and, or, isNotNull, gt, gte, lt } from 'drizzle-orm';
 import { caregiverOnly, familyAdminOnly, familyMemberAccess } from '../middleware/rbac';
 import { requireCareLogOwnership, requireLogInvalidation, requireCareRecipientAccess } from '../middleware/permissions';
 import { caregiverHasAccess, canAccessCareRecipient } from '../lib/access-control';
 
 const careLogsRoute = new Hono<AppContext>();
+
+// Singapore timezone offset: UTC+8
+const SGT_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+/** Get the current date string (YYYY-MM-DD) in Singapore timezone */
+function getTodaySGT(): string {
+  const now = new Date();
+  const sgt = new Date(now.getTime() + SGT_OFFSET_MS);
+  return sgt.toISOString().split('T')[0]!;
+}
+
+/** Get start-of-day and end-of-day timestamps in SGT (returned as UTC Date objects) */
+function getTodayRangeSGT(): { start: Date; end: Date } {
+  const todayStr = getTodaySGT();
+  // Start of day in SGT = midnight SGT = todayStr T00:00:00+08:00
+  const start = new Date(`${todayStr}T00:00:00+08:00`);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return { start, end };
+}
 
 // Validation schemas
 // Sprint 2 Day 4: Enhanced medication schema with purpose and notes
@@ -676,6 +695,30 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
       }, 403);
     }
 
+    // Prevent duplicate logs for the same caregiver + recipient + date
+    const logDate = new Date(data.logDate);
+    const dayStart = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate());
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const existingLog = await db
+      .select({ id: careLogs.id })
+      .from(careLogs)
+      .where(
+        and(
+          eq(careLogs.caregiverId, data.caregiverId || caregiverId),
+          eq(careLogs.careRecipientId, data.careRecipientId),
+          gte(careLogs.logDate, dayStart),
+          lt(careLogs.logDate, dayEnd)
+        )
+      )
+      .get();
+
+    if (existingLog) {
+      return c.json({
+        error: 'A care log already exists for this date',
+        existingLogId: existingLog.id,
+      }, 409);
+    }
+
     // Sprint 2 Day 1: Auto-calculate total fluid intake if not provided
     const fluids = data.fluids || [];
     const totalFluidIntake = data.totalFluidIntake !== undefined
@@ -990,29 +1033,24 @@ careLogsRoute.get('/caregiver/today', ...caregiverOnly, async (c) => {
       return c.json({ error: 'Caregiver not assigned to a care recipient' }, 400);
     }
 
-    // Get today's date in YYYY-MM-DD format
-    const today = new Date().toISOString().split('T')[0];
+    // Get today's date range in Singapore timezone (UTC+8)
+    const { start: todayStart, end: todayEnd } = getTodayRangeSGT();
 
-    // Find logs for this caregiver's care recipient
-    const logs = await db
+    // Find today's log for this caregiver's care recipient
+    const todayLog = await db
       .select()
       .from(careLogs)
       .where(
         and(
           eq(careLogs.careRecipientId, caregiver.careRecipientId),
-          eq(careLogs.caregiverId, caregiverId)
+          eq(careLogs.caregiverId, caregiverId),
+          gte(careLogs.logDate, todayStart),
+          lt(careLogs.logDate, todayEnd)
         )
       )
       .orderBy(desc(careLogs.updatedAt))
-      .all();
-
-    // Filter by today's date (compare YYYY-MM-DD portion)
-    const todayLog = logs.find(log => {
-      // log.logDate might be a Date object or Unix timestamp
-      const logDateMs = typeof log.logDate === 'number' ? log.logDate * 1000 : new Date(log.logDate).getTime();
-      const logDate = new Date(logDateMs).toISOString().split('T')[0];
-      return logDate === today;
-    });
+      .limit(1)
+      .get();
 
     if (!todayLog) {
       return c.json(null);
@@ -1149,21 +1187,26 @@ careLogsRoute.get('/recipient/:recipientId/today', ...familyMemberAccess, requir
     const db = c.get('db');
     const userId = c.get('userId');
 
-    // Get logs that are either submitted OR have completed sections
-    // Prioritize today's logs, but fall back to recent submitted logs
+    // Get TODAY's date range in Singapore timezone (UTC+8)
+    const { start: todayStart, end: todayEnd } = getTodayRangeSGT();
+
+    // Get TODAY's log that is either submitted OR has completed sections
+    // MUST filter by today's date - don't return old logs!
     const log = await db
       .select()
       .from(careLogs)
       .where(
         and(
           eq(careLogs.careRecipientId, recipientId),
+          gte(careLogs.logDate, todayStart),
+          lt(careLogs.logDate, todayEnd),
           or(
             eq(careLogs.status, 'submitted'),
             isNotNull(careLogs.completedSections)
           )
         )
       )
-      .orderBy(desc(careLogs.logDate), desc(careLogs.updatedAt))
+      .orderBy(desc(careLogs.updatedAt))
       .limit(1)
       .get();
 

@@ -1,9 +1,30 @@
 import { useState } from 'react';
-import { Plus, X, Droplets, Activity, AlertTriangle } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, X, Droplets, Activity, AlertTriangle, Check, ChevronUp } from 'lucide-react';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { authenticatedApiCall } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+
+// Toast notification for success feedback
+interface Toast {
+  id: number;
+  message: string;
+  icon: string;
+  color: string;
+}
+
+function SuccessToast({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+  return (
+    <div
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg ${toast.color} text-white animate-slide-in-right`}
+      onClick={onDismiss}
+    >
+      <span className="text-xl">{toast.icon}</span>
+      <span className="font-medium">{toast.message}</span>
+      <Check className="h-5 w-5 ml-2" />
+    </div>
+  );
+}
 
 interface QuickActionFABProps {
   careLogId: string | null;
@@ -45,6 +66,21 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Show success toast
+  const showSuccessToast = (message: string, icon: string, color: string) => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, icon, color }]);
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3000);
+  };
+
+  const dismissToast = (id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   // Form states
   const [fluidEntry, setFluidEntry] = useState<FluidEntry>({
@@ -74,16 +110,49 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
     actionsTaken: '',
   });
 
-  // Create care log if needed
+  const [showSummary, setShowSummary] = useState(false);
+
+  // Fetch today's log for summary
+  interface TodayLogData {
+    fluids?: FluidEntry[];
+    totalFluidIntake?: number;
+    bowelMovements?: { frequency?: number };
+    urination?: { frequency?: number };
+    physicalActivity?: { exerciseType?: string[]; exerciseDuration?: number };
+    nearFalls?: boolean;
+    actualFalls?: boolean;
+  }
+
+  const { data: todayLogData } = useQuery({
+    queryKey: ['caregiver-today-log', careLogId],
+    queryFn: async (): Promise<TodayLogData | null> => {
+      if (!careLogId || !token) return null;
+      return authenticatedApiCall<TodayLogData>(`/care-logs/${careLogId}`, token);
+    },
+    enabled: !!careLogId && !!token && isOpen,
+    staleTime: 30000, // Cache for 30 seconds
+  });
+
+  // Create care log if needed (handles 409 duplicate gracefully)
   const createLogMutation = useMutation({
     mutationFn: async () => {
       if (!token || !careRecipientId) throw new Error('Not authenticated');
       const today = new Date().toISOString().split('T')[0];
-      const response = await authenticatedApiCall<{ id: string }>('/care-logs', token, {
-        method: 'POST',
-        body: JSON.stringify({ careRecipientId, logDate: today }),
-      });
-      return response;
+      try {
+        return await authenticatedApiCall<{ id: string }>('/care-logs', token, {
+          method: 'POST',
+          body: JSON.stringify({ careRecipientId, logDate: today }),
+        });
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('already exists')) {
+          const existing = await authenticatedApiCall<{ id: string }>(
+            '/care-logs/caregiver/today',
+            token
+          );
+          if (existing?.id) return existing;
+        }
+        throw err;
+      }
     },
     onSuccess: (data) => {
       if (onLogCreated) onLogCreated(data.id);
@@ -130,6 +199,9 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
         },
       });
 
+      // Show success toast
+      showSuccessToast(`${fluidEntry.amountMl}ml ${fluidEntry.name} logged`, '💧', 'bg-blue-500');
+
       // Reset form
       setFluidEntry({
         name: 'water',
@@ -168,6 +240,11 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
         data: toiletingData,
       });
 
+      // Show success toast
+      const typeLabel = toiletingEntry.type === 'both' ? 'Bowel & Urination' :
+                        toiletingEntry.type === 'bowel' ? 'Bowel movement' : 'Urination';
+      showSuccessToast(`${typeLabel} logged`, '🚽', 'bg-purple-500');
+
       // Reset form
       setToiletingEntry({
         type: 'urination',
@@ -193,6 +270,10 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
           },
         },
       });
+
+      // Show success toast
+      const typeLabel = exerciseEntry.type.replace(/_/g, ' ');
+      showSuccessToast(`${exerciseEntry.duration}min ${typeLabel} logged`, '🏃', 'bg-green-500');
 
       // Reset form
       setExerciseEntry({
@@ -234,6 +315,11 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
         data: incidentData,
       });
 
+      // Show success toast
+      const typeLabel = incidentEntry.type === 'near_fall' ? 'Near fall' :
+                        incidentEntry.type === 'fall' ? 'Fall' : 'Incident';
+      showSuccessToast(`${typeLabel} reported`, '⚠️', 'bg-amber-500');
+
       // Reset form
       setIncidentEntry({
         type: 'near_fall',
@@ -268,11 +354,98 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
 
   return (
     <>
+      {/* Success Toasts */}
+      <div className="fixed top-4 right-4 z-[60] flex flex-col gap-2">
+        {toasts.map((toast) => (
+          <SuccessToast
+            key={toast.id}
+            toast={toast}
+            onDismiss={() => dismissToast(toast.id)}
+          />
+        ))}
+      </div>
+
       {/* FAB Button */}
       <div className="fixed bottom-6 right-6 z-50">
-        {/* Quick action buttons */}
+        {/* Quick action buttons and summary */}
         {isOpen && (
           <div className="absolute bottom-16 right-0 flex flex-col gap-3 mb-2">
+            {/* Today's Summary Toggle */}
+            {todayLogData && (
+              <div className="animate-fade-in">
+                <button
+                  onClick={() => setShowSummary(!showSummary)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-700 text-white shadow-lg hover:bg-gray-600 transition-all w-full"
+                >
+                  <span className="text-lg">📋</span>
+                  <span className="font-medium flex-1 text-left">Today's Log</span>
+                  <ChevronUp className={`h-4 w-4 transition-transform ${showSummary ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Summary Panel */}
+                {showSummary && (
+                  <div className="mt-2 p-4 bg-white rounded-xl shadow-lg border animate-fade-in max-w-xs">
+                    <h4 className="font-semibold text-gray-800 mb-3 text-sm">Quick Log Summary</h4>
+                    <div className="space-y-2 text-sm">
+                      {/* Fluids */}
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-gray-600">
+                          <span>💧</span> Fluids
+                        </span>
+                        <span className="font-medium text-blue-600">
+                          {todayLogData.totalFluidIntake || 0}ml
+                        </span>
+                      </div>
+                      {todayLogData.fluids && todayLogData.fluids.length > 0 && (
+                        <div className="pl-6 text-xs text-gray-500">
+                          {todayLogData.fluids.slice(-3).map((f, i) => (
+                            <div key={i}>{f.time} - {f.amountMl}ml {f.name}</div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Toileting */}
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-gray-600">
+                          <span>🚽</span> Toileting
+                        </span>
+                        <span className="font-medium text-purple-600">
+                          {(todayLogData.bowelMovements?.frequency || 0) + (todayLogData.urination?.frequency || 0) > 0
+                            ? `${todayLogData.bowelMovements?.frequency || 0}B / ${todayLogData.urination?.frequency || 0}U`
+                            : 'Not logged'}
+                        </span>
+                      </div>
+
+                      {/* Exercise */}
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-gray-600">
+                          <span>🏃</span> Exercise
+                        </span>
+                        <span className="font-medium text-green-600">
+                          {todayLogData.physicalActivity?.exerciseDuration
+                            ? `${todayLogData.physicalActivity.exerciseDuration}min`
+                            : 'Not logged'}
+                        </span>
+                      </div>
+
+                      {/* Incidents */}
+                      {(todayLogData.nearFalls || todayLogData.actualFalls) && (
+                        <div className="flex items-center justify-between text-amber-600">
+                          <span className="flex items-center gap-2">
+                            <span>⚠️</span> Incidents
+                          </span>
+                          <span className="font-medium">
+                            {todayLogData.actualFalls ? 'Fall reported' : 'Near fall'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons */}
             {quickActions.map((action) => (
               <button
                 key={action.id}
@@ -683,11 +856,18 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
           from { opacity: 0; transform: translateY(100%); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes slide-in-right {
+          from { opacity: 0; transform: translateX(100%); }
+          to { opacity: 1; transform: translateX(0); }
+        }
         .animate-fade-in {
           animation: fade-in 0.2s ease-out;
         }
         .animate-slide-up {
           animation: slide-up 0.3s ease-out;
+        }
+        .animate-slide-in-right {
+          animation: slide-in-right 0.3s ease-out;
         }
       `}</style>
     </>

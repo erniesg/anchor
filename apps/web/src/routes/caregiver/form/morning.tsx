@@ -148,6 +148,7 @@ function MorningFormComponent() {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Validation - check all required fields
   const missingFields: string[] = [];
@@ -241,23 +242,34 @@ function MorningFormComponent() {
     return () => clearTimeout(timer);
   }, [todayLog]);
 
-  // Create care log if none exists
+  // Create care log if none exists (handles 409 duplicate gracefully)
   const createLogMutation = useMutation({
     mutationFn: async () => {
       if (!token || !careRecipient?.id) throw new Error('Not authenticated');
       const today = new Date().toISOString().split('T')[0];
-      const response = await authenticatedApiCall<CareLog>(
-        '/care-logs',
-        token,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            careRecipientId: careRecipient.id,
-            logDate: today,
-          }),
+      try {
+        return await authenticatedApiCall<CareLog>(
+          '/care-logs',
+          token,
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              careRecipientId: careRecipient.id,
+              logDate: today,
+            }),
+          }
+        );
+      } catch (err) {
+        // If a log already exists for today (409), fetch it instead
+        if (err instanceof Error && err.message.includes('already exists')) {
+          const existing = await authenticatedApiCall<CareLog>(
+            '/care-logs/caregiver/today',
+            token
+          );
+          if (existing?.id) return existing;
         }
-      );
-      return response;
+        throw err;
+      }
     },
     onSuccess: (data) => {
       setCareLogId(data.id);
@@ -306,6 +318,7 @@ function MorningFormComponent() {
     },
     onSuccess: () => {
       setLastSaved(new Date());
+      setSaveError(null);
       hasUnsavedChanges.current = false;
       queryClient.invalidateQueries({ queryKey: ['caregiver-today-log'] });
     },
@@ -384,18 +397,35 @@ function MorningFormComponent() {
           // Create care log if it doesn't exist
           if (!logIdToUse) {
             const today = new Date().toISOString().split('T')[0];
-            const newLog = await authenticatedApiCall<CareLog>(
-              '/care-logs',
-              currentToken,
-              {
-                method: 'POST',
-                body: JSON.stringify({
-                  careRecipientId: currentCareRecipientId,
-                  logDate: today,
-                }),
+            try {
+              const newLog = await authenticatedApiCall<CareLog>(
+                '/care-logs',
+                currentToken,
+                {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    careRecipientId: currentCareRecipientId,
+                    logDate: today,
+                  }),
+                }
+              );
+              logIdToUse = newLog.id;
+            } catch (createErr) {
+              // If a log already exists for today (409), fetch it instead
+              if (createErr instanceof Error && createErr.message.includes('already exists')) {
+                const existingLog = await authenticatedApiCall<CareLog>(
+                  '/care-logs/caregiver/today',
+                  currentToken
+                );
+                if (existingLog?.id) {
+                  logIdToUse = existingLog.id;
+                } else {
+                  throw createErr;
+                }
+              } else {
+                throw createErr;
               }
-            );
-            logIdToUse = newLog.id;
+            }
             setCareLogId(logIdToUse);
           }
 
@@ -405,8 +435,9 @@ function MorningFormComponent() {
             authToken: currentToken,
           });
           hasUnsavedChanges.current = false;
-        } catch {
-          // Silent fail for auto-save - user can manually retry
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Failed to save';
+          setSaveError(message);
         }
       }
     }, 3000);
@@ -486,8 +517,10 @@ function MorningFormComponent() {
       try {
         await saveMutation.mutateAsync({ logId: careLogId, payload: buildCurrentPayload(), authToken: token });
         hasUnsavedChanges.current = false;
+        setSaveError(null);
       } catch (err) {
-        console.error('Auto-save failed:', err);
+        console.error('Save failed:', err);
+        setSaveError(err instanceof Error ? err.message : 'Failed to save');
       } finally {
         setIsSaving(false);
       }
@@ -507,8 +540,10 @@ function MorningFormComponent() {
         }
         await saveMutation.mutateAsync({ logId, payload: buildCurrentPayload(), authToken: token });
         hasUnsavedChanges.current = false;
+        setSaveError(null);
       } catch (err) {
-        console.error('Auto-save failed:', err);
+        console.error('Save failed:', err);
+        setSaveError(err instanceof Error ? err.message : 'Failed to save');
       } finally {
         setIsSaving(false);
       }
@@ -593,6 +628,11 @@ function MorningFormComponent() {
                   <CheckCircle className="h-4 w-4" />
                   Submitted
                 </span>
+              ) : saveError ? (
+                <span className="text-xs text-red-600 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Save failed
+                </span>
               ) : lastSaved ? (
                 <span className="text-xs text-gray-500 flex items-center gap-1">
                   <Clock className="h-3 w-3" />
@@ -611,6 +651,19 @@ function MorningFormComponent() {
           </div>
         </div>
       </div>
+
+      {/* Save Error Banner */}
+      {saveError && (
+        <div className="max-w-lg mx-auto px-4 pt-4">
+          <div className="flex items-center justify-between gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center gap-2 text-red-700 text-sm">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>Changes not saved. Please tap Save to retry.</span>
+            </div>
+            <button onClick={() => setSaveError(null)} className="text-red-400 hover:text-red-600 text-lg leading-none">&times;</button>
+          </div>
+        </div>
+      )}
 
       {/* Form Content */}
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">

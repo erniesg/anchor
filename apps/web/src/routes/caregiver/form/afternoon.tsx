@@ -204,23 +204,33 @@ function AfternoonFormComponent() {
     }
   }, [todayLog]);
 
-  // Create care log if none exists
+  // Create care log if none exists (handles 409 duplicate gracefully)
   const createLogMutation = useMutation({
     mutationFn: async () => {
       if (!token || !careRecipient?.id) throw new Error('Not authenticated');
       const today = new Date().toISOString().split('T')[0];
-      const response = await authenticatedApiCall<CareLog>(
-        '/care-logs',
-        token,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            careRecipientId: careRecipient.id,
-            logDate: today,
-          }),
+      try {
+        return await authenticatedApiCall<CareLog>(
+          '/care-logs',
+          token,
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              careRecipientId: careRecipient.id,
+              logDate: today,
+            }),
+          }
+        );
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('already exists')) {
+          const existing = await authenticatedApiCall<CareLog>(
+            '/care-logs/caregiver/today',
+            token
+          );
+          if (existing?.id) return existing;
         }
-      );
-      return response;
+        throw err;
+      }
     },
     onSuccess: (data) => {
       setCareLogId(data.id);

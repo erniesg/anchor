@@ -3,9 +3,9 @@ import { test, expect } from '@playwright/test';
 const BASE_URL = 'https://anchor-dev.erniesg.workers.dev';
 const API_URL = 'https://anchor-dev-api.erniesg.workers.dev';
 
-// Use existing caregiver credentials
-const USERNAME = 'formcg1766775326146';
-const PIN = '762885';
+// Use existing caregiver credentials (from latest comprehensive test)
+const USERNAME = 'formcg1766776022171';
+const PIN = '133322';
 
 test('Trace Morning Form Network Requests', async ({ page }) => {
   test.setTimeout(180000);

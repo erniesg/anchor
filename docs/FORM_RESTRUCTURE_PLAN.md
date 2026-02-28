@@ -384,6 +384,246 @@ No backend changes needed for the restructure!
 
 ---
 
+## Gap Analysis & Improvements (2024-12-26)
+
+### Critical Issues Found
+
+#### 1. **Shower/Hair Wash in Morning Form - WRONG**
+**Problem**: Elderly don't shower every morning. Having this in the daily Morning form implies it's expected daily.
+
+**Solution**: Move to Daily Summary as "Personal Hygiene" section:
+```typescript
+personalHygiene: {
+  bathOrShower: boolean; // "Did they bathe/shower today?"
+  hairWashed: boolean;
+  oralCare: 'am' | 'pm' | 'both' | 'none';
+  skinCare: boolean;
+  notes?: string;
+}
+```
+
+#### 2. **Medications Hardcoded - CRITICAL GAP**
+**Problem**: Medications in forms are either hardcoded or empty. Family should configure medication schedules (like pack list pattern).
+
+**Solution**: Create medication schedule system:
+```typescript
+// Family configures once (like pack list):
+interface MedicationSchedule {
+  id: string;
+  careRecipientId: string;
+  medicationName: string;        // "Glucophage 500mg"
+  dosage: string;                // "1 tablet"
+  frequency: string;             // "daily", "twice_daily", "MWF", "PRN"
+  timeSlots: string[];           // ["before_breakfast", "after_dinner"]
+  purpose?: string;              // "Diabetes"
+  instructions?: string;         // "Take with food"
+  active: boolean;
+}
+
+// Caregiver sees in appropriate time-based form:
+interface MedicationLog {
+  medicationScheduleId: string;
+  given: boolean;
+  time: string | null;
+  notes?: string;                // "Refused", "Vomited after"
+}
+```
+
+**Time Slots**:
+- `before_breakfast` → Morning form
+- `after_breakfast` → Morning form
+- `afternoon` → Afternoon form
+- `before_dinner` → Evening form
+- `after_dinner` → Evening form
+- `bedtime` → Evening form
+
+#### 3. **Appetite AND Amount Eaten - REDUNDANT**
+**Problem**: Forms track both "Appetite (1-5)" and "Amount Eaten (1-5)" for every meal. This is confusing and redundant.
+
+**Solution**: Keep only Amount Eaten:
+```typescript
+// BEFORE (current - redundant):
+{
+  time: string;
+  appetite: number;      // Remove this
+  amountEaten: number;
+  assistance: string;
+}
+
+// AFTER (simplified):
+{
+  time: string;
+  amountEaten: number;   // 1-5 scale
+  assistance: 'none' | 'some' | 'full';
+  swallowingIssues: string[];
+}
+```
+
+#### 4. **Swallowing Issues - MISSING**
+**Problem**: Forms track meals but don't capture swallowing difficulties (critical for elderly care).
+
+**Solution**: Add swallowing issues checkboxes to all meal sections:
+```typescript
+swallowingIssues: string[]; // Multi-select:
+// - 'choking'
+// - 'coughing'
+// - 'drooling'
+// - 'spitting_out'
+// - 'difficulty_swallowing'
+// - 'refusing_food'
+// - 'pocketing_food' (holding food in cheek)
+```
+
+#### 5. **Previous Night Wakings in Evening Form - WRONG PLACEMENT**
+**Problem**: Evening form asks about "Night Wakings (if known from previous night)" - this doesn't make sense chronologically.
+
+**Solution**: Move to Morning form as "Last Night's Sleep Report":
+```typescript
+// Morning form should have:
+lastNightSleep?: {
+  quality: 'deep' | 'light' | 'restless' | 'no_sleep';
+  wakings: number;
+  wakingReasons: string[];
+  notes?: string;
+}
+
+// Evening form should only have:
+bedtimeSetup: {
+  bedtime: string;
+  behaviors: string[];  // How they went to bed
+  notes?: string;
+}
+```
+
+---
+
+### Form-by-Form Recommendations
+
+#### Morning Form (6am-12pm) - REVISED
+| Field | Status | Notes |
+|-------|--------|-------|
+| Wake Time | ✅ Keep | Required |
+| Mood on Waking | ✅ Keep | Required |
+| Last Night's Sleep | ➕ ADD | Move from Evening (quality, wakings, reasons) |
+| ~~Shower Time~~ | ❌ REMOVE | Move to Summary as Personal Hygiene |
+| ~~Hair Wash~~ | ❌ REMOVE | Move to Summary as Personal Hygiene |
+| Morning Vitals | ✅ Keep | BP, Pulse, O2, Blood Sugar |
+| Breakfast | ✅ Keep | But remove Appetite, add Swallowing Issues |
+| Morning Medications | 🔧 FIX | Load from family-configured schedule |
+
+#### Afternoon Form (12pm-6pm) - REVISED
+| Field | Status | Notes |
+|-------|--------|-------|
+| Lunch | ✅ Keep | Remove Appetite, add Swallowing Issues |
+| Tea Break | ✅ Keep | Simplified (time, amount only) |
+| Afternoon Rest | ✅ Keep | Good as-is |
+| Afternoon Medications | 🔧 FIX | Load from family-configured schedule |
+
+#### Evening Form (6pm-bedtime) - REVISED
+| Field | Status | Notes |
+|-------|--------|-------|
+| Dinner | ✅ Keep | Remove Appetite, add Swallowing Issues |
+| Bedtime Setup | 🔧 FIX | Remove "previous night wakings", keep bedtime/behaviors |
+| Evening/Bedtime Medications | 🔧 FIX | Load from family-configured schedule |
+
+#### Summary Form (End of Day) - REVISED
+| Field | Status | Notes |
+|-------|--------|-------|
+| Section Progress | ✅ Keep | Shows morning/afternoon/evening completion |
+| Fluid Intake Summary | ✅ Keep | Auto-calculated from quick actions |
+| Fall Risk Assessment | ✅ Keep | Balance, near falls, actual falls, walking |
+| Safety Checks | ✅ Keep | 6 safety items |
+| Unaccompanied Time | ✅ Keep | Time periods, reasons, replacement |
+| Personal Hygiene | ➕ ADD | Bath/shower, oral care AM/PM, hair wash |
+| Toileting Summary | ➕ ADD | Auto-calc from quick actions (bowel/urination count) |
+| Exercise Summary | ➕ ADD | Auto-calc from quick actions (types, duration) |
+| Spiritual/Emotional | ➕ ADD | Mood throughout day, religious activities, social |
+| Caregiver Notes | ✅ Keep | What went well, challenges, recommendations |
+
+---
+
+### Quick Actions (FAB) - ADDITIONS
+
+| Action | Status | Notes |
+|--------|--------|-------|
+| Toileting | ✅ Keep | Bowel/urination tracking |
+| Fluid Intake | ✅ Keep | Drink logging |
+| Exercise | ✅ Keep | Activity logging |
+| Incident | ✅ Keep | Near falls, incidents |
+| Oral Care | ➕ ADD | Quick log for teeth brushing, denture care |
+| PRN Medication | ➕ ADD | For "as needed" medications |
+
+---
+
+### Database Changes Required
+
+#### 1. New Table: `medication_schedules`
+```sql
+CREATE TABLE medication_schedules (
+  id TEXT PRIMARY KEY,
+  care_recipient_id TEXT NOT NULL REFERENCES care_recipients(id),
+  medication_name TEXT NOT NULL,
+  dosage TEXT,
+  frequency TEXT DEFAULT 'daily',  -- daily, twice_daily, MWF, PRN
+  time_slots TEXT,  -- JSON array: ["before_breakfast", "bedtime"]
+  purpose TEXT,
+  instructions TEXT,
+  active INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### 2. Update: `care_logs` Schema
+```sql
+-- Add new fields
+ALTER TABLE care_logs ADD COLUMN last_night_sleep TEXT;      -- JSON
+ALTER TABLE care_logs ADD COLUMN personal_hygiene TEXT;      -- JSON
+ALTER TABLE care_logs ADD COLUMN oral_care_logs TEXT;        -- JSON array
+ALTER TABLE care_logs ADD COLUMN spiritual_emotional TEXT;   -- JSON
+ALTER TABLE care_logs ADD COLUMN medication_logs TEXT;       -- JSON array (references schedules)
+```
+
+---
+
+### Implementation Priority
+
+**Phase 1 (High Priority)**:
+1. [ ] Remove Shower/Hair Wash from Morning form
+2. [ ] Add Personal Hygiene section to Summary form
+3. [ ] Remove redundant "Appetite" field from all meals
+4. [ ] Add Swallowing Issues to all meal sections
+
+**Phase 2 (Medium Priority)**:
+5. [ ] Create medication_schedules table and API
+6. [ ] Build Family medication schedule UI (like pack list)
+7. [ ] Update time-based forms to load medications from schedule
+8. [ ] Move "Previous Night Wakings" to Morning form
+
+**Phase 3 (Lower Priority)**:
+9. [ ] Add Oral Care quick action
+10. [ ] Add PRN Medication quick action
+11. [ ] Add auto-calculated summaries to Summary form
+12. [ ] Add Spiritual/Emotional section to Summary
+
+---
+
+### Family Dashboard Improvements
+
+**Current Issues**:
+- Shows redundant "waiting for caregiver" cards
+- No historical view (only today)
+- Missing activity/audit log tab
+
+**Improvements Needed**:
+1. **Unified Progress Card**: Single card showing today's status
+2. **View Tabs**: Today | This Week | This Month | Activity
+3. **Activity Tab**: Audit log showing all changes with timestamps
+4. **Medication Dashboard**: Show today's medication schedule and compliance
+5. **Trends Integration**: Link to trends page for historical data
+
+---
+
 ## Notes
 
 - Keep backward compatibility with existing care logs
@@ -391,3 +631,4 @@ No backend changes needed for the restructure!
 - Each time form should be completable in <2 minutes
 - FAB should be accessible but not intrusive
 - Consider offline support in future iteration
+- Follow pack list pattern for medication schedules (family configures → caregiver uses)

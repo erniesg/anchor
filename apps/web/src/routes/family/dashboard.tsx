@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Copy, Check, Heart, History, X } from 'lucide-react';
+import { Copy, Check, Heart, History, X, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { authenticatedApiCall } from '@/lib/api';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,7 +20,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks } from 'date-fns';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, addDays, subDays, isToday, isSameDay, startOfMonth, endOfMonth, getDay } from 'date-fns';
 
 export const Route = createFileRoute('/family/dashboard')({
   component: DashboardComponent,
@@ -179,7 +179,9 @@ function StatusBadge({ status }: { status?: string }) {
 function DashboardComponent() {
   const navigate = useNavigate();
   const { user, token, careRecipient, setCareRecipient: setAuthCareRecipient } = useAuth();
-  const [viewMode, setViewMode] = useState<'today' | 'week' | 'activity'>('today');
+  const [viewMode, setViewMode] = useState<'day' | 'week' | 'activity'>('day');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showCalendar, setShowCalendar] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, -1 = last week, etc.
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
@@ -222,21 +224,30 @@ function DashboardComponent() {
   const currentWeek = getWeekRange(weekOffset);
   const weekDates = eachDayOfInterval({ start: currentWeek.start, end: currentWeek.end });
 
-  // Fetch today's care log
-  const { data: todayLog, isLoading } = useQuery({
-    queryKey: ['care-log-today', careRecipient?.id],
+  // Fetch care log for selected date
+  const { data: dayLog, isLoading } = useQuery({
+    queryKey: ['care-log-date', careRecipient?.id, format(selectedDate, 'yyyy-MM-dd')],
     queryFn: async () => {
       if (!careRecipient?.id || !token) return null;
       try {
-        return await authenticatedApiCall(`/care-logs/recipient/${careRecipient.id}/today`, token);
+        // Use today endpoint if it's today, otherwise use date endpoint
+        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const endpoint = dateStr === todayStr
+          ? `/care-logs/recipient/${careRecipient.id}/today`
+          : `/care-logs/recipient/${careRecipient.id}/date/${dateStr}`;
+        return await authenticatedApiCall(endpoint, token);
       } catch (error) {
-        console.error('Failed to fetch today log:', error);
+        console.error('Failed to fetch day log:', error);
         return null;
       }
     },
-    enabled: !!careRecipient?.id && !!token && viewMode === 'today',
-    refetchInterval: 30000,
+    enabled: !!careRecipient?.id && !!token && viewMode === 'day',
+    refetchInterval: isToday(selectedDate) ? 30000 : undefined, // Only auto-refresh for today
   });
+
+  // Alias for backward compatibility (keeping todayLog name for minimal changes)
+  const todayLog = dayLog;
 
   const queryClient = useQueryClient();
 
@@ -280,7 +291,7 @@ function DashboardComponent() {
 
   // Auto-mark as viewed after 3 seconds when there are unviewed changes
   useEffect(() => {
-    if (todayLog?.id && todayLog?.hasUnviewedChanges && viewMode === 'today') {
+    if (todayLog?.id && todayLog?.hasUnviewedChanges && viewMode === 'day') {
       const timeout = setTimeout(() => {
         markViewedMutation.mutate(todayLog.id);
       }, 3000);
@@ -446,139 +457,337 @@ function DashboardComponent() {
             {/* 2. Care Recipient Info + View Toggle + Data - All together */}
             <Card>
               <CardContent className="p-6">
-                {/* Header row: Care recipient name + View toggle */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                {/* Header row: Care recipient name + Status */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">{careRecipient.name}</h2>
                     <p className="text-sm text-gray-600">{careRecipient.condition || 'No condition specified'}</p>
                   </div>
 
-                  {/* View Mode Toggle */}
-                  <div className="flex items-center gap-4">
-                    <div className="flex bg-gray-100 rounded-lg p-1">
-                      <button
-                        onClick={() => { setViewMode('today'); setWeekOffset(0); }}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          viewMode === 'today'
-                            ? 'bg-white text-primary-700 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                      >
-                        Today
-                      </button>
-                      <button
-                        onClick={() => setViewMode('week')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          viewMode === 'week'
-                            ? 'bg-white text-primary-700 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                      >
-                        Week
-                      </button>
-                      <button
-                        onClick={() => setViewMode('activity')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          viewMode === 'activity'
-                            ? 'bg-white text-primary-700 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                      >
-                        Activity
-                      </button>
+                  {/* Status badge - only shown for day view */}
+                  {viewMode === 'day' && todayLog?.status && (
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={todayLog.status} />
+                      {todayLog.hasUnviewedChanges && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full animate-pulse">
+                          <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                          New
+                        </span>
+                      )}
                     </div>
-
-                    {/* Status for today view */}
-                    {viewMode === 'today' && (
-                      <div className="text-right">
-                        {todayLog?.status && (
-                          <div className="flex items-center gap-2">
-                            <StatusBadge status={todayLog.status} />
-                            {todayLog.hasUnviewedChanges && (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full animate-pulse">
-                                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                                New
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
 
-                {/* Week Navigation */}
-                {viewMode === 'week' && (
-                  <div className="flex items-center justify-center gap-2 mb-6">
+                {/* Unified Navigation: View mode + Date navigation integrated */}
+                <div className="relative flex items-center justify-center gap-1 bg-gray-100 rounded-lg p-1">
+                  {/* Day View - with integrated date navigation */}
+                  <div className={`flex items-center rounded-md transition ${
+                    viewMode === 'day' ? 'bg-white shadow-sm' : ''
+                  }`}>
+                    {viewMode === 'day' && (
+                      <button
+                        onClick={() => setSelectedDate(subDays(selectedDate, 1))}
+                        className="p-2 text-gray-500 hover:text-gray-900 rounded-l-md transition"
+                        title="Previous day"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                    )}
                     <button
-                      onClick={() => setWeekOffset(weekOffset - 1)}
-                      className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                      onClick={() => {
+                        if (viewMode === 'day') {
+                          setShowCalendar(!showCalendar);
+                        } else {
+                          setViewMode('day');
+                          setSelectedDate(new Date());
+                        }
+                      }}
+                      className={`px-3 py-2 text-sm font-medium transition flex items-center gap-2 ${
+                        viewMode === 'day'
+                          ? 'text-primary-700'
+                          : 'text-gray-600 hover:text-gray-900 rounded-md'
+                      }`}
                     >
-                      ←
+                      {viewMode === 'day' ? (
+                        <>
+                          <Calendar className="h-4 w-4" />
+                          <span>{isToday(selectedDate) ? 'Today' : format(selectedDate, 'MMM d')}</span>
+                        </>
+                      ) : (
+                        'Day'
+                      )}
                     </button>
-                    <span className="text-sm text-gray-700 min-w-[200px] text-center">
-                      {weekOffset === 0 ? 'This Week' : `${format(currentWeek.start, 'MMM dd')} - ${format(currentWeek.end, 'MMM dd')}`}
-                    </span>
-                    <button
-                      onClick={() => setWeekOffset(weekOffset + 1)}
-                      disabled={weekOffset >= 0}
-                      className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      →
-                    </button>
+                    {viewMode === 'day' && (
+                      <button
+                        onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+                        disabled={isToday(selectedDate)}
+                        className="p-2 text-gray-500 hover:text-gray-900 rounded-r-md transition disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Next day"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
-                )}
 
-                {/* Last updated for today */}
-                {viewMode === 'today' && (
-                  <p className="text-xs text-gray-500 mb-4">
-                    Last updated: {todayLog ? new Date(todayLog.updatedAt).toLocaleTimeString() : 'No data'}
+                  {/* Week View - with integrated week navigation */}
+                  <div className={`flex items-center rounded-md transition ${
+                    viewMode === 'week' ? 'bg-white shadow-sm' : ''
+                  }`}>
+                    {viewMode === 'week' && (
+                      <button
+                        onClick={() => setWeekOffset(weekOffset - 1)}
+                        className="p-2 text-gray-500 hover:text-gray-900 rounded-l-md transition"
+                        title="Previous week"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (viewMode !== 'week') {
+                          setViewMode('week');
+                          setWeekOffset(0);
+                        }
+                      }}
+                      className={`px-3 py-2 text-sm font-medium transition ${
+                        viewMode === 'week'
+                          ? 'text-primary-700'
+                          : 'text-gray-600 hover:text-gray-900 rounded-md'
+                      }`}
+                    >
+                      {viewMode === 'week' ? (
+                        weekOffset === 0 ? 'This Week' : `${format(currentWeek.start, 'MMM d')}-${format(currentWeek.end, 'd')}`
+                      ) : (
+                        'Week'
+                      )}
+                    </button>
+                    {viewMode === 'week' && (
+                      <button
+                        onClick={() => setWeekOffset(weekOffset + 1)}
+                        disabled={weekOffset >= 0}
+                        className="p-2 text-gray-500 hover:text-gray-900 rounded-r-md transition disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Next week"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Activity View - no date navigation */}
+                  <button
+                    onClick={() => setViewMode('activity')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                      viewMode === 'activity'
+                        ? 'bg-white text-primary-700 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Activity
+                  </button>
+
+                  {/* Jump to Today - only visible when not viewing today */}
+                  {viewMode === 'day' && !isToday(selectedDate) && (
+                    <button
+                      onClick={() => setSelectedDate(new Date())}
+                      className="ml-1 px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded transition"
+                    >
+                      Today
+                    </button>
+                  )}
+
+                  {/* Jump to This Week - only visible when not viewing current week */}
+                  {viewMode === 'week' && weekOffset !== 0 && (
+                    <button
+                      onClick={() => setWeekOffset(0)}
+                      className="ml-1 px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded transition"
+                    >
+                      This Week
+                    </button>
+                  )}
+
+                  {/* Calendar Popup - positioned relative to the unified nav */}
+                  {showCalendar && viewMode === 'day' && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setShowCalendar(false)}
+                      />
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 bg-white rounded-xl shadow-xl border p-4 w-[300px]">
+                        <div className="flex items-center justify-between mb-4">
+                          <button
+                            onClick={() => setSelectedDate(subDays(startOfMonth(selectedDate), 1))}
+                            className="p-1 hover:bg-gray-100 rounded"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+                            <span className="font-semibold text-gray-800">
+                              {format(selectedDate, 'MMMM yyyy')}
+                            </span>
+                            <button
+                              onClick={() => {
+                                const nextMonth = addDays(endOfMonth(selectedDate), 1);
+                                if (nextMonth <= new Date()) setSelectedDate(nextMonth);
+                              }}
+                              disabled={endOfMonth(selectedDate) >= new Date()}
+                              className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          {/* Day headers */}
+                          <div className="grid grid-cols-7 gap-1 mb-2">
+                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                              <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
+                                {day}
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Calendar days */}
+                          <div className="grid grid-cols-7 gap-1">
+                            {(() => {
+                              const monthStart = startOfMonth(selectedDate);
+                              const monthEnd = endOfMonth(selectedDate);
+                              const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+                              const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+                              const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+                              const today = new Date();
+
+                              return days.map(day => {
+                                const isCurrentMonth = day.getMonth() === selectedDate.getMonth();
+                                const isSelected = isSameDay(day, selectedDate);
+                                const isFuture = day > today;
+                                const dayIsToday = isToday(day);
+
+                                return (
+                                  <button
+                                    key={day.toISOString()}
+                                    onClick={() => {
+                                      if (!isFuture) {
+                                        setSelectedDate(day);
+                                        setShowCalendar(false);
+                                      }
+                                    }}
+                                    disabled={isFuture}
+                                    className={`
+                                      p-2 text-sm rounded-lg transition
+                                      ${!isCurrentMonth ? 'text-gray-300' : ''}
+                                      ${isSelected ? 'bg-primary-600 text-white' : ''}
+                                      ${!isSelected && dayIsToday ? 'bg-primary-100 text-primary-700 font-medium' : ''}
+                                      ${!isSelected && !dayIsToday && isCurrentMonth ? 'hover:bg-gray-100' : ''}
+                                      ${isFuture ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
+                                    `}
+                                  >
+                                    {format(day, 'd')}
+                                  </button>
+                                );
+                              });
+                            })()}
+                          </div>
+
+                          {/* Quick actions */}
+                          <div className="mt-3 pt-3 border-t flex gap-2">
+                            <button
+                              onClick={() => { setSelectedDate(new Date()); setShowCalendar(false); }}
+                              className="flex-1 py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded transition"
+                            >
+                              Today
+                            </button>
+                            <button
+                              onClick={() => { setSelectedDate(subDays(new Date(), 1)); setShowCalendar(false); }}
+                              className="flex-1 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded transition"
+                            >
+                              Yesterday
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                </div>
+
+                {/* Last updated info - below unified nav */}
+                {viewMode === 'day' && todayLog && (
+                  <p className="text-xs text-gray-500 text-center mt-2">
+                    Last updated: {new Date(todayLog.updatedAt).toLocaleTimeString()}
                   </p>
                 )}
-              </CardContent>
-            </Card>
 
-            {/* Unified Today's Progress - Contextual display based on state */}
-            {viewMode === 'today' && (() => {
-              const completedCount = Object.keys(todayLog?.completedSections || {}).length;
-              const hasAnytimeData = todayLog && (
-                (todayLog.fluids && (todayLog.fluids as FluidEntry[]).length > 0) ||
-                (todayLog.totalFluidIntake && todayLog.totalFluidIntake > 0) ||
-                todayLog.bowelMovements ||
-                todayLog.urination ||
-                todayLog.morningExerciseSession ||
-                todayLog.afternoonExerciseSession
-              );
+                {/* Progress Section - Integrated into header card */}
+                {viewMode === 'day' && (() => {
+                  const completedCount = Object.keys(todayLog?.completedSections || {}).length;
+                  const hasAnytimeData = todayLog && (
+                    (todayLog.fluids && (todayLog.fluids as FluidEntry[]).length > 0) ||
+                    (todayLog.totalFluidIntake && todayLog.totalFluidIntake > 0) ||
+                    todayLog.bowelMovements ||
+                    todayLog.urination ||
+                    todayLog.morningExerciseSession ||
+                    todayLog.afternoonExerciseSession
+                  );
 
-              // State 1: No log at all
-              if (!todayLog) {
-                return (
-                  <Card className="border-2 border-dashed border-gray-200">
-                    <CardContent className="py-8 text-center">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <span className="text-2xl">📋</span>
-                      </div>
-                      <h3 className="font-medium text-gray-700">Waiting for today's care log</h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Caregiver will submit sections throughout the day
-                      </p>
-                    </CardContent>
-                  </Card>
-                );
-              }
-
-              // State 2: Day fully submitted
-              if (todayLog.status === 'submitted') {
-                return (
-                  <Card className="border-2 border-green-300 bg-green-50">
-                    <CardContent className="py-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl">✅</span>
-                          <div>
-                            <h3 className="font-semibold text-green-800">Day Complete</h3>
-                            <p className="text-xs text-green-600">All sections submitted</p>
+                  // State 1: No log at all
+                  if (!todayLog) {
+                    return (
+                      <div className="border-t border-gray-100 pt-4 mt-4">
+                        <div className="flex items-center justify-center gap-3 py-4 bg-gray-50 rounded-lg">
+                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                            <span className="text-xl">📋</span>
                           </div>
+                          <div className="text-center">
+                            <p className="font-medium text-gray-600 text-sm">
+                              {isToday(selectedDate) ? 'Waiting for care log' : 'No log for this date'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {isToday(selectedDate) ? 'Caregiver will submit sections throughout the day' : 'No data was recorded'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // State 2: Day fully submitted
+                  if (todayLog.status === 'submitted') {
+                    return (
+                      <div className="border-t border-green-200 pt-4 mt-4 bg-green-50 -mx-6 px-6 pb-4 -mb-6 rounded-b-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">✅</span>
+                            <div>
+                              <p className="font-semibold text-green-800 text-sm">Day Complete</p>
+                              <p className="text-xs text-green-600">All sections submitted</p>
+                            </div>
+                          </div>
+                          {todayLog.id && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setShowHistoryModal(true)}
+                              className="text-xs bg-white"
+                            >
+                              <History className="h-3 w-3 mr-1" />
+                              Audit
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // State 3: Some progress (show unified progress)
+                  return (
+                    <div className="border-t border-gray-100 pt-4 mt-4">
+                      {/* Header with progress */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">
+                            {format(selectedDate, 'MMM d')} Progress
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {completedCount === 0
+                              ? 'Logging in progress'
+                              : `${completedCount}/4 sections submitted`}
+                          </p>
                         </div>
                         {todayLog.id && (
                           <Button
@@ -588,96 +797,69 @@ function DashboardComponent() {
                             className="text-xs"
                           >
                             <History className="h-3 w-3 mr-1" />
-                            Audit Log
+                            Changes
                           </Button>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              }
 
-              // State 3: Some progress (show unified progress)
-              return (
-                <Card className="border border-primary-100">
-                  <CardContent className="py-4">
-                    {/* Header with progress */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-700">Today's Progress</h3>
-                        <p className="text-xs text-gray-500">
-                          {completedCount === 0
-                            ? 'Logging in progress'
-                            : `${completedCount}/4 sections submitted`}
-                        </p>
+                      {/* Section progress bar with labels */}
+                      <div className="flex gap-1">
+                        {[
+                          { key: 'morning', label: '🌅 AM', name: 'Morning' },
+                          { key: 'afternoon', label: '☀️ PM', name: 'Afternoon' },
+                          { key: 'evening', label: '🌙 Eve', name: 'Evening' },
+                          { key: 'dailySummary', label: '📋 Sum', name: 'Summary' },
+                        ].map((section) => {
+                          const isComplete = !!todayLog.completedSections?.[section.key as keyof CompletedSections];
+                          return (
+                            <div key={section.key} className="flex-1 text-center">
+                              <div
+                                className={`h-2 rounded-full mb-1 ${
+                                  isComplete ? 'bg-green-500' : 'bg-gray-200'
+                                }`}
+                              />
+                              <span className={`text-xs ${isComplete ? 'text-green-600 font-medium' : 'text-gray-400'}`}>
+                                {section.label}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
-                      {todayLog.id && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowHistoryModal(true)}
-                          className="text-xs"
-                        >
-                          <History className="h-3 w-3 mr-1" />
-                          Changes
-                        </Button>
+
+                      {/* Show anytime data if sections not yet complete */}
+                      {completedCount === 0 && hasAnytimeData && (
+                        <div className="bg-blue-50 rounded-lg p-3 mt-3">
+                          <p className="text-xs font-medium text-blue-800 mb-2">Live tracking:</p>
+                          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                            {todayLog.totalFluidIntake !== undefined && todayLog.totalFluidIntake > 0 && (
+                              <div className="bg-white rounded p-2">
+                                <span className="text-lg">💧</span>
+                                <p className="font-medium text-blue-700">{todayLog.totalFluidIntake}ml</p>
+                              </div>
+                            )}
+                            {(todayLog.bowelMovements || todayLog.urination) && (
+                              <div className="bg-white rounded p-2">
+                                <span className="text-lg">🚽</span>
+                                <p className="font-medium text-purple-700">Logged</p>
+                              </div>
+                            )}
+                            {(todayLog.morningExerciseSession || todayLog.afternoonExerciseSession) && (
+                              <div className="bg-white rounded p-2">
+                                <span className="text-lg">🏃</span>
+                                <p className="font-medium text-green-700">Active</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
-
-                    {/* Compact section indicators */}
-                    <div className="flex gap-1 mb-3">
-                      {[
-                        { key: 'morning', icon: '🌅' },
-                        { key: 'afternoon', icon: '☀️' },
-                        { key: 'evening', icon: '🌙' },
-                        { key: 'dailySummary', icon: '📋' },
-                      ].map((section) => {
-                        const isComplete = !!todayLog.completedSections?.[section.key as keyof CompletedSections];
-                        return (
-                          <div
-                            key={section.key}
-                            className={`flex-1 h-2 rounded-full ${
-                              isComplete ? 'bg-green-500' : 'bg-gray-200'
-                            }`}
-                            title={`${section.icon} ${isComplete ? 'Complete' : 'Pending'}`}
-                          />
-                        );
-                      })}
-                    </div>
-
-                    {/* Show anytime data if sections not yet complete */}
-                    {completedCount === 0 && hasAnytimeData && (
-                      <div className="bg-blue-50 rounded-lg p-3 mt-2">
-                        <p className="text-xs font-medium text-blue-800 mb-2">Live tracking:</p>
-                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                          {todayLog.totalFluidIntake !== undefined && todayLog.totalFluidIntake > 0 && (
-                            <div className="bg-white rounded p-2">
-                              <span className="text-lg">💧</span>
-                              <p className="font-medium text-blue-700">{todayLog.totalFluidIntake}ml</p>
-                            </div>
-                          )}
-                          {(todayLog.bowelMovements || todayLog.urination) && (
-                            <div className="bg-white rounded p-2">
-                              <span className="text-lg">🚽</span>
-                              <p className="font-medium text-purple-700">Logged</p>
-                            </div>
-                          )}
-                          {(todayLog.morningExerciseSession || todayLog.afternoonExerciseSession) && (
-                            <div className="bg-white rounded p-2">
-                              <span className="text-lg">🏃</span>
-                              <p className="font-medium text-green-700">Active</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })()}
+                  );
+                })()}
+              </CardContent>
+            </Card>
 
             {/* Alerts */}
-            {viewMode === 'today' && todayLog?.emergencyFlag && (
+            {viewMode === 'day' && todayLog?.emergencyFlag && (
               <Card className="border-2 border-error bg-error/5">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
@@ -692,7 +874,7 @@ function DashboardComponent() {
             )}
 
             {/* Consolidated Health Alerts & Warnings */}
-            {viewMode === 'today' && todayLog && (() => {
+            {viewMode === 'day' && todayLog && (() => {
               const alerts = [];
 
               // Low fluid intake warning
@@ -1132,7 +1314,7 @@ function DashboardComponent() {
             )}
 
             {/* Today's Summary */}
-            {viewMode === 'today' && (
+            {viewMode === 'day' && (
               <>
                 {isLoading ? (
                   <Card>

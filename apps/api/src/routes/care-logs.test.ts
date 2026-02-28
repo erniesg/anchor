@@ -729,6 +729,9 @@ describe('Care Logs API', () => {
         lunch: { time: '12:00', appetite: 3, amountEaten: 60, swallowingIssues: ['coughing'] },
       };
 
+      // Use today's date so the /today endpoint returns this log
+      const today = new Date().toISOString().split('T')[0];
+
       const createRes = await app.request('/care-logs', {
         method: 'POST',
         headers: {
@@ -737,7 +740,7 @@ describe('Care Logs API', () => {
         },
         body: JSON.stringify({
           careRecipientId,
-          logDate: '2025-10-03',
+          logDate: today,
           meals,
         }),
       }, mockEnv);
@@ -2284,11 +2287,14 @@ describe('Care Logs API', () => {
     it('should accept all prayer expression types', async () => {
       const expressions = ['speaking_out_loud', 'whispering', 'mumbling', 'silent_worship'] as const;
 
-      for (const expression of expressions) {
+      for (let i = 0; i < expressions.length; i++) {
+        const expression = expressions[i];
+        const date = new Date();
+        date.setDate(date.getDate() - (i + 50)); // Use unique past dates
         const careLogData = {
           careRecipientId,
           caregiverId,
-          logDate: new Date().toISOString(),
+          logDate: date.toISOString(),
           spiritualEmotional: {
             prayerExpression: expression,
           },
@@ -2312,11 +2318,14 @@ describe('Care Logs API', () => {
     it('should accept all social interaction types', async () => {
       const interactions = ['engaged', 'responsive', 'withdrawn', 'aggressive_hostile'] as const;
 
-      for (const interaction of interactions) {
+      for (let i = 0; i < interactions.length; i++) {
+        const interaction = interactions[i];
+        const date = new Date();
+        date.setDate(date.getDate() - (i + 60)); // Use unique past dates
         const careLogData = {
           careRecipientId,
           caregiverId,
-          logDate: new Date().toISOString(),
+          logDate: date.toISOString(),
           spiritualEmotional: {
             socialInteraction: interaction,
           },
