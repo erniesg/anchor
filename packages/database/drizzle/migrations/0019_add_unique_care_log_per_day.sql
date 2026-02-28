@@ -4,7 +4,7 @@ DELETE FROM care_logs
 WHERE id NOT IN (
   SELECT id FROM (
     SELECT id, ROW_NUMBER() OVER (
-      PARTITION BY caregiver_id, care_recipient_id, date(log_date / 1000, 'unixepoch')
+      PARTITION BY caregiver_id, care_recipient_id, date(log_date, 'unixepoch')
       ORDER BY updated_at DESC
     ) as rn
     FROM care_logs
@@ -13,4 +13,4 @@ WHERE id NOT IN (
 
 -- Create unique index on caregiver + care recipient + date
 CREATE UNIQUE INDEX IF NOT EXISTS idx_care_logs_unique_daily
-ON care_logs (caregiver_id, care_recipient_id, date(log_date / 1000, 'unixepoch'));
+ON care_logs (caregiver_id, care_recipient_id, date(log_date, 'unixepoch'));
