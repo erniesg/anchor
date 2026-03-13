@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedApiCall } from '@/lib/api';
 import {
   LineChart,
   Line,
@@ -51,33 +52,32 @@ interface TrendLog {
 
 function TrendsComponent() {
   const navigate = useNavigate();
-  const { user, careRecipient, logoutFamily } = useAuth();
+  const { user, token, careRecipient, isLoading, logoutFamily } = useAuth();
 
   // Redirect to onboarding if no care recipient exists
   useEffect(() => {
-    if (user && !careRecipient) {
+    if (!isLoading && user && !careRecipient) {
       navigate({ to: '/family/onboarding' });
     }
-  }, [user, careRecipient, navigate]);
+  }, [user, token, careRecipient, isLoading, navigate]);
 
   // Fetch 7-day historical data for trends
   const { data: weekLogs, isLoading: weekLoading } = useQuery({
-    queryKey: ['care-logs-week', careRecipient?.id],
+    queryKey: ['care-logs-week', careRecipient?.id, token],
     queryFn: async () => {
-      if (!careRecipient?.id) return [];
+      if (!careRecipient?.id || !token) return [];
       const promises = [];
       for (let i = 6; i >= 0; i--) {
         const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
         promises.push(
-          fetch(`/api/care-logs/recipient/${careRecipient.id}/date/${date}`)
-            .then((res) => (res.ok ? res.json() : null))
+          authenticatedApiCall<TrendLog>(`/care-logs/recipient/${careRecipient.id}/date/${date}`, token)
             .catch(() => null)
         );
       }
       const results = await Promise.all(promises);
-      return results.filter(Boolean);
+      return results.filter((log): log is TrendLog => log !== null);
     },
-    enabled: !!careRecipient?.id,
+    enabled: !!careRecipient?.id && !!token,
     refetchInterval: 60000, // Refresh every minute
   });
 

@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
+import { normalizeCompletedSections } from '@/lib/completedSections';
+import { appetiteLevelToPercent, persistedMealValueToAppetiteLevel } from '@/lib/mealScales';
 import { QuickActionFAB } from '@/components/caregiver/QuickActionFAB';
 import {
   Cloud,
@@ -166,13 +168,17 @@ function AfternoonFormComponent() {
   // Load existing data
   useEffect(() => {
     if (todayLog) {
+      const completedSections = normalizeCompletedSections(todayLog.completedSections);
       setCareLogId(todayLog.id);
-      setIsSubmitted(!!todayLog.completedSections?.afternoon);
+      setIsSubmitted(!!completedSections.afternoon);
 
       // Load lunch from meals object
       if (todayLog.meals?.lunch) {
         setLunchTime(todayLog.meals.lunch.time || '');
-        setLunchAmount(todayLog.meals.lunch.amountEaten || 3);
+        setLunchAmount(
+          todayLog.meals.lunch.appetite ||
+          persistedMealValueToAppetiteLevel(todayLog.meals.lunch.amountEaten)
+        );
         setLunchAssistance(todayLog.meals.lunch.assistance || 'none');
         setLunchSwallowingIssues(todayLog.meals.lunch.swallowingIssues || []);
       }
@@ -180,7 +186,10 @@ function AfternoonFormComponent() {
       // Load tea break from meals object
       if (todayLog.meals?.teaBreak) {
         setTeaBreakTime(todayLog.meals.teaBreak.time || '');
-        setTeaBreakAmount(todayLog.meals.teaBreak.amountEaten || 3);
+        setTeaBreakAmount(
+          todayLog.meals.teaBreak.appetite ||
+          persistedMealValueToAppetiteLevel(todayLog.meals.teaBreak.amountEaten)
+        );
       }
 
       // Load afternoon rest
@@ -248,7 +257,8 @@ function AfternoonFormComponent() {
       if (lunchTime) {
         mealsData.lunch = {
           time: lunchTime,
-          amountEaten: lunchAmount,
+          appetite: lunchAmount,
+          amountEaten: appetiteLevelToPercent(lunchAmount),
           assistance: lunchAssistance,
           swallowingIssues: lunchSwallowingIssues,
         };
@@ -256,7 +266,8 @@ function AfternoonFormComponent() {
       if (teaBreakTime) {
         mealsData.teaBreak = {
           time: teaBreakTime,
-          amountEaten: teaBreakAmount,
+          appetite: teaBreakAmount,
+          amountEaten: appetiteLevelToPercent(teaBreakAmount),
           swallowingIssues: [],
         };
       }
@@ -421,7 +432,7 @@ function AfternoonFormComponent() {
             </div>
 
             <div>
-              <RequiredLabel required>Amount Eaten (1-5)</RequiredLabel>
+              <RequiredLabel required>Appetite (1-5)</RequiredLabel>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((level) => (
                   <button
@@ -438,7 +449,7 @@ function AfternoonFormComponent() {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-gray-500 mt-1">1 = Nothing, 5 = Everything</p>
+              <p className="text-xs text-gray-500 mt-1">1 = Refused food, 5 = Ate everything well</p>
             </div>
 
             <div>
@@ -502,7 +513,7 @@ function AfternoonFormComponent() {
 
             {teaBreakTime && (
               <div>
-                <Label>Amount Eaten (1-5)</Label>
+                <Label>Appetite (1-5)</Label>
                 <div className="flex gap-2">
                   {[1, 2, 3, 4, 5].map((level) => (
                     <button

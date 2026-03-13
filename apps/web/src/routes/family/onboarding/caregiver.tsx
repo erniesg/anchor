@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
 import { Copy, Check } from 'lucide-react';
 
@@ -19,8 +20,36 @@ interface CaregiverData {
   language: string;
 }
 
+interface CareRecipient {
+  id: string;
+  name: string;
+  dateOfBirth?: string;
+  gender?: string;
+  condition?: string;
+}
+
+interface CreateCaregiverResponse {
+  id: string;
+  pin: string;
+  username: string;
+}
+
+function getStoredCareRecipient(): CareRecipient | null {
+  const storedCareRecipient = localStorage.getItem('familyCareRecipient') || localStorage.getItem('careRecipient');
+  if (!storedCareRecipient) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(storedCareRecipient) as CareRecipient;
+  } catch {
+    return null;
+  }
+}
+
 function CaregiverOnboardingComponent() {
   const navigate = useNavigate();
+  const { token, careRecipient, setCareRecipient } = useAuth();
   const [name, setName] = useState('');
   const [customUsername, setCustomUsername] = useState('');
   const [phone, setPhone] = useState('');
@@ -31,16 +60,23 @@ function CaregiverOnboardingComponent() {
   const [copiedPin, setCopiedPin] = useState(false);
   const [copiedUsername, setCopiedUsername] = useState(false);
 
+  useEffect(() => {
+    if (!careRecipient) {
+      const storedCareRecipient = getStoredCareRecipient();
+      if (storedCareRecipient) {
+        setCareRecipient(storedCareRecipient);
+      }
+    }
+  }, [careRecipient, setCareRecipient]);
+
   const createCaregiverMutation = useMutation({
     mutationFn: async (data: CaregiverData) => {
-      // Get token from localStorage
-      const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('Authentication token not found. Please log in again.');
       }
 
       // Use authenticatedApiCall for JWT authentication
-      return authenticatedApiCall('/caregivers', token, {
+      return authenticatedApiCall<CreateCaregiverResponse>('/caregivers', token, {
         method: 'POST',
         body: JSON.stringify(data),
       });
@@ -54,15 +90,15 @@ function CaregiverOnboardingComponent() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const careRecipient = JSON.parse(localStorage.getItem('careRecipient') || '{}');
+    const activeCareRecipient = careRecipient || getStoredCareRecipient();
 
-    if (!careRecipient.id) {
+    if (!activeCareRecipient?.id) {
       alert('Care recipient information is missing. Please go back and complete the previous step.');
       return;
     }
 
     createCaregiverMutation.mutate({
-      careRecipientId: careRecipient.id,
+      careRecipientId: activeCareRecipient.id,
       name,
       username: customUsername.trim() || undefined,
       phone: phone || undefined,
@@ -190,7 +226,7 @@ function CaregiverOnboardingComponent() {
                       They need <span className="font-semibold">both the Username and PIN</span> to log in
                     </p>
                     <p className="text-yellow-800 text-sm mt-2">
-                      💡 Tip: Use the copy buttons above to easily share via WhatsApp or SMS
+                      Tip: Use the copy buttons above to easily share via WhatsApp or SMS
                     </p>
                   </div>
                 </div>

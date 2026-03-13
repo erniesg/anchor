@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
+import { normalizeCompletedSections } from '@/lib/completedSections';
 import { QuickActionFAB } from '@/components/caregiver/QuickActionFAB';
 import {
   FileText,
@@ -85,11 +86,14 @@ interface CareLog {
     skinCare: boolean;
     notes?: string;
   };
-  // Caregiver notes
-  whatWentWell?: string;
-  challengesFaced?: string;
-  recommendationsForTomorrow?: string;
-  importantInfoForFamily?: string;
+  // Caregiver notes (nested object from API)
+  caregiverNotes?: {
+    whatWentWell?: string;
+    challengesFaced?: string;
+    recommendationsForTomorrow?: string;
+    importantInfoForFamily?: string;
+    caregiverSignature?: string;
+  };
   notes?: string;
 }
 
@@ -184,8 +188,9 @@ function SummaryFormComponent() {
   // Load existing data
   useEffect(() => {
     if (todayLog) {
+      const completedSections = normalizeCompletedSections(todayLog.completedSections);
       setCareLogId(todayLog.id);
-      setIsSubmitted(!!todayLog.completedSections?.dailySummary);
+      setIsSubmitted(!!completedSections.dailySummary);
 
       // Load fluids summary
       if (todayLog.totalFluidIntake) {
@@ -227,11 +232,14 @@ function SummaryFormComponent() {
         setHygieneNotes(todayLog.personalHygiene.notes || '');
       }
 
-      // Load caregiver notes
-      if (todayLog.whatWentWell) setWhatWentWell(todayLog.whatWentWell);
-      if (todayLog.challengesFaced) setChallengesFaced(todayLog.challengesFaced);
-      if (todayLog.recommendationsForTomorrow) setRecommendationsForTomorrow(todayLog.recommendationsForTomorrow);
-      if (todayLog.importantInfoForFamily) setImportantInfoForFamily(todayLog.importantInfoForFamily);
+      // Load caregiver notes (nested under caregiverNotes object from API)
+      const cn = todayLog.caregiverNotes;
+      if (cn) {
+        if (cn.whatWentWell) setWhatWentWell(cn.whatWentWell);
+        if (cn.challengesFaced) setChallengesFaced(cn.challengesFaced);
+        if (cn.recommendationsForTomorrow) setRecommendationsForTomorrow(cn.recommendationsForTomorrow);
+        if (cn.importantInfoForFamily) setImportantInfoForFamily(cn.importantInfoForFamily);
+      }
       if (todayLog.notes) setNotes(todayLog.notes);
     }
   }, [todayLog]);
@@ -283,7 +291,7 @@ function SummaryFormComponent() {
         freezingEpisodes,
         unaccompaniedTime: unaccompaniedTime.length > 0 ? unaccompaniedTime.map(u => ({
           ...u,
-          duration: calculateDuration(u.startTime, u.endTime),
+          durationMinutes: calculateDuration(u.startTime, u.endTime),
         })) : undefined,
         unaccompaniedIncidents: unaccompaniedIncidents || undefined,
         safetyChecks,
@@ -294,10 +302,12 @@ function SummaryFormComponent() {
           skinCare,
           notes: hygieneNotes || undefined,
         },
-        whatWentWell: whatWentWell || undefined,
-        challengesFaced: challengesFaced || undefined,
-        recommendationsForTomorrow: recommendationsForTomorrow || undefined,
-        importantInfoForFamily: importantInfoForFamily || undefined,
+        caregiverNotes: {
+          whatWentWell: whatWentWell || undefined,
+          challengesFaced: challengesFaced || undefined,
+          recommendationsForTomorrow: recommendationsForTomorrow || undefined,
+          importantInfoForFamily: importantInfoForFamily || undefined,
+        },
         notes: notes || undefined,
       };
 
@@ -402,7 +412,7 @@ function SummaryFormComponent() {
   };
 
   // Check section completion status
-  const completedSections = todayLog?.completedSections || {};
+  const completedSections = normalizeCompletedSections(todayLog?.completedSections);
   const sectionsCompleted = [
     !!completedSections.morning,
     !!completedSections.afternoon,
@@ -617,6 +627,29 @@ function SummaryFormComponent() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <Label>Freezing Episodes</Label>
+              <div className="flex gap-2">
+                {(['none', 'mild', 'severe'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setFreezingEpisodes(option)}
+                    className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      freezingEpisodes === option
+                        ? option === 'severe'
+                          ? 'bg-red-100 border-red-500 text-red-800'
+                          : 'bg-emerald-100 border-emerald-500 text-emerald-800'
+                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Sudden inability to move feet, common in PSP/Parkinson's</p>
             </div>
           </CardContent>
         </Card>

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
+import { normalizeCompletedSections } from '@/lib/completedSections';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { QuickActionFAB } from '@/components/caregiver/QuickActionFAB';
@@ -87,7 +88,7 @@ function FormDashboardComponent() {
     enabled: !!caregiverToken,
   });
 
-  const completedSections = todayLog?.completedSections || {};
+  const completedSections = normalizeCompletedSections(todayLog?.completedSections);
   const logStatus = todayLog?.status || 'draft';
 
   // Mutation to complete the day (final submit)
