@@ -195,6 +195,107 @@ describe('Care Logs API', () => {
       expect(log2.status).toBe('draft'); // Still draft
       expect(log2.wakeTime).toBe('07:45');
     });
+
+    it('should merge meals across partial section updates', async () => {
+      const createRes = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify({
+          careRecipientId,
+          logDate: '2025-10-03',
+          meals: {
+            breakfast: {
+              time: '09:00',
+              appetite: 4,
+              amountEaten: 80,
+            },
+          },
+        }),
+      }, mockEnv);
+
+      expect(createRes.status).toBe(201);
+      const created = await createRes.json();
+
+      const patchRes = await app.request(`/care-logs/${created.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify({
+          meals: {
+            lunch: {
+              time: '12:30',
+              appetite: 3,
+              amountEaten: 65,
+            },
+          },
+        }),
+      }, mockEnv);
+
+      expect(patchRes.status).toBe(200);
+      const updated = await patchRes.json();
+      expect(updated.meals.breakfast.time).toBe('09:00');
+      expect(updated.meals.breakfast.appetite).toBe(4);
+      expect(updated.meals.lunch.time).toBe('12:30');
+      expect(updated.meals.lunch.amountEaten).toBe(65);
+    });
+
+    it('should merge medications across partial section updates', async () => {
+      const createRes = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify({
+          careRecipientId,
+          logDate: '2025-10-03',
+          medications: [
+            {
+              name: 'Morning Med',
+              given: true,
+              time: '08:00',
+              timeSlot: 'before_breakfast',
+            },
+          ],
+        }),
+      }, mockEnv);
+
+      expect(createRes.status).toBe(201);
+      const created = await createRes.json();
+
+      const patchRes = await app.request(`/care-logs/${created.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify({
+          medications: [
+            {
+              name: 'Night Med',
+              given: true,
+              time: '20:00',
+              timeSlot: 'after_dinner',
+            },
+          ],
+        }),
+      }, mockEnv);
+
+      expect(patchRes.status).toBe(200);
+      const updated = await patchRes.json();
+      expect(updated.medications).toHaveLength(2);
+      expect(updated.medications).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'Morning Med', timeSlot: 'before_breakfast' }),
+          expect.objectContaining({ name: 'Night Med', timeSlot: 'after_dinner' }),
+        ])
+      );
+    });
   });
 
   describe('POST /care-logs/:id/submit - Submit Workflow', () => {

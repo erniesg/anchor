@@ -610,6 +610,65 @@ function parseJsonFields(log: Record<string, unknown>): Record<string, unknown> 
   };
 }
 
+function parseStoredObject(value: unknown): Record<string, unknown> {
+  const parsed = safeJsonParse(value);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return {};
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
+function parseStoredArray(value: unknown): Record<string, unknown>[] {
+  const parsed = safeJsonParse(value);
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+
+  return parsed.filter((item): item is Record<string, unknown> => (
+    !!item && typeof item === 'object' && !Array.isArray(item)
+  ));
+}
+
+function mergeJsonObject(existingValue: unknown, incomingValue: unknown): string {
+  const incoming =
+    incomingValue && typeof incomingValue === 'object' && !Array.isArray(incomingValue)
+      ? incomingValue as Record<string, unknown>
+      : {};
+
+  return JSON.stringify({
+    ...parseStoredObject(existingValue),
+    ...incoming,
+  });
+}
+
+function getMedicationMergeKey(medication: Record<string, unknown>, fallbackIndex: number): string {
+  const name = typeof medication.name === 'string' ? medication.name : `medication-${fallbackIndex}`;
+  const timeSlot = typeof medication.timeSlot === 'string' ? medication.timeSlot : `slot-${fallbackIndex}`;
+  return `${name}::${timeSlot}`;
+}
+
+function mergeMedicationLogs(existingValue: unknown, incomingValue: unknown): string {
+  const existing = parseStoredArray(existingValue);
+  const incoming = Array.isArray(incomingValue)
+    ? incomingValue.filter((item): item is Record<string, unknown> => (
+      !!item && typeof item === 'object' && !Array.isArray(item)
+    ))
+    : [];
+
+  const merged = new Map<string, Record<string, unknown>>();
+
+  existing.forEach((medication, index) => {
+    merged.set(getMedicationMergeKey(medication, index), medication);
+  });
+
+  incoming.forEach((medication, index) => {
+    merged.set(getMedicationMergeKey(medication, existing.length + index), medication);
+  });
+
+  return JSON.stringify(Array.from(merged.values()));
+}
+
 // Audit Logging Types
 type AuditAction = 'create' | 'update' | 'submit' | 'submit_section';
 
@@ -901,8 +960,8 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
         showerTime: data.showerTime,
         hairWash: data.hairWash,
         // JSON fields must be stringified (consistent with POST handler)
-        medications: data.medications ? JSON.stringify(data.medications) : undefined,
-        meals: data.meals ? JSON.stringify(data.meals) : undefined,
+        medications: data.medications ? mergeMedicationLogs(existingLog.medications, data.medications) : undefined,
+        meals: data.meals ? mergeJsonObject(existingLog.meals, data.meals) : undefined,
         // Sprint 2 Day 1: Fluid Intake (added to PATCH handler)
         fluids: data.fluids ? JSON.stringify(data.fluids) : undefined,
         totalFluidIntake: data.fluids ? data.fluids.reduce((sum: number, f: { amountMl: number }) => sum + f.amountMl, 0) : undefined,
