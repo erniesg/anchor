@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
+import { getSingaporeDateString } from '@/lib/careLogDate';
 import { normalizeCompletedSections } from '@/lib/completedSections';
 import { QuickActionFAB } from '@/components/caregiver/QuickActionFAB';
 import {
@@ -248,7 +249,7 @@ function SummaryFormComponent() {
   const createLogMutation = useMutation({
     mutationFn: async () => {
       if (!token || !careRecipient?.id) throw new Error('Not authenticated');
-      const today = new Date().toISOString().split('T')[0];
+      const today = getSingaporeDateString();
       try {
         return await authenticatedApiCall<CareLog>(
           '/care-logs',
