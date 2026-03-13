@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
+import { getSingaporeDateString } from '@/lib/careLogDate';
 import { normalizeCompletedSections } from '@/lib/completedSections';
 import { appetiteLevelToPercent, persistedMealValueToAppetiteLevel } from '@/lib/mealScales';
 import { QuickActionFAB } from '@/components/caregiver/QuickActionFAB';
@@ -252,7 +253,7 @@ function MorningFormComponent() {
   const createLogMutation = useMutation({
     mutationFn: async () => {
       if (!token || !careRecipient?.id) throw new Error('Not authenticated');
-      const today = new Date().toISOString().split('T')[0];
+      const today = getSingaporeDateString();
       try {
         return await authenticatedApiCall<CareLog>(
           '/care-logs',
@@ -405,7 +406,7 @@ function MorningFormComponent() {
 
           // Create care log if it doesn't exist
           if (!logIdToUse) {
-            const today = new Date().toISOString().split('T')[0];
+            const today = getSingaporeDateString();
             try {
               const newLog = await authenticatedApiCall<CareLog>(
                 '/care-logs',

@@ -8,6 +8,12 @@ import type { Env } from '../index';
  * Tests CRUD operations, draft/submit workflow, and RBAC enforcement
  */
 
+const SGT_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+function getTodayStringSGT(date: Date = new Date()): string {
+  return new Date(date.getTime() + SGT_OFFSET_MS).toISOString().split('T')[0]!;
+}
+
 describe('Care Logs API', () => {
   let mockD1: D1Database;
   let mockEnv: Env;
@@ -541,7 +547,7 @@ describe('Care Logs API', () => {
 
   describe('GET /care-logs/recipient/:recipientId/today - Today\'s Log', () => {
     it('should return today\'s submitted log', async () => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayStringSGT();
 
       // Create and submit today's log
       const createRes = await app.request('/care-logs', {
@@ -587,7 +593,7 @@ describe('Care Logs API', () => {
 
   describe('GET /care-logs/caregiver/today - Caregiver Draft Loading', () => {
     it('should return today\'s draft log for caregiver', async () => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayStringSGT();
 
       // Create a draft log
       const createRes = await app.request('/care-logs', {
@@ -636,7 +642,7 @@ describe('Care Logs API', () => {
     });
 
     it('should return submitted log if exists (not just drafts)', async () => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayStringSGT();
 
       // Create and submit a log
       const createRes = await app.request('/care-logs', {
@@ -678,7 +684,7 @@ describe('Care Logs API', () => {
     });
 
     it('should return all meal data including lunch, tea break, dinner', async () => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayStringSGT();
 
       // Create draft with all meals
       await app.request('/care-logs', {
@@ -831,7 +837,7 @@ describe('Care Logs API', () => {
       };
 
       // Use today's date so the /today endpoint returns this log
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayStringSGT();
 
       const createRes = await app.request('/care-logs', {
         method: 'POST',
@@ -2484,7 +2490,7 @@ describe('Care Logs API', () => {
         body: JSON.stringify({
           careRecipientId,
           caregiverId,
-          logDate: new Date().toISOString().split('T')[0],
+          logDate: getTodayStringSGT(),
           wakeTime: '07:30',
           mood: 'alert',
           showerTime: '08:00',
@@ -3035,7 +3041,7 @@ describe('Care Logs API', () => {
         },
         body: JSON.stringify({
           careRecipientId: testCareRecipientId,
-          logDate: new Date().toISOString().split('T')[0],
+          logDate: getTodayStringSGT(),
           wakeTime: '07:00',
           mood: 'alert', // Valid mood value
         }),
