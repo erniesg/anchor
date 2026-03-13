@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Copy, Check, Heart, History, X, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { authenticatedApiCall } from '@/lib/api';
+import { getRecordedMeals, summarizeMeals, type FamilyMealsData } from '@/lib/familyMeals';
 import { normalizeCompletedSections } from '@/lib/completedSections';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -91,12 +92,7 @@ interface PersonalItemCheckItem {
   notes?: string;
 }
 
-interface MealsData {
-  breakfast?: {
-    appetite?: number;
-    amountEaten?: number;
-  };
-}
+type MealsData = FamilyMealsData;
 
 interface MedicationAdherenceData {
   percentage?: number;
@@ -250,6 +246,7 @@ function DashboardComponent() {
   // Alias for backward compatibility (keeping todayLog name for minimal changes)
   const todayLog = dayLog;
   const normalizedCompletedSections = normalizeCompletedSections(todayLog?.completedSections);
+  const recordedMeals = getRecordedMeals(todayLog?.meals);
 
   const queryClient = useQueryClient();
 
@@ -319,24 +316,28 @@ function DashboardComponent() {
 
   // Transform week data for charts
   const chartData =
-    weekLogs?.map((log: CareLog) => ({
-      date: format(new Date(log.logDate), 'MMM dd'),
-      systolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[0]) : null,
-      diastolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[1]) : null,
-      pulse: log.pulseRate,
-      oxygen: log.oxygenLevel,
-      bloodSugar: log.bloodSugar,
-      appetite: log.meals?.breakfast?.appetite || 0,
-      amountEaten: log.meals?.breakfast?.amountEaten || 0,
-      balanceIssues: log.balanceIssues,
-      nearFalls: log.nearFalls === 'none' ? 0 : log.nearFalls === 'once_or_twice' ? 1 : log.nearFalls === 'multiple' ? 2 : null,
-      actualFalls: log.actualFalls === 'none' ? 0 : log.actualFalls === 'minor' ? 1 : log.actualFalls === 'major' ? 2 : null,
-      unaccompaniedMinutes: log.totalUnaccompaniedMinutes || 0,
-      fluidIntake: log.totalFluidIntake || 0, // Sprint 2 Day 2: Fluid intake
-      medicationAdherence: log.medicationAdherence?.percentage || 0, // Sprint 2 Day 4: Medication adherence
-      medicationsGiven: log.medicationAdherence?.given || 0,
-      medicationsMissed: log.medicationAdherence?.missed || 0,
-    })) || [];
+    weekLogs?.map((log: CareLog) => {
+      const mealSummary = summarizeMeals(log.meals);
+
+      return {
+        date: format(new Date(log.logDate), 'MMM dd'),
+        systolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[0]) : null,
+        diastolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[1]) : null,
+        pulse: log.pulseRate,
+        oxygen: log.oxygenLevel,
+        bloodSugar: log.bloodSugar,
+        appetite: mealSummary?.averageAppetite ?? null,
+        amountEaten: mealSummary?.averageAmountPercent ?? null,
+        balanceIssues: log.balanceIssues,
+        nearFalls: log.nearFalls === 'none' ? 0 : log.nearFalls === 'once_or_twice' ? 1 : log.nearFalls === 'multiple' ? 2 : null,
+        actualFalls: log.actualFalls === 'none' ? 0 : log.actualFalls === 'minor' ? 1 : log.actualFalls === 'major' ? 2 : null,
+        unaccompaniedMinutes: log.totalUnaccompaniedMinutes || 0,
+        fluidIntake: log.totalFluidIntake || 0, // Sprint 2 Day 2: Fluid intake
+        medicationAdherence: log.medicationAdherence?.percentage || 0, // Sprint 2 Day 4: Medication adherence
+        medicationsGiven: log.medicationAdherence?.given || 0,
+        medicationsMissed: log.medicationAdherence?.missed || 0,
+      };
+    }) || [];
 
   // Sprint 2 Day 2: Fluid breakdown details toggle
   const [showFluidDetails, setShowFluidDetails] = useState(false);
@@ -1078,8 +1079,8 @@ function DashboardComponent() {
                             <YAxis yAxisId="right" orientation="right" domain={[0, 100]} />
                             <Tooltip />
                             <Legend />
-                            <Bar yAxisId="left" dataKey="appetite" fill="#f59e0b" name="Appetite (1-5)" />
-                            <Bar yAxisId="right" dataKey="amountEaten" fill="#84cc16" name="Eaten %" />
+                            <Bar yAxisId="left" dataKey="appetite" fill="#f59e0b" name="Avg Appetite (1-5)" />
+                            <Bar yAxisId="right" dataKey="amountEaten" fill="#84cc16" name="Avg Eaten %" />
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -1438,24 +1439,28 @@ function DashboardComponent() {
                     <h3 className="font-semibold">🍽️ Meals</h3>
                   </CardHeader>
                   <CardContent>
-                    {todayLog.meals?.breakfast ? (
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Breakfast:</span>
-                          <span className="font-medium">{todayLog.meals.breakfast.time}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Appetite:</span>
-                          <span className="font-medium">{todayLog.meals.breakfast.appetite}/5</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Amount Eaten:</span>
-                          <span className="font-medium">
-                            {todayLog.meals.breakfast.amountEaten > 5
-                              ? `${todayLog.meals.breakfast.amountEaten}%`
-                              : `${todayLog.meals.breakfast.amountEaten}/5`}
-                          </span>
-                        </div>
+                    {recordedMeals.length > 0 ? (
+                      <div className="space-y-3 text-sm">
+                        {recordedMeals.map((meal) => (
+                          <div key={meal.key} className="border-b pb-3 last:border-b-0">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">{meal.label}:</span>
+                              <span className="font-medium">{meal.time || 'Not recorded'}</span>
+                            </div>
+                            <div className="flex justify-between mt-1">
+                              <span className="text-gray-600">Appetite:</span>
+                              <span className="font-medium">
+                                {meal.appetiteLevel !== null ? `${meal.appetiteLevel}/5` : 'Not recorded'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between mt-1">
+                              <span className="text-gray-600">Amount Eaten:</span>
+                              <span className="font-medium">
+                                {meal.amountPercent !== null ? `${meal.amountPercent}%` : 'Not recorded'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     ) : (
                       <p className="text-sm text-gray-500">No meal data recorded</p>

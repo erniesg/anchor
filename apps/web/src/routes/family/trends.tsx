@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
+import { summarizeMeals, type FamilyMealsData } from '@/lib/familyMeals';
 import {
   LineChart,
   Line,
@@ -42,12 +43,7 @@ interface TrendLog {
   pulseRate?: number;
   oxygenLevel?: number;
   bloodSugar?: number;
-  meals?: {
-    breakfast?: {
-      appetite?: number;
-      amountEaten?: number;
-    };
-  };
+  meals?: FamilyMealsData;
 }
 
 function TrendsComponent() {
@@ -88,16 +84,20 @@ function TrendsComponent() {
 
   // Transform week data for charts
   const chartData =
-    weekLogs?.map((log: TrendLog) => ({
-      date: format(new Date(log.logDate), 'MMM dd'),
-      systolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[0]) : null,
-      diastolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[1]) : null,
-      pulse: log.pulseRate,
-      oxygen: log.oxygenLevel,
-      bloodSugar: log.bloodSugar,
-      appetite: log.meals?.breakfast?.appetite || 0,
-      amountEaten: log.meals?.breakfast?.amountEaten || 0,
-    })) || [];
+    weekLogs?.map((log: TrendLog) => {
+      const mealSummary = summarizeMeals(log.meals);
+
+      return {
+        date: format(new Date(log.logDate), 'MMM dd'),
+        systolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[0]) : null,
+        diastolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[1]) : null,
+        pulse: log.pulseRate,
+        oxygen: log.oxygenLevel,
+        bloodSugar: log.bloodSugar,
+        appetite: mealSummary?.averageAppetite ?? null,
+        amountEaten: mealSummary?.averageAmountPercent ?? null,
+      };
+    }) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-accent-50">
@@ -273,8 +273,8 @@ function TrendsComponent() {
                           <YAxis yAxisId="right" orientation="right" domain={[0, 100]} />
                           <Tooltip />
                           <Legend />
-                          <Bar yAxisId="left" dataKey="appetite" fill="#f59e0b" name="Appetite (1-5)" />
-                          <Bar yAxisId="right" dataKey="amountEaten" fill="#84cc16" name="Eaten %" />
+                          <Bar yAxisId="left" dataKey="appetite" fill="#f59e0b" name="Avg Appetite (1-5)" />
+                          <Bar yAxisId="right" dataKey="amountEaten" fill="#84cc16" name="Avg Eaten %" />
                         </BarChart>
                       </ResponsiveContainer>
                     </CardContent>
