@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
+import { normalizeCompletedSections } from '@/lib/completedSections';
+import { appetiteLevelToPercent, persistedMealValueToAppetiteLevel } from '@/lib/mealScales';
 import { QuickActionFAB } from '@/components/caregiver/QuickActionFAB';
 import {
   Sun,
@@ -194,8 +196,9 @@ function MorningFormComponent() {
   // Load existing data
   useEffect(() => {
     if (todayLog) {
+      const completedSections = normalizeCompletedSections(todayLog.completedSections);
       setCareLogId(todayLog.id);
-      setIsSubmitted(!!todayLog.completedSections?.morning);
+      setIsSubmitted(!!completedSections.morning);
 
       // Load morning fields
       if (todayLog.wakeTime) setWakeTime(todayLog.wakeTime);
@@ -218,7 +221,10 @@ function MorningFormComponent() {
       // Load breakfast from meals object
       if (todayLog.meals?.breakfast) {
         setBreakfastTime(todayLog.meals.breakfast.time || '');
-        setBreakfastAmount(todayLog.meals.breakfast.amountEaten || 3);
+        setBreakfastAmount(
+          todayLog.meals.breakfast.appetite ||
+          persistedMealValueToAppetiteLevel(todayLog.meals.breakfast.amountEaten)
+        );
         setBreakfastAssistance(todayLog.meals.breakfast.assistance || 'none');
         setBreakfastSwallowingIssues(todayLog.meals.breakfast.swallowingIssues || []);
       }
@@ -294,6 +300,7 @@ function MorningFormComponent() {
     meals?: {
       breakfast: {
         time: string;
+        appetite: number;
         amountEaten: number;
         assistance: string;
         swallowingIssues: string[];
@@ -341,7 +348,8 @@ function MorningFormComponent() {
     meals: breakfastTime ? {
       breakfast: {
         time: breakfastTime,
-        amountEaten: breakfastAmount,
+        appetite: breakfastAmount,
+        amountEaten: appetiteLevelToPercent(breakfastAmount),
         assistance: breakfastAssistance,
         swallowingIssues: breakfastSwallowingIssues,
       },
@@ -377,7 +385,8 @@ function MorningFormComponent() {
       meals: breakfastTime ? {
         breakfast: {
           time: breakfastTime,
-          amountEaten: breakfastAmount,
+          appetite: breakfastAmount,
+          amountEaten: appetiteLevelToPercent(breakfastAmount),
           assistance: breakfastAssistance,
           swallowingIssues: breakfastSwallowingIssues,
         },
@@ -850,7 +859,7 @@ function MorningFormComponent() {
             </div>
 
             <div>
-              <RequiredLabel required>Amount Eaten (1-5)</RequiredLabel>
+              <RequiredLabel required>Appetite (1-5)</RequiredLabel>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((level) => (
                   <button
@@ -867,7 +876,7 @@ function MorningFormComponent() {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-gray-500 mt-1">1 = Nothing, 5 = Everything</p>
+              <p className="text-xs text-gray-500 mt-1">1 = Refused food, 5 = Ate everything well</p>
             </div>
 
             <div>

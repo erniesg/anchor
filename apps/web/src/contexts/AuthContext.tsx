@@ -141,8 +141,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (recipients && recipients.length > 0) {
         setFamilyCareRecipient(recipients[0]);
         localStorage.setItem(STORAGE_KEYS.familyCareRecipient, JSON.stringify(recipients[0]));
+        localStorage.setItem('careRecipient', JSON.stringify(recipients[0]));
         return recipients[0];
       }
+      setFamilyCareRecipient(null);
+      localStorage.removeItem(STORAGE_KEYS.familyCareRecipient);
+      localStorage.removeItem('careRecipient');
       return null;
     } catch (error) {
       console.error('Failed to fetch care recipients:', error);
@@ -163,6 +167,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (cachedUser) {
           try {
             setUser(JSON.parse(cachedUser));
+          } catch {
+            // Invalid JSON, will fetch from API
+          }
+        }
+
+        const cachedRecipient = localStorage.getItem(STORAGE_KEYS.familyCareRecipient) || localStorage.getItem('careRecipient');
+        if (cachedRecipient) {
+          try {
+            setFamilyCareRecipient(JSON.parse(cachedRecipient));
           } catch {
             // Invalid JSON, will fetch from API
           }
@@ -268,6 +281,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Store family token
     localStorage.setItem(STORAGE_KEYS.familyToken, response.token);
+    localStorage.setItem(STORAGE_KEYS.familyUser, JSON.stringify(response.user));
     localStorage.setItem(STORAGE_KEYS.activeContext, 'family');
     // Also store in legacy keys for backward compatibility
     localStorage.setItem('token', response.token);
@@ -282,6 +296,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(STORAGE_KEYS.familyToken);
     localStorage.removeItem(STORAGE_KEYS.familyUser);
     localStorage.removeItem(STORAGE_KEYS.familyCareRecipient);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('careRecipient');
     setFamilyToken(null);
     setUser(null);
     setFamilyCareRecipient(null);
@@ -370,14 +387,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Set care recipient (for switching between multiple)
   const setCareRecipient = useCallback((recipient: CareRecipient) => {
-    if (activeContext === 'family') {
+    const shouldUseFamilyContext =
+      activeContext === 'family' || (!activeContext && !!familyToken && !isTokenExpired(familyToken));
+
+    if (shouldUseFamilyContext) {
       setFamilyCareRecipient(recipient);
       localStorage.setItem(STORAGE_KEYS.familyCareRecipient, JSON.stringify(recipient));
+      localStorage.setItem('careRecipient', JSON.stringify(recipient));
     } else {
       setCaregiverCareRecipient(recipient);
       localStorage.setItem(STORAGE_KEYS.caregiverCareRecipient, JSON.stringify(recipient));
     }
-  }, [activeContext]);
+  }, [activeContext, familyToken]);
 
   const value: AuthContextType = {
     token,

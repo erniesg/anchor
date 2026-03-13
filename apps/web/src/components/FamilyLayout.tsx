@@ -33,7 +33,10 @@ export function FamilyLayout({ children }: FamilyLayoutProps) {
 
   // Redirect to onboarding if no care recipient exists
   useEffect(() => {
-    if (!isLoading && user && !careRecipient && !location.pathname.includes('/onboarding')) {
+    const hasStoredCareRecipient =
+      !!localStorage.getItem('familyCareRecipient') || !!localStorage.getItem('careRecipient');
+
+    if (!isLoading && user && !careRecipient && !hasStoredCareRecipient && !location.pathname.includes('/onboarding')) {
       navigate({ to: '/family/onboarding' });
     }
   }, [user, careRecipient, isLoading, navigate, location.pathname]);

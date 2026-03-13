@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
+import { normalizeCompletedSections } from '@/lib/completedSections';
+import { appetiteLevelToPercent, persistedMealValueToAppetiteLevel } from '@/lib/mealScales';
 import { QuickActionFAB } from '@/components/caregiver/QuickActionFAB';
 import {
   Moon,
@@ -165,13 +167,17 @@ function EveningFormComponent() {
   // Load existing data
   useEffect(() => {
     if (todayLog) {
+      const completedSections = normalizeCompletedSections(todayLog.completedSections);
       setCareLogId(todayLog.id);
-      setIsSubmitted(!!todayLog.completedSections?.evening);
+      setIsSubmitted(!!completedSections.evening);
 
       // Load dinner from meals object
       if (todayLog.meals?.dinner) {
         setDinnerTime(todayLog.meals.dinner.time || '');
-        setDinnerAmount(todayLog.meals.dinner.amountEaten || 3);
+        setDinnerAmount(
+          todayLog.meals.dinner.appetite ||
+          persistedMealValueToAppetiteLevel(todayLog.meals.dinner.amountEaten)
+        );
         setDinnerAssistance(todayLog.meals.dinner.assistance || 'none');
         setDinnerSwallowingIssues(todayLog.meals.dinner.swallowingIssues || []);
       }
@@ -239,7 +245,8 @@ function EveningFormComponent() {
         meals: dinnerTime ? {
           dinner: {
             time: dinnerTime,
-            amountEaten: dinnerAmount,
+            appetite: dinnerAmount,
+            amountEaten: appetiteLevelToPercent(dinnerAmount),
             assistance: dinnerAssistance,
             swallowingIssues: dinnerSwallowingIssues,
           },
@@ -409,7 +416,7 @@ function EveningFormComponent() {
             </div>
 
             <div>
-              <RequiredLabel required>Amount Eaten (1-5)</RequiredLabel>
+              <RequiredLabel required>Appetite (1-5)</RequiredLabel>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((level) => (
                   <button
@@ -426,7 +433,7 @@ function EveningFormComponent() {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-gray-500 mt-1">1 = Nothing, 5 = Everything</p>
+              <p className="text-xs text-gray-500 mt-1">1 = Refused food, 5 = Ate everything well</p>
             </div>
 
             <div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
 
 export const Route = createFileRoute('/family/onboarding/')({
@@ -18,8 +19,17 @@ interface CareRecipientData {
   emergencyContact?: string;
 }
 
+interface CareRecipient {
+  id: string;
+  name: string;
+  dateOfBirth?: string;
+  gender?: string;
+  condition?: string;
+}
+
 function OnboardingComponent() {
   const navigate = useNavigate();
+  const { token, setCareRecipient } = useAuth();
   const [_step, _setStep] = useState(1); void _step; void _setStep;
   const [name, setName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
@@ -29,12 +39,11 @@ function OnboardingComponent() {
 
   // Check if user already has care recipients - if yes, redirect to dashboard
   const { data: existingRecipients } = useQuery({
-    queryKey: ['care-recipients-check'],
+    queryKey: ['care-recipients-check', token],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
       if (!token) return null;
       try {
-        return await authenticatedApiCall('/care-recipients', token);
+        return await authenticatedApiCall<CareRecipient[]>('/care-recipients', token);
       } catch {
         return null;
       }
@@ -50,21 +59,19 @@ function OnboardingComponent() {
 
   const createRecipientMutation = useMutation({
     mutationFn: async (data: CareRecipientData) => {
-      const token = localStorage.getItem('token');
-
       // Guard: Check if user is authenticated
       if (!token) {
         throw new Error('User session expired. Please log in again.');
       }
 
       // Use authenticatedApiCall with JWT token
-      return authenticatedApiCall('/care-recipients', token, {
+      return authenticatedApiCall<CareRecipient>('/care-recipients', token, {
         method: 'POST',
         body: JSON.stringify(data),
       });
     },
     onSuccess: (data) => {
-      localStorage.setItem('careRecipient', JSON.stringify(data));
+      setCareRecipient(data);
       navigate({ to: '/family/onboarding/caregiver' });
     },
   });

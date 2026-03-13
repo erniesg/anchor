@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Copy, Check, Heart, History, X, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { authenticatedApiCall } from '@/lib/api';
+import { normalizeCompletedSections } from '@/lib/completedSections';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -201,17 +202,17 @@ function DashboardComponent() {
 
   // Set care recipient from API data if not already set
   useEffect(() => {
-    if (careRecipients && careRecipients.length > 0 && !careRecipient) {
+    if (careRecipients && careRecipients.length > 0 && careRecipient?.id !== careRecipients[0].id) {
       setAuthCareRecipient(careRecipients[0]);
     }
-  }, [careRecipients, careRecipient, setAuthCareRecipient]);
+  }, [careRecipients, careRecipient?.id, setAuthCareRecipient]);
 
   // Redirect to onboarding if no care recipients exist (checked via API)
   useEffect(() => {
-    if (user && careRecipients !== undefined && careRecipients !== null && careRecipients.length === 0) {
+    if (user && !careRecipient && careRecipients !== undefined && careRecipients !== null && careRecipients.length === 0) {
       navigate({ to: '/family/onboarding' });
     }
-  }, [user, careRecipients, navigate]);
+  }, [user, careRecipient, careRecipients, navigate]);
 
   // Calculate week range (Mon-Sun)
   const getWeekRange = (offset: number = 0) => {
@@ -248,6 +249,7 @@ function DashboardComponent() {
 
   // Alias for backward compatibility (keeping todayLog name for minimal changes)
   const todayLog = dayLog;
+  const normalizedCompletedSections = normalizeCompletedSections(todayLog?.completedSections);
 
   const queryClient = useQueryClient();
 
@@ -715,7 +717,7 @@ function DashboardComponent() {
 
                 {/* Progress Section - Integrated into header card */}
                 {viewMode === 'day' && (() => {
-                  const completedCount = Object.keys(todayLog?.completedSections || {}).length;
+                  const completedCount = Object.keys(normalizedCompletedSections).length;
                   const hasAnytimeData = todayLog && (
                     (todayLog.fluids && (todayLog.fluids as FluidEntry[]).length > 0) ||
                     (todayLog.totalFluidIntake && todayLog.totalFluidIntake > 0) ||
@@ -810,7 +812,7 @@ function DashboardComponent() {
                           { key: 'evening', label: '🌙 Eve', name: 'Evening' },
                           { key: 'dailySummary', label: '📋 Sum', name: 'Summary' },
                         ].map((section) => {
-                          const isComplete = !!todayLog.completedSections?.[section.key as keyof CompletedSections];
+                          const isComplete = !!normalizedCompletedSections[section.key as keyof CompletedSections];
                           return (
                             <div key={section.key} className="flex-1 text-center">
                               <div
@@ -1448,7 +1450,11 @@ function DashboardComponent() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Amount Eaten:</span>
-                          <span className="font-medium">{todayLog.meals.breakfast.amountEaten}/5</span>
+                          <span className="font-medium">
+                            {todayLog.meals.breakfast.amountEaten > 5
+                              ? `${todayLog.meals.breakfast.amountEaten}%`
+                              : `${todayLog.meals.breakfast.amountEaten}/5`}
+                          </span>
                         </div>
                       </div>
                     ) : (
@@ -2934,7 +2940,7 @@ function DashboardComponent() {
                         { key: 'evening', label: 'Evening', icon: '🌙', time: '6pm - Bedtime' },
                         { key: 'dailySummary', label: 'Daily Summary', icon: '📋', time: 'End of day' },
                       ].map((section) => {
-                        const sectionData = todayLog?.completedSections?.[section.key as keyof CompletedSections];
+                        const sectionData = normalizedCompletedSections[section.key as keyof CompletedSections];
                         const isComplete = !!sectionData;
                         return (
                           <div
