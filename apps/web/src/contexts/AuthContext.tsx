@@ -157,6 +157,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize auth state from localStorage
   useEffect(() => {
     const initAuth = async () => {
+      const storedContext = localStorage.getItem(STORAGE_KEYS.activeContext) as 'family' | 'caregiver' | null;
+
       // Load family token
       const storedFamilyToken = localStorage.getItem(STORAGE_KEYS.familyToken);
       if (storedFamilyToken && !isTokenExpired(storedFamilyToken)) {
@@ -181,9 +183,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Then fetch fresh data from API
+        // Only refresh family data when restoring a family session.
+        // On caregiver pages we keep the cached family data but avoid background
+        // family fetches that can be aborted by navigation and surface as runtime errors.
+        const isCaregiverRoute =
+          typeof window !== 'undefined' && window.location.pathname.startsWith('/caregiver');
+        const shouldRefreshFamilyData =
+          !isCaregiverRoute &&
+          (storedContext !== 'caregiver' || !localStorage.getItem(STORAGE_KEYS.caregiverToken));
+
         const decoded = decodeJWT(storedFamilyToken);
-        if (decoded?.sub) {
+        if (shouldRefreshFamilyData && decoded?.sub) {
           await fetchUser(storedFamilyToken, decoded.sub);
           await fetchCareRecipients(storedFamilyToken);
         }
@@ -200,7 +210,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Restore active context or default based on what's available
-      const storedContext = localStorage.getItem(STORAGE_KEYS.activeContext) as 'family' | 'caregiver' | null;
       if (storedContext === 'family' && storedFamilyToken && !isTokenExpired(storedFamilyToken)) {
         setActiveContext('family');
       } else if (storedContext === 'caregiver' && storedCaregiverToken && !isTokenExpired(storedCaregiverToken)) {

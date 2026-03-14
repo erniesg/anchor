@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/lib/toast';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
-import { Heart, Plus, Edit2, UserCog, Backpack } from 'lucide-react';
+import { Heart, Plus, Edit2, UserCog, Backpack, Pill } from 'lucide-react';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { authenticatedApiCall } from '@/lib/api';
 
@@ -254,6 +254,21 @@ function CareRecipientsSettingsComponent() {
                             </Link>
                           </div>
                         )}
+                      </div>
+
+                      {/* Medication Schedule Section */}
+                      <div className="pt-3 border-t mt-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700">Medication Schedule</span>
+                        </div>
+                        <Link
+                          to="/family/settings/medication-schedules"
+                          search={{ recipientId: recipient.id, recipientName: recipient.name }}
+                          className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1 font-medium"
+                        >
+                          <Pill className="h-4 w-4" />
+                          Manage Medications →
+                        </Link>
                       </div>
 
                       {/* Pack List Section */}

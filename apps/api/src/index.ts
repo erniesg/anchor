@@ -97,6 +97,7 @@ import careLogsRoute from './routes/care-logs';
 import familyMembersRoute from './routes/family-members';
 import usersRoute from './routes/users';
 import packListsRoute from './routes/pack-lists';
+import medicationSchedulesRoute from './routes/medication-schedules';
 
 app.route('/auth', auth);
 app.route('/care-recipients', careRecipientsRoute);
@@ -105,6 +106,7 @@ app.route('/care-logs', careLogsRoute);
 app.route('/family-members', familyMembersRoute);
 app.route('/users', usersRoute);
 app.route('/pack-lists', packListsRoute);
+app.route('/medication-schedules', medicationSchedulesRoute);
 // app.route('/dashboard', dashboardRoutes);
 // app.route('/alerts', alertsRoutes);
 

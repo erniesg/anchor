@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppContext } from '../index';
-import { careLogs, caregivers, careLogAudit, careLogViews } from '@anchor/database/schema';
+import { careLogs, caregivers, careLogAudit, careLogViews, medicationSchedules } from '@anchor/database/schema';
 import { createDbClient } from '@anchor/database';
 import { eq, desc, and, or, isNotNull, gt, gte, lt } from 'drizzle-orm';
 import { caregiverOnly, familyAdminOnly, familyMemberAccess } from '../middleware/rbac';
@@ -9,6 +9,18 @@ import { requireCareLogOwnership, requireLogInvalidation, requireCareRecipientAc
 import { caregiverHasAccess, canAccessCareRecipient } from '../lib/access-control';
 
 const careLogsRoute = new Hono<AppContext>();
+
+const DAY_CODES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+const MEDICATION_TIME_SLOT_ORDER = [
+  'before_breakfast',
+  'after_breakfast',
+  'afternoon',
+  'after_dinner',
+  'before_bedtime',
+] as const;
+
+type DayCode = typeof DAY_CODES[number];
+type MedicationTimeSlot = typeof MEDICATION_TIME_SLOT_ORDER[number];
 
 // Singapore timezone offset: UTC+8
 const SGT_OFFSET_MS = 8 * 60 * 60 * 1000;
@@ -32,7 +44,9 @@ function getTodayRangeSGT(): { start: Date; end: Date } {
 // Validation schemas
 // Sprint 2 Day 4: Enhanced medication schema with purpose and notes
 const medicationLogSchema = z.object({
+  scheduleId: z.string().optional(),
   name: z.string(),
+  dosage: z.string().optional(),
   given: z.boolean(),
   time: z.string().nullable(),
   timeSlot: z.enum(['before_breakfast', 'after_breakfast', 'afternoon', 'after_dinner', 'before_bedtime']),
@@ -415,6 +429,15 @@ const createCareLogSchema = z.object({
     notes: z.string().optional(),
   }).optional(),
 
+  // Personal Hygiene (daily summary)
+  personalHygiene: z.object({
+    bathOrShower: z.boolean().optional(),
+    hairWashed: z.boolean().optional(),
+    oralCare: z.enum(['none', 'am', 'pm', 'both']).optional(),
+    skinCare: z.boolean().optional(),
+    notes: z.string().optional(),
+  }).optional(),
+
   // Notes
   notes: z.string().optional(),
 });
@@ -485,6 +508,117 @@ function safeJsonParse(value: unknown): unknown {
   return value;
 }
 
+function parseRepeatDaysValue(value: string | null | undefined): DayCode[] {
+  if (!value) return [];
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized || normalized === 'daily' || normalized === 'everyday' || normalized === 'selected_days') {
+    return [];
+  }
+
+  if (normalized === 'weekdays') {
+    return ['mon', 'tue', 'wed', 'thu', 'fri'];
+  }
+
+  if (normalized === 'weekends') {
+    return ['sat', 'sun'];
+  }
+
+  const explicitMatches = normalized.match(/sun|mon|tue|wed|thu|fri|sat/g);
+  if (explicitMatches?.length) {
+    return DAY_CODES.filter((day) => explicitMatches.includes(day));
+  }
+
+  const compact = normalized.replace(/[^a-z]/g, '');
+  const legacyPatterns: Record<string, DayCode[]> = {
+    mwf: ['mon', 'wed', 'fri'],
+    weekdays: ['mon', 'tue', 'wed', 'thu', 'fri'],
+    weekends: ['sat', 'sun'],
+  };
+
+  return legacyPatterns[compact] || [];
+}
+
+function parseRepeatDays(dayRestriction: string | null | undefined, frequency: string | null | undefined): DayCode[] {
+  const explicitDays = parseRepeatDaysValue(dayRestriction);
+  if (explicitDays.length > 0) {
+    return explicitDays;
+  }
+
+  return parseRepeatDaysValue(frequency);
+}
+
+function getDayCodeFromDateString(dateString: string): DayCode {
+  const [year, month, day] = dateString.split('T')[0]!.split('-').map(Number);
+  const utcDay = new Date(Date.UTC(year!, (month || 1) - 1, day || 1)).getUTCDay();
+  return DAY_CODES[utcDay]!;
+}
+
+function sortMedicationSchedulesByAdministrationWindow(
+  a: typeof medicationSchedules.$inferSelect,
+  b: typeof medicationSchedules.$inferSelect
+): number {
+  const slotOrderDiff =
+    MEDICATION_TIME_SLOT_ORDER.indexOf(a.timeSlot as MedicationTimeSlot) -
+    MEDICATION_TIME_SLOT_ORDER.indexOf(b.timeSlot as MedicationTimeSlot);
+
+  if (slotOrderDiff !== 0) {
+    return slotOrderDiff;
+  }
+
+  const aTime = Array.isArray(a.timeSlots) ? a.timeSlots[0] || '' : '';
+  const bTime = Array.isArray(b.timeSlots) ? b.timeSlots[0] || '' : '';
+
+  if (aTime !== bTime) {
+    return aTime.localeCompare(bTime);
+  }
+
+  return a.medicationName.localeCompare(b.medicationName);
+}
+
+function scheduleAppliesToLogDate(
+  schedule: typeof medicationSchedules.$inferSelect,
+  logDate: string
+): boolean {
+  const repeatDays = parseRepeatDays(schedule.dayRestriction, schedule.frequency);
+
+  if (repeatDays.length === 0) {
+    return true;
+  }
+
+  return repeatDays.includes(getDayCodeFromDateString(logDate));
+}
+
+async function getMaterializedMedicationLogs(
+  db: ReturnType<typeof createDbClient>,
+  careRecipientId: string,
+  logDate: string
+): Promise<Array<z.infer<typeof medicationLogSchema>>> {
+  const schedules = await db
+    .select()
+    .from(medicationSchedules)
+    .where(
+      and(
+        eq(medicationSchedules.careRecipientId, careRecipientId),
+        eq(medicationSchedules.active, true)
+      )
+    )
+    .all();
+
+  return schedules
+    .filter((schedule) => scheduleAppliesToLogDate(schedule, logDate))
+    .sort(sortMedicationSchedulesByAdministrationWindow)
+    .map((schedule) => ({
+      scheduleId: schedule.id,
+      name: schedule.medicationName,
+      dosage: schedule.dosage,
+      given: false,
+      time: null,
+      timeSlot: schedule.timeSlot,
+      purpose: schedule.purpose || undefined,
+    }));
+}
+
 // Progressive Section Submission Types (defined here for use in helper functions)
 type SectionName = 'morning' | 'afternoon' | 'evening' | 'dailySummary';
 type SectionSubmission = { submittedAt: string; submittedBy: string };
@@ -509,6 +643,7 @@ const SECTION_FIELDS: Record<string, string[]> = {
     'safetyChecks', 'emergencyPrep', 'emergencyFlag', 'emergencyNote',
     'spiritualEmotional', 'specialConcerns', 'caregiverNotes', 'activities', 'notes',
     'oralCare', 'movementDifficulties', 'roomMaintenance', 'personalItemsCheck', 'hospitalBagStatus',
+    'personalHygiene',
   ],
 };
 
@@ -607,6 +742,8 @@ function parseJsonFields(log: Record<string, unknown>): Record<string, unknown> 
     roomMaintenance: safeJsonParse(log.roomMaintenance || log.room_maintenance),
     personalItemsCheck: safeJsonParse(log.personalItemsCheck || log.personal_items_check),
     hospitalBagStatus: safeJsonParse(log.hospitalBagStatus || log.hospital_bag_status),
+    // Personal Hygiene (daily summary)
+    personalHygiene: safeJsonParse(log.personalHygiene || log.personal_hygiene),
   };
 }
 
@@ -643,6 +780,11 @@ function mergeJsonObject(existingValue: unknown, incomingValue: unknown): string
 }
 
 function getMedicationMergeKey(medication: Record<string, unknown>, fallbackIndex: number): string {
+  const scheduleId = typeof medication.scheduleId === 'string' ? medication.scheduleId : null;
+  if (scheduleId) {
+    return `schedule:${scheduleId}`;
+  }
+
   const name = typeof medication.name === 'string' ? medication.name : `medication-${fallbackIndex}`;
   const timeSlot = typeof medication.timeSlot === 'string' ? medication.timeSlot : `slot-${fallbackIndex}`;
   return `${name}::${timeSlot}`;
@@ -778,6 +920,8 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
       }, 409);
     }
 
+    const medications = data.medications ?? await getMaterializedMedicationLogs(db, data.careRecipientId, data.logDate);
+
     // Sprint 2 Day 1: Auto-calculate total fluid intake if not provided
     const fluids = data.fluids || [];
     const totalFluidIntake = data.totalFluidIntake !== undefined
@@ -796,7 +940,7 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         mood: data.mood,
         showerTime: data.showerTime,
         hairWash: data.hairWash,
-        medications: data.medications ? JSON.stringify(data.medications) as string : null,
+        medications: medications.length > 0 ? JSON.stringify(medications) as string : null,
         meals: data.meals ? JSON.stringify(data.meals) as string : null,
         // Sprint 2 Day 1: Fluid Intake
         fluids: fluids.length > 0 ? JSON.stringify(fluids) as string : null,
@@ -844,6 +988,8 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
         roomMaintenance: data.roomMaintenance ? JSON.stringify(data.roomMaintenance) as string : null,
         personalItemsCheck: data.personalItemsCheck ? JSON.stringify(data.personalItemsCheck) as string : null,
         hospitalBagStatus: data.hospitalBagStatus ? JSON.stringify(data.hospitalBagStatus) as string : null,
+        // Personal Hygiene (daily summary)
+        personalHygiene: data.personalHygiene ? JSON.stringify(data.personalHygiene) as string : null,
         notes: data.notes,
         createdAt: now,
         updatedAt: now,
@@ -870,7 +1016,7 @@ careLogsRoute.post('/', ...caregiverOnly, async (c) => {
     const lowFluidWarning = totalFluidIntake < 1000;
 
     // Sprint 2 Day 4: Calculate medication adherence
-    const medicationAdherence = calculateMedicationAdherence(data.medications || []);
+    const medicationAdherence = calculateMedicationAdherence(medications);
 
     // Parse JSON fields for response
     const response = {
@@ -1012,6 +1158,8 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
         roomMaintenance: data.roomMaintenance ? JSON.stringify(data.roomMaintenance) : undefined,
         personalItemsCheck: data.personalItemsCheck ? JSON.stringify(data.personalItemsCheck) : undefined,
         hospitalBagStatus: data.hospitalBagStatus ? JSON.stringify(data.hospitalBagStatus) : undefined,
+        // Personal Hygiene (daily summary)
+        personalHygiene: data.personalHygiene ? JSON.stringify(data.personalHygiene) : undefined,
         notes: data.notes,
         updatedAt: new Date(),
       } as Partial<typeof careLogs.$inferInsert>)
@@ -1048,7 +1196,8 @@ careLogsRoute.patch('/:id', ...caregiverOnly, requireCareLogOwnership, async (c)
       'safetyChecks', 'emergencyPrep', 'emergencyFlag', 'emergencyNote',
       'spiritualEmotional', 'physicalActivity', 'morningExerciseSession',
       'afternoonExerciseSession', 'movementDifficulties', 'oralCare', 'specialConcerns',
-      'caregiverNotes', 'activities', 'roomMaintenance', 'personalItemsCheck', 'hospitalBagStatus', 'notes',
+      'caregiverNotes', 'activities', 'roomMaintenance', 'personalItemsCheck', 'hospitalBagStatus',
+      'personalHygiene', 'notes',
     ];
 
     const parsedOld = parseJsonFields(existingLog as Record<string, unknown>);

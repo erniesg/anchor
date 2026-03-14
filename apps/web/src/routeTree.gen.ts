@@ -25,6 +25,7 @@ import { Route as FamilyOnboardingIndexRouteImport } from './routes/family/onboa
 import { Route as CaregiverFormIndexRouteImport } from './routes/caregiver/form/index'
 import { Route as FamilySettingsProfileRouteImport } from './routes/family/settings/profile'
 import { Route as FamilySettingsPackListRouteImport } from './routes/family/settings/pack-list'
+import { Route as FamilySettingsMedicationSchedulesRouteImport } from './routes/family/settings/medication-schedules'
 import { Route as FamilySettingsFamilyMembersRouteImport } from './routes/family/settings/family-members'
 import { Route as FamilySettingsCaregiversRouteImport } from './routes/family/settings/caregivers'
 import { Route as FamilySettingsCareRecipientsRouteImport } from './routes/family/settings/care-recipients'
@@ -114,6 +115,12 @@ const FamilySettingsPackListRoute = FamilySettingsPackListRouteImport.update({
   path: '/family/settings/pack-list',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FamilySettingsMedicationSchedulesRoute =
+  FamilySettingsMedicationSchedulesRouteImport.update({
+    id: '/family/settings/medication-schedules',
+    path: '/family/settings/medication-schedules',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const FamilySettingsFamilyMembersRoute =
   FamilySettingsFamilyMembersRouteImport.update({
     id: '/family/settings/family-members',
@@ -179,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/family/settings/care-recipients': typeof FamilySettingsCareRecipientsRoute
   '/family/settings/caregivers': typeof FamilySettingsCaregiversRoute
   '/family/settings/family-members': typeof FamilySettingsFamilyMembersRoute
+  '/family/settings/medication-schedules': typeof FamilySettingsMedicationSchedulesRoute
   '/family/settings/pack-list': typeof FamilySettingsPackListRoute
   '/family/settings/profile': typeof FamilySettingsProfileRoute
   '/caregiver/form/': typeof CaregiverFormIndexRoute
@@ -204,6 +212,7 @@ export interface FileRoutesByTo {
   '/family/settings/care-recipients': typeof FamilySettingsCareRecipientsRoute
   '/family/settings/caregivers': typeof FamilySettingsCaregiversRoute
   '/family/settings/family-members': typeof FamilySettingsFamilyMembersRoute
+  '/family/settings/medication-schedules': typeof FamilySettingsMedicationSchedulesRoute
   '/family/settings/pack-list': typeof FamilySettingsPackListRoute
   '/family/settings/profile': typeof FamilySettingsProfileRoute
   '/caregiver/form': typeof CaregiverFormIndexRoute
@@ -231,6 +240,7 @@ export interface FileRoutesById {
   '/family/settings/care-recipients': typeof FamilySettingsCareRecipientsRoute
   '/family/settings/caregivers': typeof FamilySettingsCaregiversRoute
   '/family/settings/family-members': typeof FamilySettingsFamilyMembersRoute
+  '/family/settings/medication-schedules': typeof FamilySettingsMedicationSchedulesRoute
   '/family/settings/pack-list': typeof FamilySettingsPackListRoute
   '/family/settings/profile': typeof FamilySettingsProfileRoute
   '/caregiver/form/': typeof CaregiverFormIndexRoute
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/family/settings/care-recipients'
     | '/family/settings/caregivers'
     | '/family/settings/family-members'
+    | '/family/settings/medication-schedules'
     | '/family/settings/pack-list'
     | '/family/settings/profile'
     | '/caregiver/form/'
@@ -284,6 +295,7 @@ export interface FileRouteTypes {
     | '/family/settings/care-recipients'
     | '/family/settings/caregivers'
     | '/family/settings/family-members'
+    | '/family/settings/medication-schedules'
     | '/family/settings/pack-list'
     | '/family/settings/profile'
     | '/caregiver/form'
@@ -310,6 +322,7 @@ export interface FileRouteTypes {
     | '/family/settings/care-recipients'
     | '/family/settings/caregivers'
     | '/family/settings/family-members'
+    | '/family/settings/medication-schedules'
     | '/family/settings/pack-list'
     | '/family/settings/profile'
     | '/caregiver/form/'
@@ -333,6 +346,7 @@ export interface RootRouteChildren {
   FamilySettingsCareRecipientsRoute: typeof FamilySettingsCareRecipientsRoute
   FamilySettingsCaregiversRoute: typeof FamilySettingsCaregiversRoute
   FamilySettingsFamilyMembersRoute: typeof FamilySettingsFamilyMembersRoute
+  FamilySettingsMedicationSchedulesRoute: typeof FamilySettingsMedicationSchedulesRoute
   FamilySettingsPackListRoute: typeof FamilySettingsPackListRoute
   FamilySettingsProfileRoute: typeof FamilySettingsProfileRoute
   FamilyOnboardingIndexRoute: typeof FamilyOnboardingIndexRoute
@@ -453,6 +467,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FamilySettingsPackListRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/family/settings/medication-schedules': {
+      id: '/family/settings/medication-schedules'
+      path: '/family/settings/medication-schedules'
+      fullPath: '/family/settings/medication-schedules'
+      preLoaderRoute: typeof FamilySettingsMedicationSchedulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/family/settings/family-members': {
       id: '/family/settings/family-members'
       path: '/family/settings/family-members'
@@ -548,6 +569,8 @@ const rootRouteChildren: RootRouteChildren = {
   FamilySettingsCareRecipientsRoute: FamilySettingsCareRecipientsRoute,
   FamilySettingsCaregiversRoute: FamilySettingsCaregiversRoute,
   FamilySettingsFamilyMembersRoute: FamilySettingsFamilyMembersRoute,
+  FamilySettingsMedicationSchedulesRoute:
+    FamilySettingsMedicationSchedulesRoute,
   FamilySettingsPackListRoute: FamilySettingsPackListRoute,
   FamilySettingsProfileRoute: FamilySettingsProfileRoute,
   FamilyOnboardingIndexRoute: FamilyOnboardingIndexRoute,

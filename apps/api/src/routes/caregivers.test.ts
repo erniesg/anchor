@@ -1,7 +1,29 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import app from '../index';
 import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import type { Env } from '../index';
+import { getTestTokens } from '../test-setup';
+
+// vi.mock must be at the top level of the test file for reliable hoisting
+vi.mock('../lib/access-control', () => ({
+  isActiveUser: vi.fn(async () => true),
+  isActiveCaregiver: vi.fn(async () => true),
+  caregiverHasAccess: vi.fn(async () => true),
+  caregiverOwnsCareLog: vi.fn(async (_db: unknown, caregiverId: string, _logId: string) => {
+    return caregiverId !== 'caregiver-999';
+  }),
+  canAccessCareRecipient: vi.fn(async (_db: unknown, _userId: string, recipientId: string) => {
+    return recipientId !== 'other-recipient-123';
+  }),
+  canInvalidateCareLog: vi.fn(async () => true),
+  canManageCaregivers: vi.fn(async () => true),
+  getAccessibleCareRecipients: vi.fn(async (_db: unknown, _userId: string) => [
+    { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Test Recipient' }
+  ]),
+  canGrantAccess: vi.fn(async () => true),
+  canRevokeAccess: vi.fn(async () => true),
+}));
+
+import app from '../index';
 
 /**
  * Caregivers API Tests
@@ -29,12 +51,14 @@ describe('Caregivers API', () => {
       DB: mockD1,
       STORAGE: {} as R2Bucket,
       ENVIRONMENT: 'dev',
-      JWT_SECRET: 'test-secret',
+      JWT_SECRET: 'test-secret-key',
       LOGTO_APP_SECRET: 'test-logto-secret',
     };
 
-    familyAdminToken = 'mock-token-family-admin';
-    familyMemberToken = 'mock-token-family-member';
+    // Use real JWT tokens generated in test-setup.ts
+    const tokens = getTestTokens();
+    familyAdminToken = tokens.familyAdmin;
+    familyMemberToken = tokens.familyMember;
     careRecipientId = '550e8400-e29b-41d4-a716-446655440000'; // Match seeded data
   });
 

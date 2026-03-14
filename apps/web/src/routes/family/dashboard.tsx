@@ -6,6 +6,13 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Copy, Check, Heart, History, X, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { authenticatedApiCall } from '@/lib/api';
 import { getRecordedMeals, summarizeMeals, type FamilyMealsData } from '@/lib/familyMeals';
+import {
+  formatDateForDisplayInAppTimeZone,
+  formatDateInAppTimeZone,
+  getCurrentAppDate,
+  getCurrentAppDateString,
+  isDateTodayInAppTimeZone,
+} from '@/lib/date';
 import { normalizeCompletedSections } from '@/lib/completedSections';
 import { FamilyLayout } from '@/components/FamilyLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,7 +29,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, addDays, subDays, isToday, isSameDay, startOfMonth, endOfMonth, getDay } from 'date-fns';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, addDays, subDays, isSameDay, startOfMonth, endOfMonth, getDay } from 'date-fns';
 
 export const Route = createFileRoute('/family/dashboard')({
   component: DashboardComponent,
@@ -37,8 +44,14 @@ interface FluidEntry {
 }
 
 interface SleepData {
-  quality?: 'deep' | 'light' | 'restless' | 'none';
+  bedtime?: string;
+  startTime?: string;
+  endTime?: string;
+  quality?: 'deep' | 'light' | 'restless' | 'no_sleep';
   wakings?: number;
+  wakingReasons?: string[];
+  behaviors?: string[];
+  notes?: string;
 }
 
 interface ChartDataItem {
@@ -50,6 +63,7 @@ interface ChartDataItem {
 
 interface MedicationEntry {
   name?: string;
+  dosage?: string;
   given?: boolean;
   time?: string;
   purpose?: string;
@@ -124,7 +138,7 @@ interface CareLog {
   bloodSugar?: number;
   totalFluidIntake?: number;
   totalUnaccompaniedMinutes?: number;
-  balanceIssues?: boolean;
+  balanceIssues?: number;
   nearFalls?: string;
   actualFalls?: string;
   fluids?: FluidEntry[];
@@ -137,6 +151,13 @@ interface CareLog {
   unaccompaniedTime?: UnaccompaniedPeriod[];
   unaccompaniedIncidents?: string;
   safetyChecks?: Record<string, SafetyCheckItem>;
+  personalHygiene?: {
+    bathOrShower?: boolean;
+    hairWashed?: boolean;
+    oralCare?: 'none' | 'am' | 'pm' | 'both';
+    skinCare?: boolean;
+    notes?: string;
+  };
   emergencyPrep?: Record<string, boolean>;
   roomMaintenance?: {
     cleaningStatus?: string;
@@ -173,11 +194,43 @@ function StatusBadge({ status }: { status?: string }) {
   );
 }
 
+function getSleepQualityScore(quality?: SleepData['quality']): number {
+  if (quality === 'deep') return 4;
+  if (quality === 'light') return 3;
+  if (quality === 'restless') return 2;
+  if (quality === 'no_sleep') return 1;
+  return 0;
+}
+
+function getSleepQualityLabel(quality?: SleepData['quality']): string {
+  if (quality === 'deep') return '💤 Deep Sleep';
+  if (quality === 'light') return '😌 Light Sleep';
+  if (quality === 'restless') return '😟 Restless';
+  if (quality === 'no_sleep') return '😔 No Sleep';
+  return '📝 Quality Not Recorded';
+}
+
+function getSleepQualityBadgeClass(quality?: SleepData['quality'], lightTone: 'day' | 'night' = 'day'): string {
+  if (quality === 'deep') return 'bg-green-100 text-green-800';
+  if (quality === 'light') return lightTone === 'day' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800';
+  if (quality === 'restless') return 'bg-yellow-100 text-yellow-800';
+  if (quality === 'no_sleep') return 'bg-red-100 text-red-800';
+  return 'bg-gray-100 text-gray-700';
+}
+
+function getSleepQualityColor(quality?: SleepData['quality'], lightTone: 'day' | 'night' = 'day'): string {
+  if (quality === 'deep') return '#22c55e';
+  if (quality === 'light') return lightTone === 'day' ? '#60a5fa' : '#8b5cf6';
+  if (quality === 'restless') return '#fbbf24';
+  if (quality === 'no_sleep') return '#ef4444';
+  return '#94a3b8';
+}
+
 function DashboardComponent() {
   const navigate = useNavigate();
   const { user, token, careRecipient, setCareRecipient: setAuthCareRecipient } = useAuth();
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'activity'>('day');
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => getCurrentAppDate());
   const [showCalendar, setShowCalendar] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, -1 = last week, etc.
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -220,19 +273,21 @@ function DashboardComponent() {
 
   const currentWeek = getWeekRange(weekOffset);
   const weekDates = eachDayOfInterval({ start: currentWeek.start, end: currentWeek.end });
+  const selectedDateStr = formatDateInAppTimeZone(selectedDate);
+  const todayStr = getCurrentAppDateString();
+  const isSelectedDateToday = isDateTodayInAppTimeZone(selectedDate);
+  const currentAppDate = getCurrentAppDate();
 
   // Fetch care log for selected date
   const { data: dayLog, isLoading } = useQuery({
-    queryKey: ['care-log-date', careRecipient?.id, format(selectedDate, 'yyyy-MM-dd')],
+    queryKey: ['care-log-date', careRecipient?.id, selectedDateStr],
     queryFn: async () => {
       if (!careRecipient?.id || !token) return null;
       try {
         // Use today endpoint if it's today, otherwise use date endpoint
-        const dateStr = format(selectedDate, 'yyyy-MM-dd');
-        const todayStr = format(new Date(), 'yyyy-MM-dd');
-        const endpoint = dateStr === todayStr
+        const endpoint = selectedDateStr === todayStr
           ? `/care-logs/recipient/${careRecipient.id}/today`
-          : `/care-logs/recipient/${careRecipient.id}/date/${dateStr}`;
+          : `/care-logs/recipient/${careRecipient.id}/date/${selectedDateStr}`;
         return await authenticatedApiCall(endpoint, token);
       } catch (error) {
         console.error('Failed to fetch day log:', error);
@@ -240,7 +295,7 @@ function DashboardComponent() {
       }
     },
     enabled: !!careRecipient?.id && !!token && viewMode === 'day',
-    refetchInterval: isToday(selectedDate) ? 30000 : undefined, // Only auto-refresh for today
+    refetchInterval: isSelectedDateToday ? 30000 : undefined, // Only auto-refresh for today
   });
 
   // Alias for backward compatibility (keeping todayLog name for minimal changes)
@@ -304,7 +359,7 @@ function DashboardComponent() {
     queryFn: async () => {
       if (!careRecipient?.id || !token) return [];
       const promises = weekDates.map((date) =>
-        authenticatedApiCall(`/care-logs/recipient/${careRecipient.id}/date/${format(date, 'yyyy-MM-dd')}`, token)
+        authenticatedApiCall(`/care-logs/recipient/${careRecipient.id}/date/${formatDateInAppTimeZone(date)}`, token)
           .catch(() => null)
       );
       const results = await Promise.all(promises);
@@ -320,7 +375,7 @@ function DashboardComponent() {
       const mealSummary = summarizeMeals(log.meals);
 
       return {
-        date: format(new Date(log.logDate), 'MMM dd'),
+        date: formatDateForDisplayInAppTimeZone(log.logDate, 'en-US', { month: 'short', day: '2-digit' }),
         systolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[0]) : null,
         diastolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[1]) : null,
         pulse: log.pulseRate,
@@ -502,7 +557,7 @@ function DashboardComponent() {
                           setShowCalendar(!showCalendar);
                         } else {
                           setViewMode('day');
-                          setSelectedDate(new Date());
+                          setSelectedDate(getCurrentAppDate());
                         }
                       }}
                       className={`px-3 py-2 text-sm font-medium transition flex items-center gap-2 ${
@@ -514,7 +569,7 @@ function DashboardComponent() {
                       {viewMode === 'day' ? (
                         <>
                           <Calendar className="h-4 w-4" />
-                          <span>{isToday(selectedDate) ? 'Today' : format(selectedDate, 'MMM d')}</span>
+                          <span>{isSelectedDateToday ? 'Today' : format(selectedDate, 'MMM d')}</span>
                         </>
                       ) : (
                         'Day'
@@ -523,7 +578,7 @@ function DashboardComponent() {
                     {viewMode === 'day' && (
                       <button
                         onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-                        disabled={isToday(selectedDate)}
+                        disabled={isSelectedDateToday}
                         className="p-2 text-gray-500 hover:text-gray-900 rounded-r-md transition disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Next day"
                       >
@@ -589,9 +644,9 @@ function DashboardComponent() {
                   </button>
 
                   {/* Jump to Today - only visible when not viewing today */}
-                  {viewMode === 'day' && !isToday(selectedDate) && (
+                  {viewMode === 'day' && !isSelectedDateToday && (
                     <button
-                      onClick={() => setSelectedDate(new Date())}
+                      onClick={() => setSelectedDate(getCurrentAppDate())}
                       className="ml-1 px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded transition"
                     >
                       Today
@@ -629,9 +684,9 @@ function DashboardComponent() {
                             <button
                               onClick={() => {
                                 const nextMonth = addDays(endOfMonth(selectedDate), 1);
-                                if (nextMonth <= new Date()) setSelectedDate(nextMonth);
+                                if (nextMonth <= currentAppDate) setSelectedDate(nextMonth);
                               }}
-                              disabled={endOfMonth(selectedDate) >= new Date()}
+                              disabled={endOfMonth(selectedDate) >= currentAppDate}
                               className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
                             >
                               <ChevronRight className="h-4 w-4" />
@@ -661,7 +716,7 @@ function DashboardComponent() {
                                 const isCurrentMonth = day.getMonth() === selectedDate.getMonth();
                                 const isSelected = isSameDay(day, selectedDate);
                                 const isFuture = day > today;
-                                const dayIsToday = isToday(day);
+                                const dayIsToday = isDateTodayInAppTimeZone(day);
 
                                 return (
                                   <button
@@ -692,13 +747,13 @@ function DashboardComponent() {
                           {/* Quick actions */}
                           <div className="mt-3 pt-3 border-t flex gap-2">
                             <button
-                              onClick={() => { setSelectedDate(new Date()); setShowCalendar(false); }}
+                              onClick={() => { setSelectedDate(getCurrentAppDate()); setShowCalendar(false); }}
                               className="flex-1 py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded transition"
                             >
                               Today
                             </button>
                             <button
-                              onClick={() => { setSelectedDate(subDays(new Date(), 1)); setShowCalendar(false); }}
+                              onClick={() => { setSelectedDate(subDays(getCurrentAppDate(), 1)); setShowCalendar(false); }}
                               className="flex-1 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded transition"
                             >
                               Yesterday
@@ -738,10 +793,10 @@ function DashboardComponent() {
                           </div>
                           <div className="text-center">
                             <p className="font-medium text-gray-600 text-sm">
-                              {isToday(selectedDate) ? 'Waiting for care log' : 'No log for this date'}
+                              {isSelectedDateToday ? 'Waiting for care log' : 'No log for this date'}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {isToday(selectedDate) ? 'Caregiver will submit sections throughout the day' : 'No data was recorded'}
+                              {isSelectedDateToday ? 'Caregiver will submit sections throughout the day' : 'No data was recorded'}
                             </p>
                           </div>
                         </div>
@@ -784,7 +839,7 @@ function DashboardComponent() {
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <p className="text-sm font-medium text-gray-700">
-                            {format(selectedDate, 'MMM d')} Progress
+                            {isSelectedDateToday ? 'Today' : format(selectedDate, 'MMM d')} Progress
                           </p>
                           <p className="text-xs text-gray-500">
                             {completedCount === 0
@@ -1239,16 +1294,12 @@ function DashboardComponent() {
                         <ResponsiveContainer width="100%" height={250}>
                           <BarChart data={chartData.map((day: ChartDataItem) => {
                             // Convert sleep quality to numeric score for visualization
-                            const afternoonScore = day.afternoonRest ? (
-                              day.afternoonRest.quality === 'deep' ? 4 :
-                              day.afternoonRest.quality === 'light' ? 3 :
-                              day.afternoonRest.quality === 'restless' ? 2 : 1
-                            ) : 0;
-                            const nightScore = day.nightSleep ? (
-                              day.nightSleep.quality === 'deep' ? 4 :
-                              day.nightSleep.quality === 'light' ? 3 :
-                              day.nightSleep.quality === 'restless' ? 2 : 1
-                            ) : 0;
+                            const afternoonScore = day.afternoonRest
+                              ? getSleepQualityScore(day.afternoonRest.quality)
+                              : 0;
+                            const nightScore = day.nightSleep
+                              ? getSleepQualityScore(day.nightSleep.quality)
+                              : 0;
                             return {
                               ...day,
                               afternoonSleep: afternoonScore,
@@ -1270,18 +1321,14 @@ function DashboardComponent() {
                             <Bar dataKey="afternoonSleep" fill="#60a5fa" name="Afternoon Rest">
                               {chartData.map((entry: ChartDataItem, index: number) => {
                                 const quality = entry.afternoonRest?.quality;
-                                const color = quality === 'deep' ? '#22c55e' :
-                                             quality === 'light' ? '#60a5fa' :
-                                             quality === 'restless' ? '#fbbf24' : '#ef4444';
+                                const color = getSleepQualityColor(quality, 'day');
                                 return <Cell key={`afternoon-${index}`} fill={color} />;
                               })}
                             </Bar>
                             <Bar dataKey="nightSleep" fill="#8b5cf6" name="Night Sleep">
                               {chartData.map((entry: ChartDataItem, index: number) => {
                                 const quality = entry.nightSleep?.quality;
-                                const color = quality === 'deep' ? '#22c55e' :
-                                             quality === 'light' ? '#8b5cf6' :
-                                             quality === 'restless' ? '#fbbf24' : '#ef4444';
+                                const color = getSleepQualityColor(quality, 'night');
                                 return <Cell key={`night-${index}`} fill={color} />;
                               })}
                             </Bar>
@@ -1307,6 +1354,10 @@ function DashboardComponent() {
                           <div className="flex items-center gap-1">
                             <div className="w-3 h-3 bg-red-500 rounded"></div>
                             <span>No Sleep</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-slate-400 rounded"></div>
+                            <span>Not Recorded</span>
                           </div>
                         </div>
                       </CardContent>
@@ -1343,8 +1394,10 @@ function DashboardComponent() {
                         <span className="font-medium capitalize">{todayLog.mood || 'Not recorded'}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Shower:</span>
-                        <span className="font-medium">{todayLog.showerTime || 'Not recorded'}</span>
+                        <span className="text-gray-600">Bath/Shower:</span>
+                        <span className="font-medium">
+                          {todayLog.showerTime || (todayLog.personalHygiene?.bathOrShower ? 'Completed' : 'Not recorded')}
+                        </span>
                       </div>
                     </div>
                   </CardContent>
@@ -1391,6 +1444,9 @@ function DashboardComponent() {
                                 <span className="text-gray-400">⏺ Not given</span>
                               )}
                             </div>
+                            {med.dosage && (
+                              <p className="text-xs text-gray-600 mt-1">Dosage: {med.dosage}</p>
+                            )}
                             {med.purpose && (
                               <p className="text-xs text-gray-600 mt-1">Purpose: {med.purpose}</p>
                             )}
@@ -1555,16 +1611,8 @@ function DashboardComponent() {
                           <div className="border-b pb-3">
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-sm font-medium text-gray-700">Afternoon Rest</span>
-                              <span className={`text-xs px-2 py-1 rounded ${
-                                todayLog.afternoonRest.quality === 'deep' ? 'bg-green-100 text-green-800' :
-                                todayLog.afternoonRest.quality === 'light' ? 'bg-blue-100 text-blue-800' :
-                                todayLog.afternoonRest.quality === 'restless' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                                {todayLog.afternoonRest.quality === 'deep' ? '💤 Deep Sleep' :
-                                 todayLog.afternoonRest.quality === 'light' ? '😌 Light Sleep' :
-                                 todayLog.afternoonRest.quality === 'restless' ? '😟 Restless' :
-                                 '😔 No Sleep'}
+                              <span className={`text-xs px-2 py-1 rounded ${getSleepQualityBadgeClass(todayLog.afternoonRest.quality, 'day')}`}>
+                                {getSleepQualityLabel(todayLog.afternoonRest.quality)}
                               </span>
                             </div>
                             <div className="text-xs text-gray-600 flex items-center gap-2">
@@ -1584,16 +1632,8 @@ function DashboardComponent() {
                           <div>
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-sm font-medium text-gray-700">Night Sleep</span>
-                              <span className={`text-xs px-2 py-1 rounded ${
-                                todayLog.nightSleep.quality === 'deep' ? 'bg-green-100 text-green-800' :
-                                todayLog.nightSleep.quality === 'light' ? 'bg-blue-100 text-blue-800' :
-                                todayLog.nightSleep.quality === 'restless' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                                {todayLog.nightSleep.quality === 'deep' ? '💤 Deep Sleep' :
-                                 todayLog.nightSleep.quality === 'light' ? '😌 Light Sleep' :
-                                 todayLog.nightSleep.quality === 'restless' ? '😟 Restless' :
-                                 '😔 No Sleep'}
+                              <span className={`text-xs px-2 py-1 rounded ${getSleepQualityBadgeClass(todayLog.nightSleep.quality, 'night')}`}>
+                                {getSleepQualityLabel(todayLog.nightSleep.quality)}
                               </span>
                             </div>
                             <div className="text-xs text-gray-600 space-y-1">
@@ -2159,6 +2199,57 @@ function DashboardComponent() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Daily Summary Personal Hygiene */}
+                {(todayLog.personalHygiene?.bathOrShower ||
+                  todayLog.personalHygiene?.hairWashed ||
+                  todayLog.personalHygiene?.skinCare ||
+                  (todayLog.personalHygiene?.oralCare && todayLog.personalHygiene.oralCare !== 'none') ||
+                  todayLog.personalHygiene?.notes) && (
+                  <Card data-testid="personal-hygiene-card">
+                    <CardHeader>
+                      <h3 className="font-semibold">🧼 Personal Hygiene</h3>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Bath/Shower:</span>
+                          <span className={`font-medium ${todayLog.personalHygiene?.bathOrShower ? 'text-green-600' : 'text-gray-500'}`}>
+                            {todayLog.personalHygiene?.bathOrShower ? '✓ Completed' : 'Not recorded'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Hair Washed:</span>
+                          <span className={`font-medium ${todayLog.personalHygiene?.hairWashed ? 'text-green-600' : 'text-gray-500'}`}>
+                            {todayLog.personalHygiene?.hairWashed ? '✓ Yes' : 'Not recorded'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Oral Care:</span>
+                          <span className="font-medium">
+                            {todayLog.personalHygiene?.oralCare && todayLog.personalHygiene.oralCare !== 'none'
+                              ? todayLog.personalHygiene.oralCare === 'both'
+                                ? 'AM & PM'
+                                : todayLog.personalHygiene.oralCare.toUpperCase()
+                              : 'Not recorded'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Skin Care:</span>
+                          <span className={`font-medium ${todayLog.personalHygiene?.skinCare ? 'text-green-600' : 'text-gray-500'}`}>
+                            {todayLog.personalHygiene?.skinCare ? '✓ Yes' : 'Not recorded'}
+                          </span>
+                        </div>
+                        {todayLog.personalHygiene?.notes && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <span className="text-gray-600 text-xs font-medium">Notes:</span>
+                            <p className="text-gray-700 mt-1">{todayLog.personalHygiene.notes}</p>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

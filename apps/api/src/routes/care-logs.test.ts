@@ -1,7 +1,29 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import app from '../index';
 import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import type { Env } from '../index';
+import { getTestTokens } from '../test-setup';
+
+// vi.mock must be at the top level of the test file for reliable hoisting
+vi.mock('../lib/access-control', () => ({
+  isActiveUser: vi.fn(async () => true),
+  isActiveCaregiver: vi.fn(async () => true),
+  caregiverHasAccess: vi.fn(async () => true),
+  caregiverOwnsCareLog: vi.fn(async (_db: unknown, caregiverId: string, _logId: string) => {
+    return caregiverId !== 'caregiver-999';
+  }),
+  canAccessCareRecipient: vi.fn(async (_db: unknown, _userId: string, recipientId: string) => {
+    return recipientId !== 'other-recipient-123';
+  }),
+  canInvalidateCareLog: vi.fn(async () => true),
+  canManageCaregivers: vi.fn(async () => true),
+  getAccessibleCareRecipients: vi.fn(async (_db: unknown, _userId: string) => [
+    { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Test Recipient' }
+  ]),
+  canGrantAccess: vi.fn(async () => true),
+  canRevokeAccess: vi.fn(async () => true),
+}));
+
+import app from '../index';
 
 /**
  * Care Logs API Tests
@@ -39,14 +61,15 @@ describe('Care Logs API', () => {
       DB: mockD1,
       STORAGE: {} as R2Bucket,
       ENVIRONMENT: 'dev',
-      JWT_SECRET: 'test-secret',
+      JWT_SECRET: 'test-secret-key',
       LOGTO_APP_SECRET: 'test-logto-secret',
     };
 
-    // Setup test data references (actual data seeded in test-setup.ts)
-    familyAdminToken = 'mock-token-family-admin';
-    familyMemberToken = 'mock-token-family-member';
-    caregiverToken = 'mock-token-caregiver';
+    // Use real JWT tokens generated in test-setup.ts (signed with 'test-secret-key')
+    const tokens = getTestTokens();
+    familyAdminToken = tokens.familyAdmin;
+    familyMemberToken = tokens.familyMember;
+    caregiverToken = tokens.caregiver;
     careRecipientId = '550e8400-e29b-41d4-a716-446655440000'; // Valid UUID
     caregiverId = '550e8400-e29b-41d4-a716-446655440001'; // Valid UUID
   });
@@ -301,6 +324,103 @@ describe('Care Logs API', () => {
           expect.objectContaining({ name: 'Night Med', timeSlot: 'after_dinner' }),
         ])
       );
+    });
+
+    it('should materialize active medication schedules when medications are not provided', async () => {
+      await app.request('/medication-schedules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${familyAdminToken}`,
+        },
+        body: JSON.stringify({
+          careRecipientId,
+          medicationName: 'Metformin',
+          dosage: '500mg',
+          purpose: 'Diabetes control',
+          timeSlot: 'after_breakfast',
+          scheduledTime: '08:00',
+          repeatDays: [],
+          active: true,
+        }),
+      }, mockEnv);
+
+      await app.request('/medication-schedules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${familyAdminToken}`,
+        },
+        body: JSON.stringify({
+          careRecipientId,
+          medicationName: 'Aspirin',
+          dosage: '100mg',
+          purpose: 'Heart health',
+          timeSlot: 'afternoon',
+          scheduledTime: '13:00',
+          repeatDays: ['fri'],
+          active: true,
+        }),
+      }, mockEnv);
+
+      await app.request('/medication-schedules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${familyAdminToken}`,
+        },
+        body: JSON.stringify({
+          careRecipientId,
+          medicationName: 'Vitamin C',
+          dosage: '1000mg',
+          timeSlot: 'before_breakfast',
+          scheduledTime: '07:00',
+          repeatDays: ['mon'],
+          active: true,
+        }),
+      }, mockEnv);
+
+      const res = await app.request('/care-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${caregiverToken}`,
+        },
+        body: JSON.stringify({
+          careRecipientId,
+          logDate: '2025-10-03',
+          wakeTime: '07:30',
+        }),
+      }, mockEnv);
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+
+      expect(data.medications).toHaveLength(2);
+      expect(data.medicationAdherence).toEqual({
+        total: 2,
+        given: 0,
+        missed: 2,
+        percentage: 0,
+      });
+      expect(data.medications).toEqual([
+        expect.objectContaining({
+          name: 'Metformin',
+          dosage: '500mg',
+          purpose: 'Diabetes control',
+          given: false,
+          time: null,
+          timeSlot: 'after_breakfast',
+        }),
+        expect.objectContaining({
+          name: 'Aspirin',
+          dosage: '100mg',
+          purpose: 'Heart health',
+          given: false,
+          time: null,
+          timeSlot: 'afternoon',
+        }),
+      ]);
     });
   });
 
@@ -869,7 +989,7 @@ describe('Care Logs API', () => {
 
   describe('RBAC Permission Checks', () => {
     it('should enforce caregiver ownership', async () => {
-      const otherCaregiverToken = 'mock-token-other-caregiver';
+      const otherCaregiverToken = getTestTokens().otherCaregiver;
 
       // Create log with one caregiver
       const createRes = await app.request('/care-logs', {
@@ -3030,7 +3150,7 @@ describe('Care Logs API', () => {
     beforeEach(async () => {
       // Use fixed values to avoid scope issues with outer beforeEach
       const testCareRecipientId = '550e8400-e29b-41d4-a716-446655440000';
-      const testCaregiverToken = 'mock-token-caregiver';
+      const testCaregiverToken = getTestTokens().caregiver;
 
       // Create a care log for testing
       const createRes = await app.request('/care-logs', {

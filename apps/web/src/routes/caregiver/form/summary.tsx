@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
-import { getSingaporeDateString } from '@/lib/careLogDate';
+import { getCurrentAppDateString } from '@/lib/date';
 import { normalizeCompletedSections } from '@/lib/completedSections';
 import { QuickActionFAB } from '@/components/caregiver/QuickActionFAB';
 import {
@@ -249,7 +249,7 @@ function SummaryFormComponent() {
   const createLogMutation = useMutation({
     mutationFn: async () => {
       if (!token || !careRecipient?.id) throw new Error('Not authenticated');
-      const today = getSingaporeDateString();
+      const today = getCurrentAppDateString();
       try {
         return await authenticatedApiCall<CareLog>(
           '/care-logs',
@@ -702,7 +702,8 @@ function SummaryFormComponent() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <div
+              <button
+                type="button"
                 onClick={() => setBathOrShower(!bathOrShower)}
                 className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                   bathOrShower
@@ -718,9 +719,10 @@ function SummaryFormComponent() {
                     {bathOrShower && <CheckCircle className="h-4 w-4" />}
                   </div>
                 </div>
-              </div>
+              </button>
 
-              <div
+              <button
+                type="button"
                 onClick={() => setHairWashed(!hairWashed)}
                 className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                   hairWashed
@@ -736,9 +738,10 @@ function SummaryFormComponent() {
                     {hairWashed && <CheckCircle className="h-4 w-4" />}
                   </div>
                 </div>
-              </div>
+              </button>
 
-              <div
+              <button
+                type="button"
                 onClick={() => setSkinCare(!skinCare)}
                 className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                   skinCare
@@ -754,7 +757,7 @@ function SummaryFormComponent() {
                     {skinCare && <CheckCircle className="h-4 w-4" />}
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
 
             <div>

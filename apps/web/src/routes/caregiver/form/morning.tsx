@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
-import { getSingaporeDateString } from '@/lib/careLogDate';
+import { getCurrentAppDateString } from '@/lib/date';
 import { normalizeCompletedSections } from '@/lib/completedSections';
 import { appetiteLevelToPercent, persistedMealValueToAppetiteLevel } from '@/lib/mealScales';
 import { QuickActionFAB } from '@/components/caregiver/QuickActionFAB';
@@ -60,17 +60,17 @@ interface CareLog {
   // Morning fields
   wakeTime?: string;
   mood?: string;
-  // Last night's sleep (recorded in morning)
-  lastNightSleep?: {
+  // Previous night's sleep is stored in the shared nightSleep object
+  nightSleep?: {
     quality: 'deep' | 'light' | 'restless' | 'no_sleep';
     wakings: number;
     wakingReasons: string[];
   };
   // Vitals
   bloodPressure?: string;
-  pulseRate?: string;
-  oxygenLevel?: string;
-  bloodSugar?: string;
+  pulseRate?: number;
+  oxygenLevel?: number;
+  bloodSugar?: number;
   vitalsTime?: string;
   // Meals (nested object from API)
   meals?: {
@@ -81,7 +81,9 @@ interface CareLog {
   };
   // Medications
   medications?: Array<{
+    scheduleId?: string;
     name: string;
+    dosage?: string;
     given: boolean;
     time: string | null;
     timeSlot: string;
@@ -142,16 +144,26 @@ function MorningFormComponent() {
 
   // Morning medications
   const [medications, setMedications] = useState<Array<{
+    scheduleId?: string;
     name: string;
+    dosage?: string;
     given: boolean;
     time: string | null;
     timeSlot: string;
+    purpose?: string;
+    notes?: string;
   }>>([]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const parseOptionalNumber = (value: string): number | undefined => {
+    if (!value.trim()) return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
 
   // Validation - check all required fields
   const missingFields: string[] = [];
@@ -205,18 +217,18 @@ function MorningFormComponent() {
       if (todayLog.wakeTime) setWakeTime(todayLog.wakeTime);
       if (todayLog.mood) setMood(todayLog.mood);
 
-      // Load last night's sleep
-      if (todayLog.lastNightSleep) {
-        setLastNightQuality(todayLog.lastNightSleep.quality || '');
-        setLastNightWakings(todayLog.lastNightSleep.wakings || 0);
-        setLastNightWakingReasons(todayLog.lastNightSleep.wakingReasons || []);
+      // Load last night's sleep from the shared nightSleep object so evening can merge bedtime details.
+      if (todayLog.nightSleep) {
+        setLastNightQuality(todayLog.nightSleep.quality || '');
+        setLastNightWakings(todayLog.nightSleep.wakings || 0);
+        setLastNightWakingReasons(todayLog.nightSleep.wakingReasons || []);
       }
 
       // Load vitals
       if (todayLog.bloodPressure) setBloodPressure(todayLog.bloodPressure);
-      if (todayLog.pulseRate) setPulseRate(todayLog.pulseRate);
-      if (todayLog.oxygenLevel) setOxygenLevel(todayLog.oxygenLevel);
-      if (todayLog.bloodSugar) setBloodSugar(todayLog.bloodSugar);
+      if (todayLog.pulseRate !== undefined) setPulseRate(String(todayLog.pulseRate));
+      if (todayLog.oxygenLevel !== undefined) setOxygenLevel(String(todayLog.oxygenLevel));
+      if (todayLog.bloodSugar !== undefined) setBloodSugar(String(todayLog.bloodSugar));
       if (todayLog.vitalsTime) setVitalsTime(todayLog.vitalsTime);
 
       // Load breakfast from meals object
@@ -253,7 +265,7 @@ function MorningFormComponent() {
   const createLogMutation = useMutation({
     mutationFn: async () => {
       if (!token || !careRecipient?.id) throw new Error('Not authenticated');
-      const today = getSingaporeDateString();
+      const today = getCurrentAppDateString();
       try {
         return await authenticatedApiCall<CareLog>(
           '/care-logs',
@@ -288,15 +300,15 @@ function MorningFormComponent() {
   type MorningPayload = {
     wakeTime?: string;
     mood?: string;
-    lastNightSleep?: {
+    nightSleep?: {
       quality: string;
       wakings: number;
       wakingReasons: string[];
     };
     bloodPressure?: string;
-    pulseRate?: string | number;
-    oxygenLevel?: string | number;
-    bloodSugar?: string | number;
+    pulseRate?: number;
+    oxygenLevel?: number;
+    bloodSugar?: number;
     vitalsTime?: string;
     meals?: {
       breakfast: {
@@ -336,15 +348,15 @@ function MorningFormComponent() {
   const buildCurrentPayload = (): MorningPayload => ({
     wakeTime: wakeTime || undefined,
     mood: mood || undefined,
-    lastNightSleep: lastNightQuality ? {
+    nightSleep: lastNightQuality ? {
       quality: lastNightQuality,
       wakings: lastNightWakings,
       wakingReasons: lastNightWakingReasons,
     } : undefined,
     bloodPressure: bloodPressure || undefined,
-    pulseRate: pulseRate || undefined,
-    oxygenLevel: oxygenLevel || undefined,
-    bloodSugar: bloodSugar || undefined,
+    pulseRate: parseOptionalNumber(pulseRate),
+    oxygenLevel: parseOptionalNumber(oxygenLevel),
+    bloodSugar: parseOptionalNumber(bloodSugar),
     vitalsTime: vitalsTime || undefined,
     meals: breakfastTime ? {
       breakfast: {
@@ -373,15 +385,15 @@ function MorningFormComponent() {
     const currentPayload: MorningPayload = {
       wakeTime: wakeTime || undefined,
       mood: mood || undefined,
-      lastNightSleep: lastNightQuality ? {
+      nightSleep: lastNightQuality ? {
         quality: lastNightQuality,
         wakings: lastNightWakings,
         wakingReasons: lastNightWakingReasons,
       } : undefined,
       bloodPressure: bloodPressure || undefined,
-      pulseRate: pulseRate || undefined,
-      oxygenLevel: oxygenLevel || undefined,
-      bloodSugar: bloodSugar || undefined,
+      pulseRate: parseOptionalNumber(pulseRate),
+      oxygenLevel: parseOptionalNumber(oxygenLevel),
+      bloodSugar: parseOptionalNumber(bloodSugar),
       vitalsTime: vitalsTime || undefined,
       meals: breakfastTime ? {
         breakfast: {
@@ -406,7 +418,7 @@ function MorningFormComponent() {
 
           // Create care log if it doesn't exist
           if (!logIdToUse) {
-            const today = getSingaporeDateString();
+            const today = getCurrentAppDateString();
             try {
               const newLog = await authenticatedApiCall<CareLog>(
                 '/care-logs',
@@ -940,9 +952,11 @@ function MorningFormComponent() {
                   >
                     <div>
                       <p className="font-medium text-gray-900">{med.name}</p>
+                      {med.dosage && <p className="text-sm text-gray-600">{med.dosage}</p>}
                       <p className="text-xs text-gray-500">
                         {med.timeSlot === 'before_breakfast' ? 'Before breakfast' : 'After breakfast'}
                       </p>
+                      {med.purpose && <p className="text-xs text-gray-500 mt-1">{med.purpose}</p>}
                     </div>
                     <div className="flex items-center gap-3">
                       {med.given && med.time && (

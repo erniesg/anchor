@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { createTestDb, runMigrations, seedTestData } from './test/db-helper';
+import { sign } from 'hono/jwt';
 
 /**
  * Test Setup
@@ -9,13 +10,25 @@ import { createTestDb, runMigrations, seedTestData } from './test/db-helper';
  * - better-sqlite3 in-memory database (real SQLite, not mocks)
  * - Drizzle ORM for queries (same API as production)
  * - Fresh database per test for isolation
+ * - Real JWT tokens signed with test secret (no mock interception needed)
  *
  * Based on Drizzle community best practices (2025)
  */
 
+// Consistent JWT secret used across test setup, mockEnv, and token generation
+const TEST_JWT_SECRET = 'test-secret-key';
+
 // Global test database instance
 let testDb: unknown;
 let testSqlite: { close: () => void } | null;
+
+// Pre-generated JWT tokens (populated in beforeAll)
+let generatedTokens: {
+  familyAdmin: string;
+  familyMember: string;
+  caregiver: string;
+  otherCaregiver: string;
+};
 
 // Mock Cloudflare environment (for D1 interface compatibility)
 const mockEnv = {
@@ -37,16 +50,50 @@ const mockEnv = {
     list: vi.fn(),
   },
   ENVIRONMENT: 'test',
-  JWT_SECRET: 'test-secret-key',
+  JWT_SECRET: TEST_JWT_SECRET,
   LOGTO_APP_SECRET: 'test-logto-secret',
 };
 
-// Global setup
-beforeAll(() => {
+// Global setup - generate real JWT tokens once
+beforeAll(async () => {
   // Set environment variables
-  process.env.JWT_SECRET = 'test-secret-key';
+  process.env.JWT_SECRET = TEST_JWT_SECRET;
   process.env.ENVIRONMENT = 'test';
   process.env.NODE_ENV = 'test';
+
+  // Generate real JWT tokens signed with the test secret
+  const exp = Math.floor(Date.now() / 1000) + 86400; // 24h expiry
+
+  generatedTokens = {
+    familyAdmin: await sign(
+      { sub: 'user-123', role: 'family_admin', iat: Math.floor(Date.now() / 1000), exp },
+      TEST_JWT_SECRET
+    ),
+    familyMember: await sign(
+      { sub: 'user-456', role: 'family_member', iat: Math.floor(Date.now() / 1000), exp },
+      TEST_JWT_SECRET
+    ),
+    caregiver: await sign(
+      {
+        caregiverId: '550e8400-e29b-41d4-a716-446655440001',
+        careRecipientId: '550e8400-e29b-41d4-a716-446655440000',
+        name: 'Test Caregiver',
+        iat: Math.floor(Date.now() / 1000),
+        exp,
+      },
+      TEST_JWT_SECRET
+    ),
+    otherCaregiver: await sign(
+      {
+        caregiverId: 'caregiver-999',
+        careRecipientId: 'recipient-999',
+        name: 'Other Caregiver',
+        iat: Math.floor(Date.now() / 1000),
+        exp,
+      },
+      TEST_JWT_SECRET
+    ),
+  };
 });
 
 // Create fresh database for each test
@@ -72,81 +119,41 @@ afterEach(() => {
 // Mock fetch for external API calls
 global.fetch = vi.fn() as typeof fetch;
 
-// Mock crypto.randomUUID with incremental IDs for test predictability
+// Mock crypto.randomUUID while preserving crypto.subtle for JWT verification
 let mockIdCounter = 0;
 beforeEach(() => {
   mockIdCounter = Date.now(); // Reset counter for each test
 });
 
+// Preserve the native crypto.subtle - hono/jwt needs it for HMAC verification
+const nativeCrypto = (globalThis as typeof globalThis & {
+  crypto: Record<string, unknown> & { subtle: unknown };
+}).crypto;
 Object.defineProperty(global, 'crypto', {
   value: {
+    ...nativeCrypto,
+    subtle: nativeCrypto.subtle,
     randomUUID: vi.fn(() => `mock-id-${mockIdCounter++}`),
-    createHash: vi.fn(() => ({
-      update: vi.fn().mockReturnThis(),
-      digest: vi.fn(() => 'mock-hash'),
-    })),
   },
   writable: true,
 });
 
-// Mock hono/jwt for tests
-vi.mock('hono/jwt', () => ({
-  verify: vi.fn(async (token: string, _secret: string) => {
-    // Mock JWT verification based on token prefix
-    if (token.startsWith('mock-token-family-admin')) {
-      return {
-        sub: 'user-123',
-        role: 'family_admin',
-      };
-    } else if (token.startsWith('mock-token-family-member')) {
-      return {
-        sub: 'user-456',
-        role: 'family_member',
-      };
-    } else if (token.startsWith('mock-token-other-caregiver')) {
-      return {
-        caregiverId: 'caregiver-999', // Different caregiver
-        careRecipientId: 'recipient-999',
-      };
-    } else if (token.startsWith('mock-token-caregiver')) {
-      return {
-        caregiverId: '550e8400-e29b-41d4-a716-446655440001', // Matches seeded caregiver
-        careRecipientId: '550e8400-e29b-41d4-a716-446655440000', // Matches seeded recipient
-      };
-    }
-    throw new Error('Invalid JWT token');
-  }),
-  sign: vi.fn(async (_payload: Record<string, unknown>, _secret: string) => {
-    return 'mock-jwt-token';
-  }),
-}));
+// No need to mock hono/jwt - we use real JWTs signed with the test secret
+// The real verify() function will validate them properly
 
-// Mock access control functions
-vi.mock('./lib/access-control', () => ({
-  isActiveUser: vi.fn(async () => true),
-  isActiveCaregiver: vi.fn(async () => true),
-  caregiverHasAccess: vi.fn(async () => true),
-  // Context-aware: reject if different caregiver (caregiver-999)
-  caregiverOwnsCareLog: vi.fn(async (_db: unknown, caregiverId: string, _logId: string) => {
-    return caregiverId !== 'caregiver-999';
-  }),
-  // Context-aware: reject if recipientId is 'other-recipient-123'
-  canAccessCareRecipient: vi.fn(async (_db: unknown, _userId: string, recipientId: string) => {
-    return recipientId !== 'other-recipient-123';
-  }),
-  canInvalidateCareLog: vi.fn(async () => true),
-  canManageCaregivers: vi.fn(async () => true),
-  getAccessibleCareRecipients: vi.fn(async (_db: unknown, _userId: string) => [
-    { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Test Recipient' }
-  ]),
-  canGrantAccess: vi.fn(async () => true),
-  canRevokeAccess: vi.fn(async () => true),
-}));
+// NOTE: vi.mock for access-control is done in individual test files (not here)
+// because vitest's vi.mock hoisting doesn't reliably intercept ESM imports
+// when declared in setup files. Each test file must declare its own vi.mock().
 
 // Mock @anchor/database to return real in-memory SQLite database
 vi.mock('@anchor/database', () => ({
   createDbClient: vi.fn(() => testDb),
 }));
 
-// Export mock environment for tests
-export { mockEnv };
+// Helper to get test tokens (for use in test files)
+function getTestTokens() {
+  return generatedTokens;
+}
+
+// Export mock environment and token helper for tests
+export { mockEnv, getTestTokens };

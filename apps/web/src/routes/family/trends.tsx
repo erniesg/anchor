@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
 import { summarizeMeals, type FamilyMealsData } from '@/lib/familyMeals';
+import { formatDateForDisplayInAppTimeZone, getCurrentAppDate } from '@/lib/date';
 import {
   LineChart,
   Line,
@@ -63,8 +64,9 @@ function TrendsComponent() {
     queryFn: async () => {
       if (!careRecipient?.id || !token) return [];
       const promises = [];
+      const appToday = getCurrentAppDate();
       for (let i = 6; i >= 0; i--) {
-        const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
+        const date = format(subDays(appToday, i), 'yyyy-MM-dd');
         promises.push(
           authenticatedApiCall<TrendLog>(`/care-logs/recipient/${careRecipient.id}/date/${date}`, token)
             .catch(() => null)
@@ -88,7 +90,7 @@ function TrendsComponent() {
       const mealSummary = summarizeMeals(log.meals);
 
       return {
-        date: format(new Date(log.logDate), 'MMM dd'),
+        date: formatDateForDisplayInAppTimeZone(log.logDate, 'en-US', { month: 'short', day: '2-digit' }),
         systolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[0]) : null,
         diastolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[1]) : null,
         pulse: log.pulseRate,

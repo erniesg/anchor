@@ -436,6 +436,16 @@ export const careLogs = sqliteTable('care_logs', {
       notes?: string;
     }>(),
 
+  // Personal Hygiene (daily summary tracking)
+  personalHygiene: text('personal_hygiene', { mode: 'json' })
+    .$type<{
+      bathOrShower?: boolean;
+      hairWashed?: boolean;
+      oralCare?: 'none' | 'am' | 'pm' | 'both';
+      skinCare?: boolean;
+      notes?: string;
+    }>(),
+
   // Sprint 3 Day 3: Caregiver Notes (structured daily summary)
   caregiverNotes: text('caregiver_notes', { mode: 'json' })
     .$type<{

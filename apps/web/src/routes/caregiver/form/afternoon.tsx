@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedApiCall } from '@/lib/api';
-import { getSingaporeDateString } from '@/lib/careLogDate';
+import { getCurrentAppDateString } from '@/lib/date';
 import { normalizeCompletedSections } from '@/lib/completedSections';
 import { appetiteLevelToPercent, persistedMealValueToAppetiteLevel } from '@/lib/mealScales';
 import { QuickActionFAB } from '@/components/caregiver/QuickActionFAB';
@@ -74,10 +74,14 @@ interface CareLog {
   };
   // Medications
   medications?: Array<{
+    scheduleId?: string;
     name: string;
+    dosage?: string;
     given: boolean;
     time: string | null;
     timeSlot: string;
+    purpose?: string;
+    notes?: string;
   }>;
 }
 
@@ -125,10 +129,14 @@ function AfternoonFormComponent() {
 
   // Afternoon medications
   const [medications, setMedications] = useState<Array<{
+    scheduleId?: string;
     name: string;
+    dosage?: string;
     given: boolean;
     time: string | null;
     timeSlot: string;
+    purpose?: string;
+    notes?: string;
   }>>([]);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -218,7 +226,7 @@ function AfternoonFormComponent() {
   const createLogMutation = useMutation({
     mutationFn: async () => {
       if (!token || !careRecipient?.id) throw new Error('Not authenticated');
-      const today = getSingaporeDateString();
+      const today = getCurrentAppDateString();
       try {
         return await authenticatedApiCall<CareLog>(
           '/care-logs',
@@ -624,7 +632,9 @@ function AfternoonFormComponent() {
                   >
                     <div>
                       <p className="font-medium text-gray-900">{med.name}</p>
+                      {med.dosage && <p className="text-sm text-gray-600">{med.dosage}</p>}
                       <p className="text-xs text-gray-500">Afternoon</p>
+                      {med.purpose && <p className="text-xs text-gray-500 mt-1">{med.purpose}</p>}
                     </div>
                     <div className="flex items-center gap-3">
                       {med.given && med.time && (

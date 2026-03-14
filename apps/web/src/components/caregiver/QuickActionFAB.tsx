@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, X, Droplets, Activity, AlertTriangle, Check, ChevronUp } from 'lucide-react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { authenticatedApiCall } from '@/lib/api';
+import { getCurrentAppDateString } from '@/lib/date';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 
@@ -124,12 +125,12 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
   }
 
   const { data: todayLogData } = useQuery({
-    queryKey: ['caregiver-today-log', careLogId],
+    queryKey: ['caregiver-today-log', token],
     queryFn: async (): Promise<TodayLogData | null> => {
-      if (!careLogId || !token) return null;
-      return authenticatedApiCall<TodayLogData>(`/care-logs/${careLogId}`, token);
+      if (!token) return null;
+      return authenticatedApiCall<TodayLogData>('/care-logs/caregiver/today', token);
     },
-    enabled: !!careLogId && !!token && isOpen,
+    enabled: !!token && isOpen,
     staleTime: 30000, // Cache for 30 seconds
   });
 
@@ -137,7 +138,7 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
   const createLogMutation = useMutation({
     mutationFn: async () => {
       if (!token || !careRecipientId) throw new Error('Not authenticated');
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentAppDateString();
       try {
         return await authenticatedApiCall<{ id: string }>('/care-logs', token, {
           method: 'POST',
@@ -187,7 +188,7 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
       const logId = await getOrCreateLogId();
       // Get existing fluids first
       const existingLog = await authenticatedApiCall<{ fluids?: FluidEntry[] }>(
-        `/care-logs/${logId}`,
+        '/care-logs/caregiver/today',
         token!
       );
       const existingFluids = existingLog.fluids || [];
@@ -295,16 +296,22 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
       const incidentData: Record<string, unknown> = {};
 
       if (incidentEntry.type === 'fall') {
-        incidentData.actualFalls = true;
-        incidentData.incidentDescription = incidentEntry.description;
-        incidentData.actionsTaken = incidentEntry.actionsTaken;
+        incidentData.actualFalls = 'minor';
+        incidentData.specialConcerns = {
+          priorityLevel: 'urgent',
+          incidentDescription: incidentEntry.description,
+          actionsTaken: incidentEntry.actionsTaken,
+        };
       } else if (incidentEntry.type === 'near_fall') {
-        incidentData.nearFalls = true;
-        incidentData.incidentDescription = incidentEntry.description;
-        incidentData.actionsTaken = incidentEntry.actionsTaken;
+        incidentData.nearFalls = 'once_or_twice';
+        incidentData.specialConcerns = {
+          priorityLevel: 'urgent',
+          incidentDescription: incidentEntry.description,
+          actionsTaken: incidentEntry.actionsTaken,
+        };
       } else {
         incidentData.specialConcerns = {
-          priorityLevel: 'medium',
+          priorityLevel: 'routine',
           incidentDescription: incidentEntry.description,
           actionsTaken: incidentEntry.actionsTaken,
         };
@@ -684,12 +691,10 @@ export function QuickActionFAB({ careLogId, careRecipientId, onLogCreated }: Qui
                       className="w-full p-3 border rounded-lg"
                     >
                       <option value="walking">Walking</option>
-                      <option value="arm_exercises">Arm Exercises</option>
-                      <option value="leg_exercises">Leg Exercises</option>
                       <option value="stretching">Stretching</option>
-                      <option value="balance_training">Balance Training</option>
-                      <option value="physiotherapy">Physiotherapy</option>
-                      <option value="other">Other</option>
+                      <option value="chair_exercises">Chair Exercises</option>
+                      <option value="outdoor_activity">Outdoor Activity</option>
+                      <option value="physical_therapy">Physical Therapy</option>
                     </select>
                   </div>
 

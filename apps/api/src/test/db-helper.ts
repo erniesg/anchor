@@ -195,6 +195,9 @@ export function runMigrations(sqlite: Database.Database) {
       personal_items_check TEXT,
       hospital_bag_status TEXT,
 
+      -- Personal Hygiene (daily summary)
+      personal_hygiene TEXT,
+
       -- Notes
       notes TEXT,
 
