@@ -1167,8 +1167,8 @@ function DashboardComponent() {
                             <YAxis yAxisId="right" orientation="right" domain={[0, 100]} />
                             <Tooltip />
                             <Legend />
-                            <Bar yAxisId="left" dataKey="appetite" fill="#f59e0b" name="Avg Appetite (1-5)" />
-                            <Bar yAxisId="right" dataKey="amountEaten" fill="#84cc16" name="Avg Eaten %" />
+                            <Bar yAxisId="left" dataKey="appetite" fill="#f59e0b" name="Avg Appetite (1-5)" isAnimationActive={false} />
+                            <Bar yAxisId="right" dataKey="amountEaten" fill="#84cc16" name="Avg Eaten %" isAnimationActive={false} />
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -1256,7 +1256,7 @@ function DashboardComponent() {
                               <XAxis dataKey="date" />
                               <YAxis />
                               <Tooltip formatter={(value: number) => `${value} minutes`} />
-                              <Bar dataKey="unaccompaniedMinutes" fill="#06b6d4" name="Minutes Alone" />
+                              <Bar dataKey="unaccompaniedMinutes" fill="#06b6d4" name="Minutes Alone" isAnimationActive={false} />
                             </BarChart>
                           </ResponsiveContainer>
                         )}
@@ -1275,7 +1275,7 @@ function DashboardComponent() {
                             <XAxis dataKey="date" />
                             <YAxis domain={[0, 2500]} ticks={[0, 500, 1000, 1500, 2000, 2500]} />
                             <Tooltip formatter={(value: number) => `${value} ml`} />
-                            <Bar dataKey="fluidIntake" fill="#3b82f6" name="Fluid Intake (ml)">
+                            <Bar dataKey="fluidIntake" fill="#3b82f6" name="Fluid Intake (ml)" isAnimationActive={false}>
                               {chartData.map((entry, index) => (
                                 <Cell
                                   key={`cell-${index}`}
@@ -1310,7 +1310,7 @@ function DashboardComponent() {
                             <XAxis dataKey="date" />
                             <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} />
                             <Tooltip formatter={(value: number) => `${value}%`} />
-                            <Bar dataKey="medicationAdherence" fill="#8b5cf6" name="Adherence %">
+                            <Bar dataKey="medicationAdherence" fill="#8b5cf6" name="Adherence %" isAnimationActive={false}>
                               {chartData.map((entry, index) => (
                                 <Cell
                                   key={`cell-${index}`}
@@ -1378,14 +1378,14 @@ function DashboardComponent() {
                               return 'Not Recorded';
                             }} />
                             <Legend />
-                            <Bar dataKey="afternoonSleep" fill="#60a5fa" name="Afternoon Rest">
+                            <Bar dataKey="afternoonSleep" fill="#60a5fa" name="Afternoon Rest" isAnimationActive={false}>
                               {chartData.map((entry: ChartDataItem, index: number) => {
                                 const quality = entry.afternoonRest?.quality;
                                 const color = getSleepQualityColor(quality, 'day');
                                 return <Cell key={`afternoon-${index}`} fill={color} />;
                               })}
                             </Bar>
-                            <Bar dataKey="nightSleep" fill="#8b5cf6" name="Night Sleep">
+                            <Bar dataKey="nightSleep" fill="#8b5cf6" name="Night Sleep" isAnimationActive={false}>
                               {chartData.map((entry: ChartDataItem, index: number) => {
                                 const quality = entry.nightSleep?.quality;
                                 const color = getSleepQualityColor(quality, 'night');
