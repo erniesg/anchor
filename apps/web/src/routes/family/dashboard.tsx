@@ -226,6 +226,26 @@ function getSleepQualityColor(quality?: SleepData['quality'], lightTone: 'day' |
   return '#94a3b8';
 }
 
+function shouldIgnoreDayLogFetchError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return true;
+  }
+
+  if (error instanceof Error && error.name === 'AbortError') {
+    return true;
+  }
+
+  if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/family')) {
+    return true;
+  }
+
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+    return true;
+  }
+
+  return false;
+}
+
 function DashboardComponent() {
   const navigate = useNavigate();
   const { user, token, careRecipient, setCareRecipient: setAuthCareRecipient } = useAuth();
@@ -281,15 +301,18 @@ function DashboardComponent() {
   // Fetch care log for selected date
   const { data: dayLog, isLoading } = useQuery({
     queryKey: ['care-log-date', careRecipient?.id, selectedDateStr],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!careRecipient?.id || !token) return null;
       try {
         // Use today endpoint if it's today, otherwise use date endpoint
         const endpoint = selectedDateStr === todayStr
           ? `/care-logs/recipient/${careRecipient.id}/today`
           : `/care-logs/recipient/${careRecipient.id}/date/${selectedDateStr}`;
-        return await authenticatedApiCall(endpoint, token);
+        return await authenticatedApiCall(endpoint, token, { signal });
       } catch (error) {
+        if (signal.aborted || shouldIgnoreDayLogFetchError(error)) {
+          return null;
+        }
         console.error('Failed to fetch day log:', error);
         return null;
       }

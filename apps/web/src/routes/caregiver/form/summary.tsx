@@ -108,8 +108,8 @@ function SummaryFormComponent() {
 
   // Fall Risk
   const [balanceIssues, setBalanceIssues] = useState<number | null>(null);
-  const [nearFalls, setNearFalls] = useState<'none' | 'once_or_twice' | 'multiple'>('none');
-  const [actualFalls, setActualFalls] = useState<'none' | 'minor' | 'major'>('none');
+  const [nearFalls, setNearFalls] = useState<'none' | 'once_or_twice' | 'multiple' | null>(null);
+  const [actualFalls, setActualFalls] = useState<'none' | 'minor' | 'major' | null>(null);
   const [walkingPattern, setWalkingPattern] = useState<string[]>([]);
   const [freezingEpisodes, setFreezingEpisodes] = useState<'none' | 'mild' | 'severe'>('none');
 
@@ -135,7 +135,7 @@ function SummaryFormComponent() {
   // Personal Hygiene (moved from Morning - not daily)
   const [bathOrShower, setBathOrShower] = useState(false);
   const [hairWashed, setHairWashed] = useState(false);
-  const [oralCare, setOralCare] = useState<'none' | 'am' | 'pm' | 'both'>('none');
+  const [oralCare, setOralCare] = useState<'none' | 'am' | 'pm' | 'both' | ''>('');
   const [skinCare, setSkinCare] = useState(false);
   const [hygieneNotes, setHygieneNotes] = useState('');
 
@@ -228,7 +228,7 @@ function SummaryFormComponent() {
       if (todayLog.personalHygiene) {
         setBathOrShower(todayLog.personalHygiene.bathOrShower || false);
         setHairWashed(todayLog.personalHygiene.hairWashed || false);
-        setOralCare(todayLog.personalHygiene.oralCare || 'none');
+        setOralCare(todayLog.personalHygiene.oralCare ?? '');
         setSkinCare(todayLog.personalHygiene.skinCare || false);
         setHygieneNotes(todayLog.personalHygiene.notes || '');
       }
@@ -286,8 +286,8 @@ function SummaryFormComponent() {
 
       const payload = {
         balanceIssues: balanceIssues ?? undefined,
-        nearFalls,
-        actualFalls,
+        nearFalls: nearFalls || undefined,
+        actualFalls: actualFalls || undefined,
         walkingPattern: walkingPattern.length > 0 ? walkingPattern : undefined,
         freezingEpisodes,
         unaccompaniedTime: unaccompaniedTime.length > 0 ? unaccompaniedTime.map(u => ({
@@ -299,7 +299,7 @@ function SummaryFormComponent() {
         personalHygiene: {
           bathOrShower,
           hairWashed,
-          oralCare,
+          oralCare: oralCare || undefined,
           skinCare,
           notes: hygieneNotes || undefined,
         },
@@ -420,13 +420,41 @@ function SummaryFormComponent() {
     !!completedSections.evening,
   ].filter(Boolean).length;
 
-  // Validation - check all required fields
-  const missingFields: string[] = [];
-  if (balanceIssues === null) missingFields.push('Balance Issues');
+  const safetyChecksComplete = Object.values(safetyChecks).every((item) => item.checked);
+  const caregiverSummaryProvided = [
+    whatWentWell,
+    challengesFaced,
+    recommendationsForTomorrow,
+    importantInfoForFamily,
+    notes,
+  ].some((value) => value.trim().length > 0);
+  const unaccompaniedPeriodsComplete = unaccompaniedTime.every((period) =>
+    Boolean(period.startTime && period.endTime && period.reason.trim().length > 0)
+  );
+  const unaccompaniedPeriodsValid = unaccompaniedTime.every((period) => {
+    if (!period.startTime || !period.endTime) return true;
+    return calculateDuration(period.startTime, period.endTime) > 0;
+  });
 
+  // Validation - require enough detail for a reliable family-facing summary.
+  const requiredFieldChecks = [
+    { label: 'Balance Issues', complete: balanceIssues !== null },
+    { label: 'Near Falls', complete: nearFalls !== null },
+    { label: 'Actual Falls', complete: actualFalls !== null },
+    { label: 'All Safety Checks', complete: safetyChecksComplete },
+    { label: 'Oral Care', complete: oralCare !== '' },
+    { label: 'Caregiver Summary', complete: caregiverSummaryProvided },
+    ...(unaccompaniedTime.length > 0
+      ? [
+          { label: 'Unaccompanied Time Details', complete: unaccompaniedPeriodsComplete },
+          { label: 'Valid Unaccompanied Time Range', complete: unaccompaniedPeriodsValid },
+        ]
+      : []),
+  ];
+  const missingFields = requiredFieldChecks.filter((field) => !field.complete).map((field) => field.label);
   const canSubmit = missingFields.length === 0;
-  const completedFieldsCount = [balanceIssues !== null].filter(Boolean).length;
-  const totalRequiredFields = 1;
+  const completedFieldsCount = requiredFieldChecks.filter((field) => field.complete).length;
+  const totalRequiredFields = requiredFieldChecks.length;
 
   if (isLoading) {
     return (
@@ -761,7 +789,7 @@ function SummaryFormComponent() {
             </div>
 
             <div>
-              <span className="block text-sm font-medium text-gray-700 mb-2">Oral Care</span>
+              <RequiredLabel required>Oral Care</RequiredLabel>
               <div className="flex gap-2">
                 {(['none', 'am', 'pm', 'both'] as const).map((option) => (
                   <button
@@ -874,6 +902,9 @@ function SummaryFormComponent() {
             <h2 className="text-lg font-semibold text-gray-900">Caregiver Notes</h2>
           </CardHeader>
           <CardContent className="space-y-4">
+            <p className="text-xs text-gray-500">
+              Add at least one note before submitting the daily summary.
+            </p>
             <div>
               <Label>What went well today?</Label>
               <textarea

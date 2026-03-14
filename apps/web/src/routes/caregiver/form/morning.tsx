@@ -104,7 +104,7 @@ function MorningFormComponent() {
 
   // Last Night's Sleep (moved from evening - makes more sense here)
   const [lastNightQuality, setLastNightQuality] = useState<'deep' | 'light' | 'restless' | 'no_sleep' | ''>('');
-  const [lastNightWakings, setLastNightWakings] = useState(0);
+  const [lastNightWakings, setLastNightWakings] = useState<number | null>(null);
   const [lastNightWakingReasons, setLastNightWakingReasons] = useState<string[]>([]);
 
   // Vitals
@@ -165,15 +165,21 @@ function MorningFormComponent() {
     return Number.isFinite(parsed) ? parsed : undefined;
   };
 
-  // Validation - check all required fields
-  const missingFields: string[] = [];
-  if (!wakeTime) missingFields.push('Wake Time');
-  if (!mood) missingFields.push('Mood');
-  if (!breakfastTime) missingFields.push('Breakfast Time');
-
+  // Validation - require the core morning fields plus an explicit sleep record.
+  const requiredFieldChecks = [
+    { label: 'Wake Time', complete: Boolean(wakeTime) },
+    { label: 'Mood', complete: Boolean(mood) },
+    { label: 'Sleep Quality', complete: Boolean(lastNightQuality) },
+    { label: 'Night Wakings', complete: lastNightWakings !== null },
+    { label: 'Breakfast Time', complete: Boolean(breakfastTime) },
+    ...(lastNightWakings !== null && lastNightWakings > 0
+      ? [{ label: 'Waking Reasons', complete: lastNightWakingReasons.length > 0 }]
+      : []),
+  ];
+  const missingFields = requiredFieldChecks.filter((field) => !field.complete).map((field) => field.label);
   const canSubmit = missingFields.length === 0;
-  const completedFieldsCount = [wakeTime, mood, breakfastTime].filter(Boolean).length;
-  const totalRequiredFields = 3;
+  const completedFieldsCount = requiredFieldChecks.filter((field) => field.complete).length;
+  const totalRequiredFields = requiredFieldChecks.length;
 
   // Auto-save tracking
   const hasUnsavedChanges = useRef(false);
@@ -220,7 +226,7 @@ function MorningFormComponent() {
       // Load last night's sleep from the shared nightSleep object so evening can merge bedtime details.
       if (todayLog.nightSleep) {
         setLastNightQuality(todayLog.nightSleep.quality || '');
-        setLastNightWakings(todayLog.nightSleep.wakings || 0);
+        setLastNightWakings(todayLog.nightSleep.wakings ?? 0);
         setLastNightWakingReasons(todayLog.nightSleep.wakingReasons || []);
       }
 
@@ -301,8 +307,8 @@ function MorningFormComponent() {
     wakeTime?: string;
     mood?: string;
     nightSleep?: {
-      quality: string;
-      wakings: number;
+      quality?: string;
+      wakings?: number;
       wakingReasons: string[];
     };
     bloodPressure?: string;
@@ -348,9 +354,9 @@ function MorningFormComponent() {
   const buildCurrentPayload = (): MorningPayload => ({
     wakeTime: wakeTime || undefined,
     mood: mood || undefined,
-    nightSleep: lastNightQuality ? {
-      quality: lastNightQuality,
-      wakings: lastNightWakings,
+    nightSleep: lastNightQuality || lastNightWakings !== null || lastNightWakingReasons.length > 0 ? {
+      quality: lastNightQuality || undefined,
+      wakings: lastNightWakings ?? undefined,
       wakingReasons: lastNightWakingReasons,
     } : undefined,
     bloodPressure: bloodPressure || undefined,
@@ -385,9 +391,9 @@ function MorningFormComponent() {
     const currentPayload: MorningPayload = {
       wakeTime: wakeTime || undefined,
       mood: mood || undefined,
-      nightSleep: lastNightQuality ? {
-        quality: lastNightQuality,
-        wakings: lastNightWakings,
+      nightSleep: lastNightQuality || lastNightWakings !== null || lastNightWakingReasons.length > 0 ? {
+        quality: lastNightQuality || undefined,
+        wakings: lastNightWakings ?? undefined,
         wakingReasons: lastNightWakingReasons,
       } : undefined,
       bloodPressure: bloodPressure || undefined,
@@ -514,7 +520,7 @@ function MorningFormComponent() {
   };
 
   // Check if form has any data worth saving
-  const hasFormData = wakeTime || mood || lastNightQuality ||
+  const hasFormData = wakeTime || mood || lastNightQuality || lastNightWakings !== null || lastNightWakingReasons.length > 0 ||
     bloodPressure || pulseRate || oxygenLevel || bloodSugar || vitalsTime ||
     breakfastTime;
 
@@ -734,7 +740,7 @@ function MorningFormComponent() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Sleep Quality</Label>
+              <RequiredLabel required>Sleep Quality</RequiredLabel>
               <div className="grid grid-cols-2 gap-2">
                 {(['deep', 'light', 'restless', 'no_sleep'] as const).map((quality) => (
                   <button
@@ -754,7 +760,7 @@ function MorningFormComponent() {
             </div>
 
             <div>
-              <Label>Night Wakings</Label>
+              <RequiredLabel required>Night Wakings</RequiredLabel>
               <div className="flex gap-2">
                 {[0, 1, 2, 3, 4, 5].map((num) => (
                   <button
@@ -773,9 +779,9 @@ function MorningFormComponent() {
               </div>
             </div>
 
-            {lastNightWakings > 0 && (
+            {lastNightWakings !== null && lastNightWakings > 0 && (
               <div>
-                <Label>Reasons for Waking</Label>
+                <RequiredLabel required>Reasons for Waking</RequiredLabel>
                 <div className="flex flex-wrap gap-2">
                   {wakingReasonOptions.map((reason) => (
                     <button

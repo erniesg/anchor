@@ -139,13 +139,15 @@ function EveningFormComponent() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // Validation - check all required fields
-  const missingFields: string[] = [];
-  if (!dinnerTime) missingFields.push('Dinner Time');
-
+  // Validation - bedtime is required for a complete evening sleep handoff.
+  const requiredFieldChecks = [
+    { label: 'Dinner Time', complete: Boolean(dinnerTime) },
+    { label: 'Bedtime', complete: Boolean(bedtime) },
+  ];
+  const missingFields = requiredFieldChecks.filter((field) => !field.complete).map((field) => field.label);
   const canSubmit = missingFields.length === 0;
-  const completedFieldsCount = [dinnerTime].filter(Boolean).length;
-  const totalRequiredFields = 1;
+  const completedFieldsCount = requiredFieldChecks.filter((field) => field.complete).length;
+  const totalRequiredFields = requiredFieldChecks.length;
 
   const behaviorOptions = [
     'Calm',
@@ -495,7 +497,7 @@ function EveningFormComponent() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Bedtime</Label>
+              <RequiredLabel required>Bedtime</RequiredLabel>
               <Input
                 type="time"
                 value={bedtime}
