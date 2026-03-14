@@ -145,6 +145,8 @@ interface CareLog {
   medications?: MedicationEntry[];
   meals?: MealsData;
   medicationAdherence?: MedicationAdherenceData;
+  afternoonRest?: SleepData;
+  nightSleep?: SleepData;
   morningExerciseSession?: ExerciseSession;
   afternoonExerciseSession?: ExerciseSession;
   movementDifficulties?: Record<string, MovementDifficultyData>;
@@ -399,6 +401,8 @@ function DashboardComponent() {
 
       return {
         date: formatDateForDisplayInAppTimeZone(log.logDate, 'en-US', { month: 'short', day: '2-digit' }),
+        afternoonRest: log.afternoonRest,
+        nightSleep: log.nightSleep,
         systolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[0]) : null,
         diastolic: log.bloodPressure ? parseInt(log.bloodPressure.split('/')[1]) : null,
         pulse: log.pulseRate,
@@ -416,6 +420,12 @@ function DashboardComponent() {
         medicationsMissed: log.medicationAdherence?.missed || 0,
       };
     }) || [];
+
+  const weeklyUnaccompaniedTimeData = chartData.map((entry: ChartDataItem) => ({
+    date: entry.date,
+    unaccompaniedMinutes: typeof entry.unaccompaniedMinutes === 'number' ? entry.unaccompaniedMinutes : 0,
+  }));
+  const hasLoggedUnaccompaniedTime = weeklyUnaccompaniedTimeData.some((entry) => entry.unaccompaniedMinutes > 0);
 
   // Sprint 2 Day 2: Fluid breakdown details toggle
   const [showFluidDetails, setShowFluidDetails] = useState(false);
@@ -1214,15 +1224,42 @@ function DashboardComponent() {
                         <h3 className="font-semibold">🕐 Unaccompanied Time</h3>
                       </CardHeader>
                       <CardContent>
-                        <ResponsiveContainer width="100%" height={200}>
-                          <BarChart data={chartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" />
-                            <YAxis />
-                            <Tooltip formatter={(value: number) => `${value} minutes`} />
-                            <Bar dataKey="unaccompaniedMinutes" fill="#06b6d4" name="Minutes Alone" />
-                          </BarChart>
-                        </ResponsiveContainer>
+                        {!hasLoggedUnaccompaniedTime ? (
+                          <div className="space-y-4">
+                            <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-4">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-700">
+                                <Check className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-green-800">No unaccompanied time recorded</p>
+                                <p className="text-sm text-green-700">
+                                  Caregiver logs for this week show the care recipient was not left alone.
+                                </p>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
+                              {weeklyUnaccompaniedTimeData.map((entry) => (
+                                <div
+                                  key={entry.date}
+                                  className="rounded-lg border border-green-200 bg-white px-3 py-2 text-center"
+                                >
+                                  <p className="text-xs text-gray-500">{entry.date}</p>
+                                  <p className="text-sm font-semibold text-green-700">0 min</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={200}>
+                            <BarChart data={chartData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="date" />
+                              <YAxis />
+                              <Tooltip formatter={(value: number) => `${value} minutes`} />
+                              <Bar dataKey="unaccompaniedMinutes" fill="#06b6d4" name="Minutes Alone" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        )}
                       </CardContent>
                     </Card>
 
